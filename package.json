@@ -1,13 +1,16 @@
 {
-  "name": "tree-sitter-c",
+  "name": "@willbooster/tree-sitter-c",
   "version": "0.24.2",
   "description": "C grammar for tree-sitter",
-  "repository": "https://github.com/tree-sitter/tree-sitter-c",
+  "repository": "https://github.com/WillBooster/tree-sitter-c",
   "license": "MIT",
-  "author": {
-    "name": "Max Brunsfeld",
-    "email": "maxbrunsfeld@gmail.com"
-  },
+  "author": "WillBooster Inc.",
+  "contributors": [
+    {
+      "name": "Max Brunsfeld",
+      "email": "maxbrunsfeld@gmail.com"
+    }
+  ],
   "maintainers": [
     {
       "name": "Amaan Qureshi",
