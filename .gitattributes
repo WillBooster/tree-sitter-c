@@ -1,8 +1,6 @@
 * text=auto
 
 .gitignore -text
-# The corpus case tests input with CRLF line endings.
-test/corpus/crlf.txt -text
 
 *.lockb binary diff=lockb
 *.vcproj text eol=crlf
