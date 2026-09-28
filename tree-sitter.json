@@ -6,10 +6,7 @@
       "camelcase": "C",
       "scope": "source.c",
       "path": ".",
-      "file-types": [
-        "c",
-        "h"
-      ],
+      "file-types": ["c", "h"],
       "highlights": "queries/highlights.scm",
       "tags": "queries/tags.scm",
       "injection-regex": "^(c|h)$"
@@ -21,12 +18,7 @@
     "description": "C grammar for tree-sitter",
     "authors": [
       {
-        "name": "Max Brunsfeld",
-        "email": "maxbrunsfeld@gmail.com"
-      },
-      {
-        "name": "Amaan Qureshi",
-        "email": "amaanq12@gmail.com"
+        "name": "WillBooster Inc."
       }
     ],
     "links": {
@@ -34,13 +26,13 @@
     }
   },
   "bindings": {
-    "c": true,
-    "go": true,
+    "c": false,
+    "go": false,
     "java": false,
-    "node": true,
-    "python": true,
+    "node": false,
+    "python": false,
     "rust": true,
-    "swift": true,
-    "zig": true
+    "swift": false,
+    "zig": false
   }
 }
