@@ -296,3 +296,91 @@ int main() {
                     (string_content)
                     (escape_sequence))
                   (identifier))))))))))
+
+================================
+declaration specs with arguments
+================================
+
+__declspec(align(8)) int x;
+void f(void) { __declspec(align(8)) char buffer[8192]; }
+__declspec(deprecated("use g2")) void g(void);
+__declspec(dllimport noreturn) void h(void);
+__declspec(property(get = get_y, put = put_y)) int y;
+__declspec() int z;
+struct __declspec(align(16)) s { int a; };
+
+---
+
+(translation_unit
+  (declaration
+    (ms_declspec_modifier
+      (identifier)
+      (argument_list
+        (number_literal)))
+    type: (primitive_type)
+    declarator: (identifier))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (declaration
+        (ms_declspec_modifier
+          (identifier)
+          (argument_list
+            (number_literal)))
+        type: (primitive_type)
+        declarator: (array_declarator
+          declarator: (identifier)
+          size: (number_literal)))))
+  (declaration
+    (ms_declspec_modifier
+      (identifier)
+      (argument_list
+        (string_literal
+          (string_content))))
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)))))
+  (declaration
+    (ms_declspec_modifier
+      (identifier)
+      (identifier))
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)))))
+  (declaration
+    (ms_declspec_modifier
+      (identifier)
+      (argument_list
+        (assignment_expression
+          left: (identifier)
+          right: (identifier))
+        (assignment_expression
+          left: (identifier)
+          right: (identifier))))
+    type: (primitive_type)
+    declarator: (identifier))
+  (declaration
+    (ms_declspec_modifier)
+    type: (primitive_type)
+    declarator: (identifier))
+  (struct_specifier
+    (ms_declspec_modifier
+      (identifier)
+      (argument_list
+        (number_literal)))
+    name: (type_identifier)
+    body: (field_declaration_list
+      (field_declaration
+        type: (primitive_type)
+        declarator: (field_identifier)))))

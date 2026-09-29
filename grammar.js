@@ -315,7 +315,7 @@ module.exports = Object.assign(
 
       attribute_declaration: ($) => seq('[[', commaSep1($.attribute), ']]'),
 
-      ms_declspec_modifier: ($) => seq('__declspec', '(', $.identifier, ')'),
+      ms_declspec_modifier: ($) => seq('__declspec', '(', repeat(seq($.identifier, optional($.argument_list))), ')'),
 
       ms_based_modifier: ($) => seq('__based', $.argument_list),
 

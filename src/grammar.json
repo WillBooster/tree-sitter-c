@@ -3320,8 +3320,28 @@
           "value": "("
         },
         {
-          "type": "SYMBOL",
-          "name": "identifier"
+          "type": "REPEAT",
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "identifier"
+              },
+              {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "argument_list"
+                  },
+                  {
+                    "type": "BLANK"
+                  }
+                ]
+              }
+            ]
+          }
         },
         {
           "type": "STRING",
