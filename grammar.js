@@ -859,7 +859,8 @@ module.exports = Object.assign(
           $.char_literal,
           $.parenthesized_expression,
           $.gnu_asm_expression,
-          $.extension_expression
+          $.extension_expression,
+          $.builtin_available_expression
         ),
 
       _string: ($) => prec.left(choice($.string_literal, $.concatenated_string)),
@@ -991,6 +992,13 @@ module.exports = Object.assign(
 
       call_expression: ($) =>
         prec(PREC.CALL, seq(field('function', $.expression), field('arguments', $.argument_list))),
+
+      builtin_available_expression: ($) =>
+        seq('__builtin_available', '(', commaSep1(choice($.platform_version, '*')), ')'),
+
+      platform_version: ($) => seq(field('platform', $.identifier), field('version', $.version_number)),
+
+      version_number: () => /\d+(\.\d+){0,2}/,
 
       gnu_asm_expression: ($) =>
         prec(

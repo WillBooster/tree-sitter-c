@@ -132,6 +132,10 @@
         "named": true
       },
       {
+        "type": "builtin_available_expression",
+        "named": true
+      },
+      {
         "type": "call_expression",
         "named": true
       },
@@ -889,6 +893,21 @@
     "type": "break_statement",
     "named": true,
     "fields": {}
+  },
+  {
+    "type": "builtin_available_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "platform_version",
+          "named": true
+        }
+      ]
+    }
   },
   {
     "type": "call_expression",
@@ -2601,6 +2620,32 @@
     }
   },
   {
+    "type": "platform_version",
+    "named": true,
+    "fields": {
+      "platform": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "version": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "version_number",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "pointer_declarator",
     "named": true,
     "fields": {
@@ -4277,6 +4322,10 @@
     "named": false
   },
   {
+    "type": "__builtin_available",
+    "named": false
+  },
+  {
     "type": "__cdecl",
     "named": false
   },
@@ -4600,6 +4649,10 @@
   {
     "type": "unsigned",
     "named": false
+  },
+  {
+    "type": "version_number",
+    "named": true
   },
   {
     "type": "volatile",
