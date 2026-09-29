@@ -5,7 +5,7 @@
 [![Test](https://github.com/WillBooster/tree-sitter-c/actions/workflows/test.yml/badge.svg)](https://github.com/WillBooster/tree-sitter-c/actions/workflows/test.yml)
 [![Test rust](https://github.com/WillBooster/tree-sitter-c/actions/workflows/test-rust.yml/badge.svg)](https://github.com/WillBooster/tree-sitter-c/actions/workflows/test-rust.yml)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
-[![wbfy](https://img.shields.io/badge/wbfy-20.24.0-1e90ff.svg)](https://github.com/WillBooster/shared/tree/main/packages/wbfy)
+[![wbfy](https://img.shields.io/badge/wbfy-20.26.0-1e90ff.svg)](https://github.com/WillBooster/shared/tree/main/packages/wbfy)
 [![crates.io](https://img.shields.io/crates/v/willbooster-tree-sitter-c.svg)](https://crates.io/crates/willbooster-tree-sitter-c)
 
 C grammar for [tree-sitter](https://github.com/tree-sitter/tree-sitter), forked from
@@ -17,11 +17,13 @@ This fork fixes parsing bugs and raises conformance with the ISO C standard
 
 ## Usage
 
-The npm package ships `tree-sitter-c.wasm` for [web-tree-sitter](https://www.npmjs.com/package/web-tree-sitter):
+The npm package ships `tree-sitter-c.wasm` for
+[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter), which runs in Node.js,
+Bun, browsers, and Cloudflare Workers. In Node.js and Bun, load the grammar from its path:
 
 ```js
 import { fileURLToPath } from 'node:url';
-import { Language, Parser } from 'web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 
 await Parser.init();
 const parser = new Parser();
@@ -30,8 +32,33 @@ parser.setLanguage(await Language.load(wasmPath));
 const tree = parser.parse('int main(void) { return 0; }\n');
 ```
 
-The package also ships the node types in `src/node-types.json` and `grammar.js`, which grammars extending C (such as
-C++) require.
+In browsers, serve both `.wasm` files and load them by URL (the example uses Vite's `?url` imports):
+
+```js
+import { Language, Parser } from '@willbooster/web-tree-sitter';
+import runtimeUrl from '@willbooster/web-tree-sitter/web-tree-sitter.wasm?url';
+import cUrl from '@willbooster/tree-sitter-c/tree-sitter-c.wasm?url';
+
+await Parser.init({ locateFile: () => runtimeUrl });
+const parser = new Parser();
+parser.setLanguage(await Language.load(cUrl));
+```
+
+Cloudflare Workers do not allow compiling Wasm at run time, so import both `.wasm` files as modules, with or without
+Node.js compatibility:
+
+```js
+import { Language, Parser } from '@willbooster/web-tree-sitter';
+import runtime from '@willbooster/web-tree-sitter/web-tree-sitter.wasm';
+import c from '@willbooster/tree-sitter-c/tree-sitter-c.wasm';
+
+await Parser.init({ wasmModule: runtime });
+const parser = new Parser();
+parser.setLanguage(await Language.load(c));
+```
+
+The package also ships `grammar.js`, the queries in `queries/`, and the node types in `src/node-types.json` for grammars
+extending C (such as C++).
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c):
 
@@ -51,6 +78,7 @@ parser.set_language(&tree_sitter_c::LANGUAGE.into())?;
 ```sh
 mise install
 bun install --frozen-lockfile
+bun run test/ci-setup # installs Chromium for the browser test
 bun run build/ci
 bun run test
 script/parse-examples
@@ -70,7 +98,9 @@ cargo test
   list, `script/parse-examples` rewrites it; review its diff before committing;
 - a performance check (`test/unit/performance.test.ts`) that recovering from an error on each of 10,000 lines takes
   linear time, since consumers parse files while they are being edited. It loads the Wasm build through
-  web-tree-sitter, which `bun run build/ci` rebuilds after regenerating the parser.
+  @willbooster/web-tree-sitter, which `bun run build/ci` rebuilds after regenerating the parser;
+- tests that load the Wasm build with @willbooster/web-tree-sitter in Chromium (`test/e2e/browser.test.ts`) and in
+  Cloudflare Workers with and without Node.js compatibility (`test/e2e/workers.test.ts`).
 
 CI also runs these tests on Linux arm64 and macOS, where the Rust binding compiles the parser natively, and fuzzes the
 parser with libFuzzer and sanitizers (`.github/workflows/robustness.yml`).
