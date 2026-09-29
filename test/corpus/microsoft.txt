@@ -384,3 +384,74 @@ struct __declspec(align(16)) s { int a; };
       (field_declaration
         type: (primitive_type)
         declarator: (field_identifier)))))
+
+================================
+pointer size modifiers
+================================
+
+char * __ptr32 p;
+int f(void) { return (int)((char *__ptr32 *__ptr32 *)0)[4][214]; }
+void * __ptr64 __restrict q;
+struct s { int * __ptr64 a; };
+typedef char * __ptr32 P32;
+
+---
+
+(translation_unit
+  (declaration
+    type: (primitive_type)
+    declarator: (pointer_declarator
+      (ms_pointer_modifier
+        (ms_pointer_size_modifier))
+      declarator: (identifier)))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (cast_expression
+          type: (type_descriptor
+            type: (primitive_type))
+          value: (subscript_expression
+            argument: (subscript_expression
+              argument: (parenthesized_expression
+                (cast_expression
+                  type: (type_descriptor
+                    type: (primitive_type)
+                    declarator: (abstract_pointer_declarator
+                      (ms_pointer_modifier
+                        (ms_pointer_size_modifier))
+                      declarator: (abstract_pointer_declarator
+                        (ms_pointer_modifier
+                          (ms_pointer_size_modifier))
+                        declarator: (abstract_pointer_declarator))))
+                  value: (number_literal)))
+              index: (number_literal))
+            index: (number_literal))))))
+  (declaration
+    type: (primitive_type)
+    declarator: (pointer_declarator
+      (ms_pointer_modifier
+        (ms_pointer_size_modifier))
+      (ms_pointer_modifier
+        (ms_restrict_modifier))
+      declarator: (identifier)))
+  (struct_specifier
+    name: (type_identifier)
+    body: (field_declaration_list
+      (field_declaration
+        type: (primitive_type)
+        declarator: (pointer_declarator
+          (ms_pointer_modifier
+            (ms_pointer_size_modifier))
+          declarator: (field_identifier)))))
+  (type_definition
+    type: (primitive_type)
+    declarator: (pointer_declarator
+      (ms_pointer_modifier
+        (ms_pointer_size_modifier))
+      declarator: (type_identifier))))

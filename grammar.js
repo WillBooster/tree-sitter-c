@@ -329,12 +329,15 @@ module.exports = Object.assign(
 
       ms_unaligned_ptr_modifier: () => choice('_unaligned', '__unaligned'),
 
+      ms_pointer_size_modifier: () => choice('__ptr32', '__ptr64'),
+
       ms_pointer_modifier: ($) =>
         choice(
           $.ms_unaligned_ptr_modifier,
           $.ms_restrict_modifier,
           $.ms_unsigned_ptr_modifier,
-          $.ms_signed_ptr_modifier
+          $.ms_signed_ptr_modifier,
+          $.ms_pointer_size_modifier
         ),
 
       declaration_list: ($) => seq('{', repeat($._block_item), '}'),

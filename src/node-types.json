@@ -2400,6 +2400,10 @@
       "required": true,
       "types": [
         {
+          "type": "ms_pointer_size_modifier",
+          "named": true
+        },
+        {
           "type": "ms_restrict_modifier",
           "named": true
         },
@@ -2417,6 +2421,11 @@
         }
       ]
     }
+  },
+  {
+    "type": "ms_pointer_size_modifier",
+    "named": true,
+    "fields": {}
   },
   {
     "type": "ms_unaligned_ptr_modifier",
@@ -4309,6 +4318,14 @@
   },
   {
     "type": "__leave",
+    "named": false
+  },
+  {
+    "type": "__ptr32",
+    "named": false
+  },
+  {
+    "type": "__ptr64",
     "named": false
   },
   {
