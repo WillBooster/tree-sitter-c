@@ -3416,6 +3416,19 @@
         }
       ]
     },
+    "ms_pointer_size_modifier": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "__ptr32"
+        },
+        {
+          "type": "STRING",
+          "value": "__ptr64"
+        }
+      ]
+    },
     "ms_pointer_modifier": {
       "type": "CHOICE",
       "members": [
@@ -3434,6 +3447,10 @@
         {
           "type": "SYMBOL",
           "name": "ms_signed_ptr_modifier"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "ms_pointer_size_modifier"
         }
       ]
     },

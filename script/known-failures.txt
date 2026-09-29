@@ -685,7 +685,6 @@ examples/libuv/src/unix/kqueue.c
 examples/libuv/src/unix/linux.c
 examples/libuv/src/unix/loop-watcher.c
 examples/libuv/src/unix/os390-syscalls.c
-examples/libuv/src/unix/os390.c
 examples/libuv/src/unix/process.c
 examples/libuv/src/unix/signal.c
 examples/libuv/src/unix/stream.c
