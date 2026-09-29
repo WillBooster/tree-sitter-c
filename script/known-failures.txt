@@ -1,4 +1,3 @@
-examples/curl/CMake/CurlTests.c
 examples/curl/docs/examples/block_ip.c
 examples/curl/docs/examples/evhiperfifo.c
 examples/curl/docs/examples/log_failed_transfers.c

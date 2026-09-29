@@ -1481,3 +1481,60 @@ unsigned const char *c;
       (primitive_type))
     (pointer_declarator
       (identifier))))
+
+================================
+__builtin_available
+================================
+
+void f(void) {
+  if (__builtin_available(macOS 10.11, iOS 9.0, *)) {
+    g();
+  }
+  if (!__builtin_available(macOS 10, watchOS 2.0.1, *))
+    return;
+  int ok = __builtin_available(*) && x;
+}
+
+---
+
+(translation_unit
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (if_statement
+        condition: (parenthesized_expression
+          (builtin_available_expression
+            (platform_version
+              platform: (identifier)
+              version: (version_number))
+            (platform_version
+              platform: (identifier)
+              version: (version_number))))
+        consequence: (compound_statement
+          (expression_statement
+            (call_expression
+              function: (identifier)
+              arguments: (argument_list)))))
+      (if_statement
+        condition: (parenthesized_expression
+          (unary_expression
+            argument: (builtin_available_expression
+              (platform_version
+                platform: (identifier)
+                version: (version_number))
+              (platform_version
+                platform: (identifier)
+                version: (version_number)))))
+        consequence: (return_statement))
+      (declaration
+        type: (primitive_type)
+        declarator: (init_declarator
+          declarator: (identifier)
+          value: (binary_expression
+            left: (builtin_available_expression)
+            right: (identifier)))))))
