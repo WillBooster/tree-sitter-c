@@ -412,6 +412,7 @@ module.exports = Object.assign(
             seq(
               optional($.ms_based_modifier),
               '*',
+              repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
               repeat($.type_qualifier),
               field('declarator', $._declarator)
@@ -425,6 +426,7 @@ module.exports = Object.assign(
             seq(
               optional($.ms_based_modifier),
               '*',
+              repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
               repeat($.type_qualifier),
               field('declarator', $._field_declarator)
@@ -438,6 +440,7 @@ module.exports = Object.assign(
             seq(
               optional($.ms_based_modifier),
               '*',
+              repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
               repeat($.type_qualifier),
               field('declarator', $._type_declarator)
@@ -450,6 +453,7 @@ module.exports = Object.assign(
           prec.right(
             seq(
               '*',
+              repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
               repeat($.type_qualifier),
               field('declarator', optional($._abstract_declarator))
