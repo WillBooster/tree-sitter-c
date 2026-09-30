@@ -28,13 +28,25 @@ const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: rootDir, encoding
 // The registries trust this workflow file for publishing.
 const dispatch = (ref) => github('POST', 'actions/workflows/release.yml/dispatches', { ref });
 const pendingBranchPrefix = 'release-pending/';
+// The dry-run options of `wb release` and of semantic-release (forwarded after `--`).
+const dryRun = process.argv.slice(2).some((arg) => ['--dry-run', '--dry', '-d'].includes(arg));
 
-if (env.GITHUB_REF_NAME.startsWith(pendingBranchPrefix)) {
+if (dryRun) {
+  // Handling a pending release deletes drafts, creates branches, and dispatches publishing runs.
+  for (const draft of await listPendingReleases(github)) {
+    console.info(`A real run handles the pending release ${draft.tag_name} of ${draft.target_commitish} first.`);
+  }
+  runSemanticRelease();
+} else if (env.GITHUB_REF_NAME.startsWith(pendingBranchPrefix)) {
   await completePendingRelease(env.GITHUB_REF_NAME.slice(pendingBranchPrefix.length));
   await dispatch(releaseConfig.branches[0]);
   // After the dispatch, since the reusable workflow skips re-runs on a deleted branch.
   await github('DELETE', `git/refs/heads/${env.GITHUB_REF_NAME}`);
 } else if (!(await deferToPendingRelease())) {
+  runSemanticRelease();
+}
+
+function runSemanticRelease() {
   execFileSync('wb', ['release', ...process.argv.slice(2)], { cwd: rootDir, stdio: 'inherit' });
 }
 
