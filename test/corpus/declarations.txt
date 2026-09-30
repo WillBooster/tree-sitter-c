@@ -1156,6 +1156,93 @@ struct __attribute__((__packed__)) foo_t {
         (field_identifier)))))
 
 ================================================================================
+Attributes after pointer operators
+================================================================================
+
+int * [[gnu::unused]] p;
+int * [[a]] const * [[b]] [[c, d]] volatile q;
+void f(int * [[a]], char * [[b]] s);
+struct s { int * [[a]] x; };
+typedef int * [[a]] ptr_t;
+int n = sizeof(int * [[a]]);
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (pointer_declarator
+      (attribute_declaration
+        (attribute
+          (identifier)
+          (identifier)))
+      (identifier)))
+  (declaration
+    (primitive_type)
+    (pointer_declarator
+      (attribute_declaration
+        (attribute
+          (identifier)))
+      (type_qualifier)
+      (pointer_declarator
+        (attribute_declaration
+          (attribute
+            (identifier)))
+        (attribute_declaration
+          (attribute
+            (identifier))
+          (attribute
+            (identifier)))
+        (type_qualifier)
+        (identifier))))
+  (declaration
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (abstract_pointer_declarator
+            (attribute_declaration
+              (attribute
+                (identifier)))))
+        (parameter_declaration
+          (primitive_type)
+          (pointer_declarator
+            (attribute_declaration
+              (attribute
+                (identifier)))
+            (identifier))))))
+  (struct_specifier
+    (type_identifier)
+    (field_declaration_list
+      (field_declaration
+        (primitive_type)
+        (pointer_declarator
+          (attribute_declaration
+            (attribute
+              (identifier)))
+          (field_identifier)))))
+  (type_definition
+    (primitive_type)
+    (pointer_declarator
+      (attribute_declaration
+        (attribute
+          (identifier)))
+      (type_identifier)))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (sizeof_expression
+        (type_descriptor
+          (primitive_type)
+          (abstract_pointer_declarator
+            (attribute_declaration
+              (attribute
+                (identifier)))))))))
+
+================================================================================
 More Assembly
 ================================================================================
 
