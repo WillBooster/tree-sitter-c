@@ -60,11 +60,14 @@ parser.setLanguage(await Language.load(c));
 The package also ships `grammar.js`, the queries in `queries/`, and the node types in `src/node-types.json` for grammars
 extending C (such as C++).
 
-In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c):
+In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
+[willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
+fuzzed with (the grammar also loads in the upstream `tree-sitter` crate 0.27, whose error recovery never ends on some
+malformed input):
 
 ```toml
 [dependencies]
-tree-sitter = "0.27"
+tree-sitter = { package = "willbooster-tree-sitter", version = "1" }
 tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "1" }
 ```
 
