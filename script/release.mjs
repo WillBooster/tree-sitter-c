@@ -31,22 +31,12 @@ const pendingBranchPrefix = 'release-pending/';
 // The dry-run options of `wb release` and of semantic-release (forwarded after `--`).
 const dryRun = process.argv.slice(2).some((arg) => ['--dry-run', '--dry', '-d'].includes(arg));
 
-if (dryRun) {
-  // Handling a pending release deletes drafts, creates branches, and dispatches publishing runs.
-  for (const draft of await listPendingReleases(github)) {
-    console.info(`A real run handles the pending release ${draft.tag_name} of ${draft.target_commitish} first.`);
-  }
-  runSemanticRelease();
-} else if (env.GITHUB_REF_NAME.startsWith(pendingBranchPrefix)) {
+if (!dryRun && env.GITHUB_REF_NAME.startsWith(pendingBranchPrefix)) {
   await completePendingRelease(env.GITHUB_REF_NAME.slice(pendingBranchPrefix.length));
   await dispatch(releaseConfig.branches[0]);
   // After the dispatch, since the reusable workflow skips re-runs on a deleted branch.
   await github('DELETE', `git/refs/heads/${env.GITHUB_REF_NAME}`);
-} else if (!(await deferToPendingRelease())) {
-  runSemanticRelease();
-}
-
-function runSemanticRelease() {
+} else if (!(await deferToPendingRelease()) || dryRun) {
   execFileSync('wb', ['release', ...process.argv.slice(2)], { cwd: rootDir, stdio: 'inherit' });
 }
 
@@ -65,7 +55,10 @@ async function completePendingRelease(tag) {
   }
 }
 
-/** Returns whether a pending release of an older commit must be completed before releasing this commit. */
+/**
+ * Returns whether a pending release of an older commit must be completed before releasing this commit. A dry run only
+ * reports what a real run would do.
+ */
 async function deferToPendingRelease() {
   // Oldest first, since versions are released in order.
   const drafts = await listPendingReleases(github);
@@ -79,12 +72,18 @@ async function deferToPendingRelease() {
     if (published.every((target) => target.commit === undefined)) {
       // Nothing was released, so the version goes to the newer commits instead. A release that failed on a defect
       // (e.g., a packaging error) thus does not block the commit that fixes it.
-      console.info(`Deleting the draft release ${draft.tag_name} of ${commit}, which no registry holds`);
-      await github('DELETE', `releases/${draft.id}`);
+      console.info(
+        `${dryRun ? 'Would delete' : 'Deleting'} the draft release ${draft.tag_name} of ${commit}, which no registry holds`
+      );
+      if (!dryRun) await github('DELETE', `releases/${draft.id}`);
       continue;
     }
 
     const branch = `${pendingBranchPrefix}${draft.tag_name}`;
+    if (dryRun) {
+      console.info(`Would dispatch a run on ${branch} to complete the release before releasing this commit.`);
+      return true;
+    }
     await createBranch(branch, commit);
     await dispatch(branch);
     console.info(`Dispatched a run on ${branch} to complete the release; that run releases this commit next.`);
