@@ -91,9 +91,11 @@ cargo test
 `bun run test` runs:
 
 - the corpus in `test/corpus`, with the native build and with the Wasm build (the first run downloads the WASI SDK);
-- an incremental-parsing check (`test/unit/incremental.test.ts`): `tree-sitter fuzz` edits each corpus case at random,
-  reparses it, undoes the edits, and reparses again. `TREE_SITTER_SEED`, `TREE_SITTER_ITERATIONS`, and
-  `TREE_SITTER_EDITS` run other or more edits;
+- an incremental-parsing check (`test/unit/incremental.test.ts`): `script/fuzz-corpus` runs `tree-sitter fuzz`, which
+  edits each corpus case at random, reparses it, undoes the edits, and reparses again, on the CLI of the
+  WillBooster/tree-sitter runtime version locked in `Cargo.lock` (`script/fork-cli`; the first run downloads that CLI
+  from its GitHub Release, or builds it with `cargo` when the download fails or the release has no binary that runs
+  here). `TREE_SITTER_SEED`, `TREE_SITTER_ITERATIONS`, and `TREE_SITTER_EDITS` run other or more edits;
 - a check that the real-world C files in `examples/`, the checked-in ones and those of the cloned repositories, fail to
   parse exactly as listed in `script/known-failures.txt`. Many of the listed files use preprocessor conditionals or
   macros that tree-sitter parses without expanding them. The first run clones the repositories. The example
@@ -104,12 +106,13 @@ cargo test
   @willbooster/web-tree-sitter, which `bun run build/ci` rebuilds after regenerating the parser;
 - a check (`test/unit/runtimeVersion.test.ts`) that `@willbooster/web-tree-sitter` in `package.json` and
   `willbooster-tree-sitter` in `Cargo.lock` are the same version, since the Wasm tests run on the former and the Rust
-  tests and the fuzzer on the latter;
+  tests, the fuzzer, and the incremental check on the latter;
 - tests that load the Wasm build with @willbooster/web-tree-sitter in Chromium (`test/e2e/browser.test.ts`) and in
   Cloudflare Workers with and without Node.js compatibility (`test/e2e/workers.test.ts`).
 
 The tests and `script/parse-examples` compile the parser into `.tmp/tree-sitter-lib` rather than the CLI's cache shared
-by every checkout.
+by every checkout; `script/fuzz-corpus` builds a parser of its own in `.tmp/fuzz` for each run and deletes it
+afterwards.
 
 CI also runs these tests on Linux arm64 and macOS, where the Rust binding compiles the parser natively, and fuzzes the
 parser with libFuzzer and sanitizers (`.github/workflows/robustness.yml`).
