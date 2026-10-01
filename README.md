@@ -102,6 +102,9 @@ cargo test
 - a performance check (`test/unit/performance.test.ts`) that recovering from an error on each line takes linear
   time, since consumers parse files while they are being edited. It loads the Wasm build through
   @willbooster/web-tree-sitter, which `bun run build/ci` rebuilds after regenerating the parser;
+- a check (`test/unit/runtimeVersion.test.ts`) that `@willbooster/web-tree-sitter` in `package.json` and
+  `willbooster-tree-sitter` in `Cargo.lock` are the same version, since the Wasm tests run on the former and the Rust
+  tests and the fuzzer on the latter;
 - tests that load the Wasm build with @willbooster/web-tree-sitter in Chromium (`test/e2e/browser.test.ts`) and in
   Cloudflare Workers with and without Node.js compatibility (`test/e2e/workers.test.ts`).
 
