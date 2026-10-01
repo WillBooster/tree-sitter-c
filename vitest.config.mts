@@ -11,6 +11,7 @@ export default defineConfig({
       {
         test: {
           name: 'node',
+          globalSetup: 'test/helpers/installCli.ts',
           include: ['test/{unit,e2e}/**/*.test.ts'],
           exclude: BrowserTests,
         },
