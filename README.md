@@ -99,8 +99,8 @@ cargo test
   macros that tree-sitter parses without expanding them. The first run clones the repositories. The example
   repositories are pinned to commits in `script/parse-examples`. After a grammar change or a moved pin alters that
   list, `script/parse-examples` rewrites it; review its diff before committing;
-- a performance check (`test/unit/performance.test.ts`) that recovering from an error on each of 10,000 lines takes
-  linear time, since consumers parse files while they are being edited. It loads the Wasm build through
+- a performance check (`test/unit/performance.test.ts`) that recovering from an error on each line takes linear
+  time, since consumers parse files while they are being edited. It loads the Wasm build through
   @willbooster/web-tree-sitter, which `bun run build/ci` rebuilds after regenerating the parser;
 - tests that load the Wasm build with @willbooster/web-tree-sitter in Chromium (`test/e2e/browser.test.ts`) and in
   Cloudflare Workers with and without Node.js compatibility (`test/e2e/workers.test.ts`).
