@@ -22,26 +22,34 @@ test('uses a Wasm build built from the current parser', () => {
   ).toBe(false);
 });
 
-// Consumers parse files being edited, so recovering from many errors must stay linear: ten times the lines take
-// about ten times as long, against a hundred times for quadratic recovery. The ratio, unlike an absolute limit,
-// holds on slow CI runners. The parses are timed in the CPU time of this test file's process (see `pool` in
-// vitest.config.mts), not in wall-clock time, which the test files running alongside inflate unevenly. Each size
-// keeps its fastest run to filter out the remaining noise, such as garbage collection.
+// Consumers parse files being edited, so recovering from many errors must stay linear: ten times the lines take about
+// ten times as long, against a hundred times for quadratic recovery. The ratio catches a cost that grows faster than
+// the input even on a slow CI runner. The parses are timed in the CPU time of the thread that runs them: wall-clock
+// time is inflated unevenly by the test files running alongside, and the process's CPU time also counts the engine's
+// background threads, which compile the Wasm build and collect garbage during the parses. 2,000 and 20,000 lines are
+// measured after warm-up parses and in alternation, each keeping its fastest run; their ratio is about 10 locally, and
+// 18 leaves a margin over that while failing for growth faster than about n^1.25.
 test('recovers from an error on each line in linear time', { timeout: 60_000 }, () => {
-  expect(fastestParseCpuTime(10_000) / fastestParseCpuTime(1000)).toBeLessThan(30);
+  const small = '$ a\n'.repeat(2000);
+  const large = '$ a\n'.repeat(20_000);
+  parseCpuTime(large);
+  parseCpuTime(large);
+  let smallFastest = Infinity;
+  let largeFastest = Infinity;
+  for (let run = 0; run < 5; run++) {
+    smallFastest = Math.min(smallFastest, parseCpuTime(small));
+    largeFastest = Math.min(largeFastest, parseCpuTime(large));
+  }
+  expect(largeFastest / smallFastest).toBeLessThan(18);
 });
 
-function fastestParseCpuTime(lines: number): number {
-  let fastest = Infinity;
-  for (let run = 0; run < 3; run++) {
-    const start = process.cpuUsage();
-    const tree = parser.parse('$ a\n'.repeat(lines));
-    const { system, user } = process.cpuUsage(start);
-    fastest = Math.min(fastest, system + user);
-    if (!tree) throw new Error('The parser returned no tree');
-    const { hasError } = tree.rootNode;
-    tree.delete();
-    expect(hasError).toBe(true);
-  }
-  return fastest;
+function parseCpuTime(source: string): number {
+  const start = process.threadCpuUsage();
+  const tree = parser.parse(source);
+  const { system, user } = process.threadCpuUsage(start);
+  if (!tree) throw new Error('The parser returned no tree');
+  const { hasError } = tree.rootNode;
+  tree.delete();
+  expect(hasError).toBe(true);
+  return system + user;
 }
