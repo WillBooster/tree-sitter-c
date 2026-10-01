@@ -5,6 +5,9 @@
  * @license MIT
  */
 
+/// <reference types="tree-sitter-cli/dsl" />
+// @ts-check
+
 const PREC = {
   PAREN_DECLARATOR: -10,
   ASSIGNMENT: -2,
