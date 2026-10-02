@@ -5,7 +5,7 @@
  * @license MIT
  */
 
-/// <reference types="tree-sitter-cli/dsl" />
+/// <reference path="types/treeSitterDsl.d.ts" />
 // @ts-check
 
 const PREC = {
@@ -94,8 +94,8 @@ module.exports = Object.assign(
           $.attributed_statement,
           $.type_definition,
           $._empty_declaration,
-          $.preproc_if,
-          $.preproc_ifdef,
+          sym('preproc_if'),
+          sym('preproc_ifdef'),
           $.preproc_include,
           $.preproc_def,
           $.preproc_function_def,
@@ -112,8 +112,8 @@ module.exports = Object.assign(
           $.attributed_statement,
           $.type_definition,
           $._empty_declaration,
-          $.preproc_if,
-          $.preproc_ifdef,
+          sym('preproc_if'),
+          sym('preproc_ifdef'),
           $.preproc_include,
           $.preproc_def,
           $.preproc_function_def,
@@ -163,10 +163,10 @@ module.exports = Object.assign(
           token.immediate(/\r?\n/)
         ),
 
-      ...preprocIf('', ($) => $._block_item),
-      ...preprocIf('_in_field_declaration_list', ($) => $._field_declaration_list_item),
-      ...preprocIf('_in_enumerator_list', ($) => seq($.enumerator, ',')),
-      ...preprocIf('_in_enumerator_list_no_comma', ($) => $.enumerator, -1),
+      ...preprocIf('', () => sym('_block_item')),
+      ...preprocIf('_in_field_declaration_list', () => sym('_field_declaration_list_item')),
+      ...preprocIf('_in_enumerator_list', () => seq(sym('enumerator'), ',')),
+      ...preprocIf('_in_enumerator_list_no_comma', () => sym('enumerator'), -1),
 
       preproc_arg: () => token(prec(-1, /\S([^/\n]|\/[^*]|\\\r?\n)*/)),
       preproc_directive: () => /#[ \t]*[a-zA-Z0-9]\w*/,
@@ -203,6 +203,7 @@ module.exports = Object.assign(
       preproc_argument_list: ($) => seq('(', commaSep($._preproc_expression), ')'),
 
       preproc_binary_expression: ($) => {
+        /** @type {[string, number][]} */
         const table = [
           ['+', PREC.ADD],
           ['-', PREC.ADD],
@@ -230,7 +231,6 @@ module.exports = Object.assign(
               precedence,
               seq(
                 field('left', $._preproc_expression),
-                // @ts-ignore
                 field('operator', operator),
                 field('right', $._preproc_expression)
               )
@@ -646,8 +646,8 @@ module.exports = Object.assign(
           repeat(
             choice(
               seq($.enumerator, ','),
-              alias($.preproc_if_in_enumerator_list, $.preproc_if),
-              alias($.preproc_ifdef_in_enumerator_list, $.preproc_ifdef),
+              alias(sym('preproc_if_in_enumerator_list'), sym('preproc_if')),
+              alias(sym('preproc_ifdef_in_enumerator_list'), sym('preproc_ifdef')),
               seq($.preproc_call, ',')
             )
           ),
@@ -655,8 +655,8 @@ module.exports = Object.assign(
             seq(
               choice(
                 $.enumerator,
-                alias($.preproc_if_in_enumerator_list_no_comma, $.preproc_if),
-                alias($.preproc_ifdef_in_enumerator_list_no_comma, $.preproc_ifdef),
+                alias(sym('preproc_if_in_enumerator_list_no_comma'), sym('preproc_if')),
+                alias(sym('preproc_ifdef_in_enumerator_list_no_comma'), sym('preproc_ifdef')),
                 $.preproc_call
               )
             )
@@ -699,8 +699,8 @@ module.exports = Object.assign(
           $.preproc_def,
           $.preproc_function_def,
           $.preproc_call,
-          alias($.preproc_if_in_field_declaration_list, $.preproc_if),
-          alias($.preproc_ifdef_in_field_declaration_list, $.preproc_ifdef)
+          alias(sym('preproc_if_in_field_declaration_list'), sym('preproc_if')),
+          alias(sym('preproc_ifdef_in_field_declaration_list'), sym('preproc_ifdef'))
         ),
 
       field_declaration: ($) =>
@@ -911,6 +911,7 @@ module.exports = Object.assign(
         prec.left(PREC.UNARY, seq(field('operator', choice('!', '~', '-', '+')), field('argument', $.expression))),
 
       binary_expression: ($) => {
+        /** @type {[string, number][]} */
         const table = [
           ['+', PREC.ADD],
           ['-', PREC.ADD],
@@ -936,12 +937,7 @@ module.exports = Object.assign(
           ...table.map(([operator, precedence]) => {
             return prec.left(
               precedence,
-              seq(
-                field('left', $.expression),
-                // @ts-ignore
-                field('operator', operator),
-                field('right', $.expression)
-              )
+              seq(field('left', $.expression), field('operator', operator), field('right', $.expression))
             );
           })
         );
@@ -1124,7 +1120,7 @@ module.exports = Object.assign(
       char_literal: ($) =>
         seq(
           choice("L'", "u'", "U'", "u8'", "'"),
-          repeat1(choice($.escape_sequence, alias(token.immediate(/[^\n']/), $.character))),
+          repeat1(choice($.escape_sequence, alias(token.immediate(/[^\n']/), sym('character')))),
           "'"
         ),
 
@@ -1145,7 +1141,7 @@ module.exports = Object.assign(
       string_literal: ($) =>
         seq(
           choice('L"', 'u"', 'U"', 'u8"', '"'),
-          repeat(choice(alias(token.immediate(prec(1, /[^\\"\n]+/)), $.string_content), $.escape_sequence)),
+          repeat(choice(alias(token.immediate(prec(1, /[^\\"\n]+/)), sym('string_content')), $.escape_sequence)),
           '"'
         ),
 
@@ -1163,9 +1159,9 @@ module.exports = Object.assign(
       identifier: () =>
         /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/u,
 
-      _type_identifier: ($) => alias($.identifier, $.type_identifier),
-      _field_identifier: ($) => alias($.identifier, $.field_identifier),
-      _statement_identifier: ($) => alias($.identifier, $.statement_identifier),
+      _type_identifier: ($) => alias($.identifier, sym('type_identifier')),
+      _field_identifier: ($) => alias($.identifier, sym('field_identifier')),
+      _statement_identifier: ($) => alias($.identifier, sym('statement_identifier')),
 
       _empty_declaration: ($) => seq($.type_specifier, ';'),
 
@@ -1190,17 +1186,11 @@ module.exports = Object.assign(
  * @returns {RuleBuilders<string, string>}
  */
 function preprocIf(suffix, content, precedence = 0) {
-  /**
-   *
-   * @param {GrammarSymbols<string>} $
-   *
-   * @returns {ChoiceRule}
-   */
-  function alternativeBlock($) {
+  function alternativeBlock() {
     return choice(
-      suffix ? alias($['preproc_else' + suffix], $.preproc_else) : $.preproc_else,
-      suffix ? alias($['preproc_elif' + suffix], $.preproc_elif) : $.preproc_elif,
-      suffix ? alias($['preproc_elifdef' + suffix], $.preproc_elifdef) : $.preproc_elifdef
+      suffix ? alias(sym('preproc_else' + suffix), sym('preproc_else')) : sym('preproc_else'),
+      suffix ? alias(sym('preproc_elif' + suffix), sym('preproc_elif')) : sym('preproc_elif'),
+      suffix ? alias(sym('preproc_elifdef' + suffix), sym('preproc_elifdef')) : sym('preproc_elifdef')
     );
   }
 
@@ -1210,10 +1200,10 @@ function preprocIf(suffix, content, precedence = 0) {
         precedence,
         seq(
           preprocessor('if'),
-          field('condition', $._preproc_expression),
+          field('condition', sym('_preproc_expression')),
           '\n',
           repeat(content($)),
-          field('alternative', optional(alternativeBlock($))),
+          field('alternative', optional(alternativeBlock())),
           preprocessor('endif')
         )
       ),
@@ -1223,9 +1213,9 @@ function preprocIf(suffix, content, precedence = 0) {
         precedence,
         seq(
           choice(preprocessor('ifdef'), preprocessor('ifndef')),
-          field('name', $.identifier),
+          field('name', sym('identifier')),
           repeat(content($)),
-          field('alternative', optional(alternativeBlock($))),
+          field('alternative', optional(alternativeBlock())),
           preprocessor('endif')
         )
       ),
@@ -1237,10 +1227,10 @@ function preprocIf(suffix, content, precedence = 0) {
         precedence,
         seq(
           preprocessor('elif'),
-          field('condition', $._preproc_expression),
+          field('condition', sym('_preproc_expression')),
           '\n',
           repeat(content($)),
-          field('alternative', optional(alternativeBlock($)))
+          field('alternative', optional(alternativeBlock()))
         )
       ),
 
@@ -1249,9 +1239,9 @@ function preprocIf(suffix, content, precedence = 0) {
         precedence,
         seq(
           choice(preprocessor('elifdef'), preprocessor('elifndef')),
-          field('name', $.identifier),
+          field('name', sym('identifier')),
           repeat(content($)),
-          field('alternative', optional(alternativeBlock($)))
+          field('alternative', optional(alternativeBlock()))
         )
       ),
   };
