@@ -284,7 +284,7 @@ export declare function optional(rule: RuleOrLiteral): ChoiceRule;
  * compare rules with string precedence, Tree-sitter uses the grammar's `precedences`
  * field.
  *
- * rules is zero. This works similarly to the precedence directives in Yacc grammars.
+ * The default precedence of all rules is zero. This works similarly to the precedence directives in Yacc grammars.
  *
  * @param value precedence weight
  * @param rule rule being weighted
