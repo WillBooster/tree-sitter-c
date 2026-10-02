@@ -5,8 +5,11 @@
  * @license MIT
  */
 
-/// <reference path="types/treeSitterDsl.d.ts" />
 // @ts-check
+
+// Tree-sitter injects its DSL before loading this CommonJS grammar.
+const { grammar, alias, choice, field, optional, prec, repeat, repeat1, seq, sym, token } =
+  /** @type {typeof globalThis & typeof import('./types/treeSitterDsl')} */ (globalThis);
 
 const PREC = {
   PAREN_DECLARATOR: -10,
@@ -1179,11 +1182,11 @@ module.exports = Object.assign(
  *
  * @param {string} suffix
  *
- * @param {RuleBuilder<string>} content
+ * @param {import('./types/treeSitterDsl').RuleBuilder<string>} content
  *
  * @param {number} precedence
  *
- * @returns {RuleBuilders<string, string>}
+ * @returns {import('./types/treeSitterDsl').RuleBuilders<string, string>}
  */
 function preprocIf(suffix, content, precedence = 0) {
   function alternativeBlock() {
@@ -1252,7 +1255,7 @@ function preprocIf(suffix, content, precedence = 0) {
  *
  * @param {string} command
  *
- * @returns {AliasRule}
+ * @returns {import('./types/treeSitterDsl').AliasRule}
  */
 function preprocessor(command) {
   return alias(new RegExp('#[ \t]*' + command), '#' + command);
@@ -1261,9 +1264,9 @@ function preprocessor(command) {
 /**
  * Creates a rule to optionally match one or more of the rules separated by a comma
  *
- * @param {Rule} rule
+ * @param {import('./types/treeSitterDsl').Rule} rule
  *
- * @returns {ChoiceRule}
+ * @returns {import('./types/treeSitterDsl').ChoiceRule}
  */
 function commaSep(rule) {
   return optional(commaSep1(rule));
@@ -1272,9 +1275,9 @@ function commaSep(rule) {
 /**
  * Creates a rule to match one or more of the rules separated by a comma
  *
- * @param {Rule} rule
+ * @param {import('./types/treeSitterDsl').Rule} rule
  *
- * @returns {SeqRule}
+ * @returns {import('./types/treeSitterDsl').SeqRule}
  */
 function commaSep1(rule) {
   return seq(rule, repeat(seq(',', rule)));

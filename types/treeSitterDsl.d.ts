@@ -1,27 +1,27 @@
 // DSL declarations from tree-sitter-cli 0.27.0, matching the fork CLI's upstream grammar API.
-type AliasRule = { type: 'ALIAS'; named: boolean; content: Rule; value: string };
-type BlankRule = { type: 'BLANK' };
-type ChoiceRule = { type: 'CHOICE'; members: Rule[] };
-type FieldRule = { type: 'FIELD'; name: string; content: Rule };
-type ImmediateTokenRule = { type: 'IMMEDIATE_TOKEN'; content: Rule };
-type PatternRule = { type: 'PATTERN'; value: string; flags?: string };
-type PrecedenceValue = string | number;
-type PrecDynamicRule = { type: 'PREC_DYNAMIC'; content: Rule; value: number };
-type PrecLeftRule = { type: 'PREC_LEFT'; content: Rule; value: PrecedenceValue };
-type PrecRightRule = { type: 'PREC_RIGHT'; content: Rule; value: PrecedenceValue };
-type PrecRule = { type: 'PREC'; content: Rule; value: PrecedenceValue };
-type Repeat1Rule = { type: 'REPEAT1'; content: Rule };
-type RepeatRule = { type: 'REPEAT'; content: Rule };
-type ReservedRule = { type: 'RESERVED'; content: Rule; context_name: string };
-type SeqRule = { type: 'SEQ'; members: Rule[] };
-type StringRule = { type: 'STRING'; value: string };
-type SymbolRule<Name extends string> = { type: 'SYMBOL'; name: Name };
-type PrecedenceEntry = StringRule | SymbolRule<string>;
-type TokenRule = { type: 'TOKEN'; content: Rule };
-type EOFRule = { type: 'EOF' };
+export type AliasRule = { type: 'ALIAS'; named: boolean; content: Rule; value: string };
+export type BlankRule = { type: 'BLANK' };
+export type ChoiceRule = { type: 'CHOICE'; members: Rule[] };
+export type FieldRule = { type: 'FIELD'; name: string; content: Rule };
+export type ImmediateTokenRule = { type: 'IMMEDIATE_TOKEN'; content: Rule };
+export type PatternRule = { type: 'PATTERN'; value: string; flags?: string };
+export type PrecedenceValue = string | number;
+export type PrecDynamicRule = { type: 'PREC_DYNAMIC'; content: Rule; value: number };
+export type PrecLeftRule = { type: 'PREC_LEFT'; content: Rule; value: PrecedenceValue };
+export type PrecRightRule = { type: 'PREC_RIGHT'; content: Rule; value: PrecedenceValue };
+export type PrecRule = { type: 'PREC'; content: Rule; value: PrecedenceValue };
+export type Repeat1Rule = { type: 'REPEAT1'; content: Rule };
+export type RepeatRule = { type: 'REPEAT'; content: Rule };
+export type ReservedRule = { type: 'RESERVED'; content: Rule; context_name: string };
+export type SeqRule = { type: 'SEQ'; members: Rule[] };
+export type StringRule = { type: 'STRING'; value: string };
+export type SymbolRule<Name extends string> = { type: 'SYMBOL'; name: Name };
+export type PrecedenceEntry = StringRule | SymbolRule<string>;
+export type TokenRule = { type: 'TOKEN'; content: Rule };
+export type EOFRule = { type: 'EOF' };
 
 
-type Rule =
+export type Rule =
   | AliasRule
   | BlankRule
   | ChoiceRule
@@ -41,32 +41,32 @@ type Rule =
   | TokenRule
   | EOFRule;
 
-declare class RustRegex {
+export declare class RustRegex {
   value: string;
 
   constructor(pattern: string);
 }
 
-type RuleOrLiteral = Rule | RegExp | RustRegex | string;
+export type RuleOrLiteral = Rule | RegExp | RustRegex | string;
 
-type GrammarSymbols<RuleName extends string> = {
+export type GrammarSymbols<RuleName extends string> = {
   [name in RuleName]: SymbolRule<name>;
 } &
   Record<string, SymbolRule<string>>;
 
-type RuleBuilder<RuleName extends string> = (
+export type RuleBuilder<RuleName extends string> = (
   $: GrammarSymbols<RuleName>,
   previous?: Rule,
 ) => RuleOrLiteral;
 
-type RuleBuilders<
+export type RuleBuilders<
   RuleName extends string,
   BaseGrammarRuleName extends string
 > = {
     [name in RuleName]: RuleBuilder<RuleName | BaseGrammarRuleName>;
   };
 
-interface Grammar<
+export interface Grammar<
   RuleName extends string,
   BaseGrammarRuleName extends string = never,
   Rules extends RuleBuilders<RuleName, BaseGrammarRuleName> = RuleBuilders<
@@ -200,7 +200,7 @@ interface Grammar<
  * beneath a "grammar" key. Optional input fields become required output fields
  * with default values when not provided.
  */
-type GrammarSchema<RuleName extends string> = {
+export type GrammarSchema<RuleName extends string> = {
   grammar: {
     name: string;
     /** Base grammar name when extending; undefined for root grammars. */
@@ -225,7 +225,7 @@ type GrammarSchema<RuleName extends string> = {
  * @param rule rule that will be aliased
  * @param name target name for the alias
  */
-declare function alias(rule: RuleOrLiteral, name: string): AliasRule;
+export declare function alias(rule: RuleOrLiteral, name: string): AliasRule;
 
 /**
  * Causes the given rule to appear as an alternative named node, for instance
@@ -235,7 +235,7 @@ declare function alias(rule: RuleOrLiteral, name: string): AliasRule;
  * @param rule rule that will be aliased
  * @param symbol target symbol for the alias
  */
-declare function alias(
+export declare function alias(
   rule: RuleOrLiteral,
   symbol: SymbolRule<string>,
 ): AliasRule;
@@ -243,7 +243,7 @@ declare function alias(
 /**
  * Creates a blank rule, matching nothing.
  */
-declare function blank(): BlankRule;
+export declare function blank(): BlankRule;
 
 /**
  * Assigns a field name to the child node(s) matched by the given rule.
@@ -253,7 +253,7 @@ declare function blank(): BlankRule;
  * @param name name of the field
  * @param rule rule the field should match
  */
-declare function field(name: string, rule: RuleOrLiteral): FieldRule;
+export declare function field(name: string, rule: RuleOrLiteral): FieldRule;
 
 /**
  * Creates a rule that matches one of a set of possible rules. The order
@@ -262,7 +262,7 @@ declare function field(name: string, rule: RuleOrLiteral): FieldRule;
  *
  * @param options possible rule choices
  */
-declare function choice(...options: RuleOrLiteral[]): ChoiceRule;
+export declare function choice(...options: RuleOrLiteral[]): ChoiceRule;
 
 /**
  * Creates a rule that matches zero or one occurrence of a given rule.
@@ -270,7 +270,7 @@ declare function choice(...options: RuleOrLiteral[]): ChoiceRule;
  *
  * @param value rule to be made optional
  */
-declare function optional(rule: RuleOrLiteral): ChoiceRule;
+export declare function optional(rule: RuleOrLiteral): ChoiceRule;
 
 /**
  * Marks the given rule with a precedence which will be used to resolve LR(1)
@@ -292,7 +292,7 @@ declare function optional(rule: RuleOrLiteral): ChoiceRule;
  * @see https://en.wikipedia.org/wiki/LR_parser#Conflicts_in_the_constructed_tables
  * @see https://docs.oracle.com/cd/E19504-01/802-5880/6i9k05dh3/index.html
  */
-declare const prec: {
+export declare const prec: {
   (value: string | number, rule: RuleOrLiteral): PrecRule;
 
   /**
@@ -353,14 +353,14 @@ declare const prec: {
  *
  * @param rule rule to repeat, zero or more times
  */
-declare function repeat(rule: RuleOrLiteral): RepeatRule;
+export declare function repeat(rule: RuleOrLiteral): RepeatRule;
 
 /**
  * Creates a rule that matches one-or-more occurrences of a given rule.
  *
  * @param rule rule to repeat, one or more times
  */
-declare function repeat1(rule: RuleOrLiteral): Repeat1Rule;
+export declare function repeat1(rule: RuleOrLiteral): Repeat1Rule;
 
 /**
  * Overrides the global reserved word set for a given rule. The word set name
@@ -369,7 +369,7 @@ declare function repeat1(rule: RuleOrLiteral): Repeat1Rule;
  * @param wordset name of the reserved word set
  * @param rule rule that will use the reserved word set
  */
-declare function reserved(wordset: string, rule: RuleOrLiteral): ReservedRule;
+export declare function reserved(wordset: string, rule: RuleOrLiteral): ReservedRule;
 
 /**
  * Creates a rule that matches any number of other rules, one after another.
@@ -378,14 +378,14 @@ declare function reserved(wordset: string, rule: RuleOrLiteral): ReservedRule;
  *
  * @param rules ordered rules that comprise the sequence
  */
-declare function seq(...rules: RuleOrLiteral[]): SeqRule;
+export declare function seq(...rules: RuleOrLiteral[]): SeqRule;
 
 /**
  * Creates a symbol rule, representing another rule in the grammar by name.
  *
  * @param name name of the target rule
  */
-declare function sym<Name extends string>(name: Name): SymbolRule<Name>;
+export declare function sym<Name extends string>(name: Name): SymbolRule<Name>;
 
 /**
  * Marks the given rule as producing only a single token. Tree-sitter's
@@ -398,7 +398,7 @@ declare function sym<Name extends string>(name: Name): SymbolRule<Name>;
  *
  * @param rule rule to represent as a single token
  */
-declare const token: {
+export declare const token: {
   (rule: RuleOrLiteral): TokenRule;
 
   /**
@@ -424,14 +424,14 @@ declare const token: {
  * Useful when a rule should match either an explicit terminator (e.g. a
  * newline) or the end of the file.
  */
-declare function eof(): EOFRule;
+export declare function eof(): EOFRule;
 
 /**
  * Creates a new language grammar with the provided schema.
  *
  * @param options grammar options
  */
-declare function grammar<RuleName extends string>(
+export declare function grammar<RuleName extends string>(
   options: Grammar<RuleName>,
 ): GrammarSchema<RuleName>;
 
@@ -442,7 +442,7 @@ declare function grammar<RuleName extends string>(
  * @param baseGrammar base grammar schema to extend from
  * @param options grammar options for the new extended language
  */
-declare function grammar<
+export declare function grammar<
   BaseGrammarRuleName extends string,
   RuleName extends string
 >(
