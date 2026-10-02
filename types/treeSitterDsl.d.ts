@@ -1,3 +1,4 @@
+// DSL declarations from tree-sitter-cli 0.27.0, matching the fork CLI's upstream grammar API.
 type AliasRule = { type: 'ALIAS'; named: boolean; content: Rule; value: string };
 type BlankRule = { type: 'BLANK' };
 type ChoiceRule = { type: 'CHOICE'; members: Rule[] };
