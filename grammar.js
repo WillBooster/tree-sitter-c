@@ -43,7 +43,6 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
-      [$.initializer_list],
       [$._declaration_modifiers, $._empty_declaration],
       [$.declaration, $.storage_class_specifier],
       [$.sized_type_specifier, $.enum_specifier],
@@ -1155,25 +1154,45 @@ module.exports = Object.assign(
 
       parenthesized_expression: ($) => seq('(', choice($.expression, $.comma_expression, $.compound_statement), ')'),
 
-      initializer_list: ($) => {
-        const element = choice($.initializer_pair, $.expression, $.initializer_list);
-        const directives = prec.right(seq(repeat1($.preproc_call), optional(',')));
-        return prec.right(
+      initializer_list: ($) => seq('{', optional($._initializer_sequence), '}'),
+
+      _initializer_sequence: ($) =>
+        choice(
           seq(
-            '{',
-            optional(directives),
-            optional(
-              seq(
-                element,
-                repeat(choice(seq(',', optional(directives), element), seq(directives, element))),
-                optional(',')
-              )
-            ),
-            optional(directives),
-            '}'
-          )
-        );
-      },
+            $._initializer_element,
+            optional(choice(seq(',', optional($._initializer_sequence)), $._initializer_directives))
+          ),
+          $._initializer_directives
+        ),
+
+      _initializer_directives: ($) =>
+        seq(
+          $._initializer_directive,
+          optional(choice($._initializer_sequence, seq(',', optional($._initializer_sequence))))
+        ),
+
+      _initializer_directive: ($) =>
+        choice(
+          alias(sym('preproc_if_in_initializer_list'), sym('preproc_if')),
+          alias(sym('preproc_ifdef_in_initializer_list'), sym('preproc_ifdef')),
+          $.preproc_def,
+          $.preproc_function_def,
+          alias($._initializer_preproc_call, $.preproc_call)
+        ),
+
+      _initializer_element: ($) => choice($.initializer_pair, $.expression, $.initializer_list),
+
+      _initializer_preproc_call: ($) =>
+        seq(
+          field(
+            'directive',
+            alias(token(/#[ \t]*(embed|include|undef|error|warning|line|pragma)/), $.preproc_directive)
+          ),
+          field('argument', optional($.preproc_arg)),
+          '\n'
+        ),
+
+      ...preprocIf('_in_initializer_list', () => sym('_initializer_sequence'), 0, false),
 
       initializer_pair: ($) =>
         choice(
@@ -1297,10 +1316,11 @@ module.exports = Object.assign(
  * @param {import('./types/treeSitterDsl').RuleBuilder<string>} content
  *
  * @param {number} precedence
+ * @param {boolean} repeatContent
  *
  * @returns {import('./types/treeSitterDsl').RuleBuilders<string, string>}
  */
-function preprocIf(suffix, content, precedence = 0) {
+function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
   function alternativeBlock() {
     return choice(
       suffix ? alias(sym('preproc_else' + suffix), sym('preproc_else')) : sym('preproc_else'),
@@ -1317,7 +1337,7 @@ function preprocIf(suffix, content, precedence = 0) {
           preprocessor('if'),
           field('condition', sym('_preproc_expression')),
           '\n',
-          repeat(content($)),
+          repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock())),
           preprocessor('endif')
         )
@@ -1329,13 +1349,14 @@ function preprocIf(suffix, content, precedence = 0) {
         seq(
           choice(preprocessor('ifdef'), preprocessor('ifndef')),
           field('name', sym('identifier')),
-          repeat(content($)),
+          repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock())),
           preprocessor('endif')
         )
       ),
 
-    ['preproc_else' + suffix]: ($) => prec(precedence, seq(preprocessor('else'), repeat(content($)))),
+    ['preproc_else' + suffix]: ($) =>
+      prec(precedence, seq(preprocessor('else'), repeatContent ? repeat(content($)) : optional(content($)))),
 
     ['preproc_elif' + suffix]: ($) =>
       prec(
@@ -1344,7 +1365,7 @@ function preprocIf(suffix, content, precedence = 0) {
           preprocessor('elif'),
           field('condition', sym('_preproc_expression')),
           '\n',
-          repeat(content($)),
+          repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock()))
         )
       ),
@@ -1355,7 +1376,7 @@ function preprocIf(suffix, content, precedence = 0) {
         seq(
           choice(preprocessor('elifdef'), preprocessor('elifndef')),
           field('name', sym('identifier')),
-          repeat(content($)),
+          repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock()))
         )
       ),

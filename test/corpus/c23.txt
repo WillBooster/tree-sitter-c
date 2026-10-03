@@ -497,15 +497,12 @@ int after(void) { return 0; }
       (array_declarator
         (identifier))
       (initializer_list
-        (preproc_call
-          (preproc_directive)
-          (preproc_arg))
-        (initializer_list
-          (number_literal)
-          (string_literal
-            (string_content)))
-        (preproc_call
-          (preproc_directive))
+        (preproc_ifdef
+          (identifier)
+          (initializer_list
+            (number_literal)
+            (string_literal
+              (string_content))))
         (initializer_list
           (number_literal)
           (string_literal
