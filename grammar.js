@@ -796,7 +796,10 @@ module.exports = Object.assign(
       case_statement: ($) =>
         prec.right(
           seq(
-            choice(seq('case', field('value', $.expression)), 'default'),
+            choice(
+              seq('case', field('value', $.expression), optional(seq('...', field('end_value', $.expression)))),
+              'default'
+            ),
             ':',
             repeat(choice($._non_case_statement, $.declaration, $.type_definition))
           )
