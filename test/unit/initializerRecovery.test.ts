@@ -8,6 +8,7 @@ test(
   { timeout: 300_000 },
   () => {
     const root = path.resolve(import.meta.dirname, '../..');
+    // Appending a declaration masks the root-collapse regression; recovery below the root is intentionally unconstrained.
     const result = spawnSync(
       'script/tree-sitter',
       ['parse', '--grammar-path', '.', '--no-ranges', 'test/fixtures/initializerRecovery.c'],
