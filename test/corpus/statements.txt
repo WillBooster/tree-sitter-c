@@ -533,3 +533,54 @@ void f() {
           (compound_statement))
         (parenthesized_expression
           (true))))))
+
+================================================================================
+GNU case ranges
+================================================================================
+
+int classify(int x) {
+  switch (x) {
+    case -3 ... -1: return -1;
+    case 1 + 1 ... 3 + 1: return 1;
+    case 8: return 2;
+    default: return 0;
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (switch_statement
+        (parenthesized_expression
+          (identifier))
+        (compound_statement
+          (case_statement
+            (number_literal)
+            (number_literal)
+            (return_statement
+              (number_literal)))
+          (case_statement
+            (binary_expression
+              (number_literal)
+              (number_literal))
+            (binary_expression
+              (number_literal)
+              (number_literal))
+            (return_statement
+              (number_literal)))
+          (case_statement
+            (number_literal)
+            (return_statement
+              (number_literal)))
+          (case_statement
+            (return_statement
+              (number_literal))))))))
