@@ -35,19 +35,28 @@ const PREC = {
   SUBSCRIPT: 17,
 };
 
+const LINE_COMMENT = seq('//', /(\\+(.|\r?\n)|[^\\\n])*/);
+const PRAGMA_SPACING = repeat(choice(/\s/, /\\\r?\n/));
+
 // oxlint-disable-next-line unicorn/prefer-module -- This package is CommonJS, so tree-sitter loads grammar.js as CommonJS.
 module.exports = Object.assign(
   grammar({
     name: 'c',
 
     conflicts: ($) => [
+      [$._declaration_modifiers, $._empty_declaration],
+      [$.declaration, $.storage_class_specifier],
+      [$.sized_type_specifier, $.enum_specifier],
       [$.type_specifier, $._declarator],
       [$.type_specifier, $._declarator, $.macro_type_specifier],
       [$.type_specifier, $.expression],
       [$.type_specifier, $.expression, $.macro_type_specifier],
       [$.type_specifier, $.macro_type_specifier],
       [$.type_specifier, $.sized_type_specifier],
+      [$.type_specifier, $._sized_bit_int_specifier],
       [$.sized_type_specifier],
+      [$._sized_bit_int_specifier],
+      [$.sized_type_specifier, $._sized_bit_int_specifier],
       [$.attributed_statement],
       [$._declaration_modifiers, $.attributed_statement],
       [$.enum_specifier],
@@ -60,7 +69,9 @@ module.exports = Object.assign(
       [$.type_qualifier, $.extension_expression],
     ],
 
-    extras: ($) => [/\s|\\\r?\n/, $.comment],
+    externals: () => [sym('pragma_operator'), sym('preproc_arg'), sym('_preproc_newline')],
+
+    extras: ($) => [$.pragma_operator, /\s|\\\r?\n/, $.comment],
 
     inline: ($) => [
       $._type_identifier,
@@ -123,6 +134,23 @@ module.exports = Object.assign(
           $.preproc_call
         ),
 
+      // Derived grammars that replace externals still need this lexical fallback. Comment-rich spacing makes the
+      // lexer too large for the pinned Node Wasm optimizer; the external scanner handles those forms.
+      pragma_operator: () =>
+        token(
+          seq(
+            '_Pragma',
+            PRAGMA_SPACING,
+            '(',
+            PRAGMA_SPACING,
+            optional(choice('L', 'u8', 'u', 'U')),
+            '"',
+            repeat(choice(/[^\\"\n]/, seq('\\', choice(/./, /\r?\n/)))),
+            '"',
+            PRAGMA_SPACING,
+            ')'
+          )
+        ),
       // Preprocesser
 
       preproc_include: ($) =>
@@ -137,7 +165,7 @@ module.exports = Object.assign(
               alias($.preproc_call_expression, $.call_expression)
             )
           ),
-          token.immediate(/\r?\n/)
+          sym('_preproc_newline')
         ),
 
       preproc_def: ($) =>
@@ -145,7 +173,7 @@ module.exports = Object.assign(
           preprocessor('define'),
           field('name', $.identifier),
           field('value', optional($.preproc_arg)),
-          token.immediate(/\r?\n/)
+          sym('_preproc_newline')
         ),
 
       preproc_function_def: ($) =>
@@ -154,7 +182,7 @@ module.exports = Object.assign(
           field('name', $.identifier),
           field('parameters', $.preproc_params),
           field('value', optional($.preproc_arg)),
-          token.immediate(/\r?\n/)
+          sym('_preproc_newline')
         ),
 
       preproc_params: ($) => seq(token.immediate('('), commaSep(choice($.identifier, '...')), ')'),
@@ -163,13 +191,15 @@ module.exports = Object.assign(
         seq(
           field('directive', $.preproc_directive),
           field('argument', optional($.preproc_arg)),
-          token.immediate(/\r?\n/)
+          sym('_preproc_newline')
         ),
 
       ...preprocIf('', () => sym('_block_item')),
       ...preprocIf('_in_field_declaration_list', () => sym('_field_declaration_list_item')),
       ...preprocIf('_in_enumerator_list', () => seq(sym('enumerator'), ',')),
       ...preprocIf('_in_enumerator_list_no_comma', () => sym('enumerator'), -1),
+
+      _preproc_newline: () => token.immediate(/\r?\n/),
 
       preproc_arg: () => token(prec(-1, /\S([^/\n]|\/[^*]|\\\r?\n)*/)),
       preproc_directive: () => /#[ \t]*[a-zA-Z0-9]\w*/,
@@ -203,7 +233,8 @@ module.exports = Object.assign(
           seq(field('function', $.identifier), field('arguments', alias($.preproc_argument_list, $.argument_list)))
         ),
 
-      preproc_argument_list: ($) => seq('(', commaSep($._preproc_expression), ')'),
+      preproc_argument_list: ($) =>
+        seq('(', commaSep(choice($._preproc_expression, $.system_lib_string, $.string_literal)), ')'),
 
       preproc_binary_expression: ($) => {
         /** @type {[string, number][]} */
@@ -264,7 +295,17 @@ module.exports = Object.assign(
 
       declaration: ($) =>
         seq(
-          $._declaration_specifiers,
+          choice(
+            $._declaration_specifiers,
+            prec.dynamic(
+              PREC.PAREN_DECLARATOR - 1,
+              seq(
+                repeat($._declaration_modifiers),
+                alias('auto', $.storage_class_specifier),
+                repeat($._declaration_modifiers)
+              )
+            )
+          ),
           commaSep1(
             field(
               'declarator',
@@ -560,6 +601,7 @@ module.exports = Object.assign(
           '__inline__',
           '__forceinline',
           'thread_local',
+          '_Thread_local',
           '__thread'
         ),
 
@@ -585,26 +627,28 @@ module.exports = Object.assign(
           $.struct_specifier,
           $.union_specifier,
           $.enum_specifier,
+          $.typeof_specifier,
+          $.bit_int_specifier,
           $.macro_type_specifier,
           $.sized_type_specifier,
+          alias($._sized_bit_int_specifier, $.sized_type_specifier),
           $.primitive_type,
           $._type_identifier
         ),
 
-      sized_type_specifier: ($) =>
-        choice(
-          seq(
-            repeat(choice('signed', 'unsigned', 'long', 'short')),
-            field('type', optional(choice(prec.dynamic(-1, $._type_identifier), $.primitive_type))),
-            repeat1(choice('signed', 'unsigned', 'long', 'short'))
-          ),
-          seq(
-            repeat1(choice('signed', 'unsigned', 'long', 'short')),
-            repeat($.type_qualifier),
-            field('type', optional(choice(prec.dynamic(-1, $._type_identifier), $.primitive_type))),
-            repeat(choice('signed', 'unsigned', 'long', 'short'))
-          )
+      typeof_specifier: ($) =>
+        seq(
+          choice('typeof', 'typeof_unqual', '__typeof__', '__typeof', '__typeof_unqual', '__typeof_unqual__'),
+          '(',
+          choice($.type_descriptor, $.expression, $.comma_expression),
+          ')'
         ),
+      bit_int_specifier: ($) => seq('_BitInt', '(', $.expression, ')'),
+
+      sized_type_specifier: ($) =>
+        sizedTypeSpecifier(optional(choice(prec.dynamic(-1, $._type_identifier), $.primitive_type))),
+
+      _sized_bit_int_specifier: ($) => sizedTypeSpecifier($.bit_int_specifier),
 
       primitive_type: () =>
         token(
@@ -635,10 +679,29 @@ module.exports = Object.assign(
           choice(
             seq(
               field('name', $._type_identifier),
-              optional(seq(':', field('underlying_type', $.primitive_type))),
+              optional(
+                seq(
+                  ':',
+                  field(
+                    'underlying_type',
+                    choice($.primitive_type, $.sized_type_specifier, $.typeof_specifier, $._type_identifier)
+                  )
+                )
+              ),
               field('body', optional($.enumerator_list))
             ),
-            field('body', $.enumerator_list)
+            seq(
+              optional(
+                seq(
+                  ':',
+                  field(
+                    'underlying_type',
+                    choice($.primitive_type, $.sized_type_specifier, $.typeof_specifier, $._type_identifier)
+                  )
+                )
+              ),
+              field('body', $.enumerator_list)
+            )
           ),
           optional($.attribute_specifier)
         ),
@@ -828,7 +891,15 @@ module.exports = Object.assign(
 
       continue_statement: () => seq('continue', ';'),
 
-      goto_statement: ($) => seq('goto', field('label', $._statement_identifier), ';'),
+      goto_statement: ($) =>
+        seq(
+          'goto',
+          choice(
+            field('label', $._statement_identifier),
+            seq('*', field('label', choice($.expression, $.comma_expression)))
+          ),
+          ';'
+        ),
 
       seh_try_statement: ($) =>
         seq('__try', field('body', $.compound_statement), choice($.seh_except_clause, $.seh_finally_clause)),
@@ -1078,8 +1149,47 @@ module.exports = Object.assign(
 
       parenthesized_expression: ($) => seq('(', choice($.expression, $.comma_expression, $.compound_statement), ')'),
 
-      initializer_list: ($) =>
-        seq('{', commaSep(choice($.initializer_pair, $.expression, $.initializer_list)), optional(','), '}'),
+      initializer_list: ($) => seq('{', optional($._initializer_sequence), '}'),
+
+      _initializer_sequence: ($) =>
+        choice(
+          seq(
+            $._initializer_element,
+            optional(choice(seq(',', optional($._initializer_sequence)), $._initializer_directives))
+          ),
+          $._initializer_directives
+        ),
+
+      _initializer_directives: ($) =>
+        seq(
+          $._initializer_directive,
+          optional(choice($._initializer_sequence, seq(',', optional($._initializer_sequence))))
+        ),
+
+      _initializer_directive: ($) =>
+        choice(
+          alias(sym('preproc_if_in_initializer_list'), sym('preproc_if')),
+          alias(sym('preproc_ifdef_in_initializer_list'), sym('preproc_ifdef')),
+          $.preproc_def,
+          $.preproc_function_def,
+          alias($._initializer_preproc_call, $.preproc_call)
+        ),
+
+      _initializer_element: ($) => choice($.initializer_pair, $.expression, $.initializer_list),
+
+      _initializer_branch: ($) => choice(seq(',', optional($._initializer_sequence)), $._initializer_sequence),
+
+      _initializer_preproc_call: ($) =>
+        seq(
+          field(
+            'directive',
+            alias(token(/#[ \t]*(embed|include|undef|error|warning|line|pragma)/), $.preproc_directive)
+          ),
+          field('argument', optional($.preproc_arg)),
+          alias(sym('_preproc_newline'), '\n')
+        ),
+
+      ...preprocIf('_in_initializer_list', () => sym('_initializer_branch'), 0, false),
 
       initializer_pair: ($) =>
         choice(
@@ -1153,7 +1263,22 @@ module.exports = Object.assign(
 
       escape_sequence: () =>
         token(
-          prec(1, seq('\\', choice(/[^xuU]/, /\d{2,3}/, /x[0-9a-fA-F]{1,4}/, /u[0-9a-fA-F]{4}/, /U[0-9a-fA-F]{8}/)))
+          prec(
+            1,
+            seq(
+              '\\',
+              choice(
+                /[^xuU]/,
+                /[xu]\{[0-9a-fA-F]+\}/,
+                /o\{[0-7]+\}/,
+                /N\{[^}\n]+\}/,
+                /\d{2,3}/,
+                /x[0-9a-fA-F]{1,4}/,
+                /u[0-9a-fA-F]{4}/,
+                /U[0-9a-fA-F]{8}/
+              )
+            )
+          )
         ),
 
       system_lib_string: () => token(seq('<', repeat(choice(/[^>\n]/, String.raw`\>`)), '>')),
@@ -1169,17 +1294,28 @@ module.exports = Object.assign(
       _field_identifier: ($) => alias($.identifier, sym('field_identifier')),
       _statement_identifier: ($) => alias($.identifier, sym('statement_identifier')),
 
-      _empty_declaration: ($) => seq($.type_specifier, ';'),
+      _empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
 
       macro_type_specifier: ($) =>
         prec.dynamic(-1, seq(field('name', $.identifier), '(', field('type', $.type_descriptor), ')')),
 
       // http://stackoverflow.com/questions/13014947/regex-to-match-a-c-style-multiline-comment/36328890#36328890
-      comment: () => token(choice(seq('//', /(\\+(.|\r?\n)|[^\\\n])*/), seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
+      comment: () => token(choice(LINE_COMMENT, seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
     },
   }),
   { PREC, preprocIf, preprocessor, commaSep, commaSep1 }
 );
+
+/**
+ * @param {import('./types/treeSitterDsl').RuleOrLiteral} type
+ */
+function sizedTypeSpecifier(type) {
+  const modifier = choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__');
+  return choice(
+    seq(repeat(modifier), field('type', type), repeat1(modifier)),
+    seq(repeat1(modifier), repeat(sym('type_qualifier')), field('type', type), repeat(modifier))
+  );
+}
 
 /**
  *
@@ -1188,10 +1324,11 @@ module.exports = Object.assign(
  * @param {import('./types/treeSitterDsl').RuleBuilder<string>} content
  *
  * @param {number} precedence
+ * @param {boolean} repeatContent
  *
  * @returns {import('./types/treeSitterDsl').RuleBuilders<string, string>}
  */
-function preprocIf(suffix, content, precedence = 0) {
+function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
   function alternativeBlock() {
     return choice(
       suffix ? alias(sym('preproc_else' + suffix), sym('preproc_else')) : sym('preproc_else'),
@@ -1207,8 +1344,8 @@ function preprocIf(suffix, content, precedence = 0) {
         seq(
           preprocessor('if'),
           field('condition', sym('_preproc_expression')),
-          '\n',
-          repeat(content($)),
+          alias(sym('_preproc_newline'), '\n'),
+          repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock())),
           preprocessor('endif')
         )
@@ -1220,13 +1357,14 @@ function preprocIf(suffix, content, precedence = 0) {
         seq(
           choice(preprocessor('ifdef'), preprocessor('ifndef')),
           field('name', sym('identifier')),
-          repeat(content($)),
+          repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock())),
           preprocessor('endif')
         )
       ),
 
-    ['preproc_else' + suffix]: ($) => prec(precedence, seq(preprocessor('else'), repeat(content($)))),
+    ['preproc_else' + suffix]: ($) =>
+      prec(precedence, seq(preprocessor('else'), repeatContent ? repeat(content($)) : optional(content($)))),
 
     ['preproc_elif' + suffix]: ($) =>
       prec(
@@ -1234,8 +1372,8 @@ function preprocIf(suffix, content, precedence = 0) {
         seq(
           preprocessor('elif'),
           field('condition', sym('_preproc_expression')),
-          '\n',
-          repeat(content($)),
+          alias(sym('_preproc_newline'), '\n'),
+          repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock()))
         )
       ),
@@ -1246,7 +1384,7 @@ function preprocIf(suffix, content, precedence = 0) {
         seq(
           choice(preprocessor('elifdef'), preprocessor('elifndef')),
           field('name', sym('identifier')),
-          repeat(content($)),
+          repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock()))
         )
       ),

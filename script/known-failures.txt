@@ -73,7 +73,6 @@ examples/curl/lib/peer.c
 examples/curl/lib/pingpong.h
 examples/curl/lib/pop3.c
 examples/curl/lib/progress.c
-examples/curl/lib/protocol.c
 examples/curl/lib/proxy.c
 examples/curl/lib/rand.c
 examples/curl/lib/rand.h
@@ -108,11 +107,8 @@ examples/curl/lib/vdns/dnscache.c
 examples/curl/lib/vdns/doh.c
 examples/curl/lib/vdns/hostip.c
 examples/curl/lib/vdns/hostip4.c
-examples/curl/lib/version.c
 examples/curl/lib/vquic/capsule.c
-examples/curl/lib/vquic/cf-ngtcp2-cmn.c
 examples/curl/lib/vquic/cf-ngtcp2-proxy.c
-examples/curl/lib/vquic/cf-ngtcp2.c
 examples/curl/lib/vquic/cf-quiche.c
 examples/curl/lib/vquic/vquic.c
 examples/curl/lib/vssh/libssh.c
@@ -132,7 +128,6 @@ examples/curl/projects/OS400/ccsidcurl.h
 examples/curl/projects/OS400/os400sys.c
 examples/curl/projects/vms/curl_crtl_init.c
 examples/curl/src/config2setopts.c
-examples/curl/src/curlinfo.c
 examples/curl/src/tool_cb_hdr.c
 examples/curl/src/tool_cb_rea.c
 examples/curl/src/tool_cb_soc.c
@@ -141,12 +136,10 @@ examples/curl/src/tool_dirhie.c
 examples/curl/src/tool_dirhie.h
 examples/curl/src/tool_doswin.c
 examples/curl/src/tool_easysrc.h
-examples/curl/src/tool_findfile.c
 examples/curl/src/tool_formparse.c
 examples/curl/src/tool_getparam.c
 examples/curl/src/tool_getparam.h
 examples/curl/src/tool_help.c
-examples/curl/src/tool_listhelp.c
 examples/curl/src/tool_main.c
 examples/curl/src/tool_msgs.c
 examples/curl/src/tool_msgs.h
@@ -163,9 +156,7 @@ examples/curl/tests/libtest/lib1156.c
 examples/curl/tests/libtest/lib1396.c
 examples/curl/tests/libtest/lib1398.c
 examples/curl/tests/libtest/lib1451.c
-examples/curl/tests/libtest/lib1560.c
 examples/curl/tests/libtest/lib1605.c
-examples/curl/tests/libtest/lib1915.c
 examples/curl/tests/libtest/lib1989.c
 examples/curl/tests/libtest/lib2380.c
 examples/curl/tests/libtest/lib2405.c
@@ -173,7 +164,6 @@ examples/curl/tests/libtest/lib3026.c
 examples/curl/tests/libtest/lib3207.c
 examples/curl/tests/libtest/lib3595.c
 examples/curl/tests/libtest/lib3596.c
-examples/curl/tests/libtest/lib517.c
 examples/curl/tests/libtest/lib518.c
 examples/curl/tests/libtest/lib537.c
 examples/curl/tests/libtest/lib670.c
@@ -472,7 +462,6 @@ examples/git/fsmonitor-ipc.c
 examples/git/fsmonitor-settings.c
 examples/git/gettext.h
 examples/git/git-compat-util.h
-examples/git/git.c
 examples/git/gpg-interface.c
 examples/git/grep.c
 examples/git/hash.c
@@ -616,7 +605,6 @@ examples/git/t/helper/test-parse-options.c
 examples/git/t/helper/test-path-utils.c
 examples/git/t/helper/test-proc-receive.c
 examples/git/t/helper/test-ref-store.c
-examples/git/t/helper/test-regex.c
 examples/git/t/helper/test-rot13-filter.c
 examples/git/t/helper/test-run-command.c
 examples/git/t/helper/test-scrap-cache-tree.c

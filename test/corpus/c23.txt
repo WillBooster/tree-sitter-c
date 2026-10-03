@@ -1,0 +1,881 @@
+================================================================================
+Typeof
+================================================================================
+
+typeof(1 + 2) x = 3; typeof_unqual(x) y = x;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (typeof_specifier
+      (binary_expression
+        (number_literal)
+        (number_literal)))
+    (init_declarator
+      (identifier)
+      (number_literal)))
+  (declaration
+    (typeof_specifier
+      (identifier))
+    (init_declarator
+      (identifier)
+      (identifier))))
+
+================================================================================
+Auto inference
+================================================================================
+
+auto z = 3.0;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (storage_class_specifier)
+    (init_declarator
+      (identifier)
+      (number_literal))))
+
+================================================================================
+Bitint
+================================================================================
+
+_BitInt(24) a = 5wb; unsigned _BitInt(8) b = 3uwb;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (bit_int_specifier
+      (number_literal))
+    (init_declarator
+      (identifier)
+      (number_literal)))
+  (declaration
+    (sized_type_specifier
+      (bit_int_specifier
+        (number_literal)))
+    (init_declarator
+      (identifier)
+      (number_literal))))
+
+================================================================================
+Enum underlying
+================================================================================
+
+enum Colour : unsigned char { RED, GREEN };
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (enum_specifier
+    (type_identifier)
+    (sized_type_specifier
+      (primitive_type))
+    (enumerator_list
+      (enumerator
+        (identifier))
+      (enumerator
+        (identifier)))))
+
+================================================================================
+Embed
+================================================================================
+
+static const unsigned char logo[] = {
+#embed "logo.png"
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (storage_class_specifier)
+    (type_qualifier)
+    (sized_type_specifier
+      (primitive_type))
+    (init_declarator
+      (array_declarator
+        (identifier))
+      (initializer_list
+        (preproc_call
+          (preproc_directive)
+          (preproc_arg))))))
+
+================================================================================
+Has include
+================================================================================
+
+#if __has_include(<stdio.h>)
+#include <stdio.h>
+#endif
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_if
+    (call_expression
+      (identifier)
+      (argument_list
+        (system_lib_string)))
+    (preproc_include
+      (system_lib_string))))
+
+================================================================================
+Thread local
+================================================================================
+
+thread_local int counter; _Thread_local int c2;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (storage_class_specifier)
+    (primitive_type)
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (primitive_type)
+    (identifier)))
+
+================================================================================
+Complex
+================================================================================
+
+_Complex double z; double _Complex w;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (sized_type_specifier
+      (primitive_type))
+    (identifier))
+  (declaration
+    (sized_type_specifier
+      (primitive_type))
+    (identifier)))
+
+================================================================================
+Pragma op
+================================================================================
+
+_Pragma("once")
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (pragma_operator))
+
+================================================================================
+Declspec
+================================================================================
+
+__declspec(align(16)) struct S { int x; };
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (ms_declspec_modifier
+    (identifier)
+    (argument_list
+      (number_literal)))
+  (struct_specifier
+    (type_identifier)
+    (field_declaration_list
+      (field_declaration
+        (primitive_type)
+        (field_identifier)))))
+
+================================================================================
+Delimited and named escapes
+================================================================================
+
+const char *s = "\x{41}\o{101}\u{1F4E6}\N{LATIN SMALL LETTER A}";
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (string_literal
+        (escape_sequence)
+        (escape_sequence)
+        (escape_sequence)
+        (escape_sequence)))))
+
+================================================================================
+Computed goto
+================================================================================
+
+void f(void) {
+  void *target = &&done;
+  goto *target;
+done:
+  return;
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (declaration
+        type: (primitive_type)
+        declarator: (init_declarator
+          declarator: (pointer_declarator
+            declarator: (identifier))
+          value: (pointer_expression
+            argument: (pointer_expression
+              argument: (identifier)))))
+      (goto_statement
+        label: (identifier))
+      (labeled_statement
+        label: (statement_identifier)
+        (return_statement)))))
+
+================================================================================
+Auto inference with modifiers
+================================================================================
+
+static auto x = 1;
+const auto y = 2;
+auto const z = 3;
+constexpr auto n = 4;
+auto int legacy = 5;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (storage_class_specifier)
+    (storage_class_specifier)
+    (init_declarator
+      (identifier)
+      (number_literal)))
+  (declaration
+    (type_qualifier)
+    (storage_class_specifier)
+    (init_declarator
+      (identifier)
+      (number_literal)))
+  (declaration
+    (storage_class_specifier)
+    (type_qualifier)
+    (init_declarator
+      (identifier)
+      (number_literal)))
+  (declaration
+    (type_qualifier)
+    (storage_class_specifier)
+    (init_declarator
+      (identifier)
+      (number_literal)))
+  (declaration
+    (storage_class_specifier)
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (number_literal))))
+
+================================================================================
+GNU unqualified typeof aliases
+================================================================================
+
+__typeof_unqual(x) y;
+__typeof_unqual__(x) z;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (typeof_specifier
+      (identifier))
+    (identifier))
+  (declaration
+    (typeof_specifier
+      (identifier))
+    (identifier)))
+
+================================================================================
+Malformed octal escape boundaries
+================================================================================
+
+const char *text = "\o{8}\o{A}";
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (string_literal
+        (escape_sequence)
+        (string_content)
+        (escape_sequence)
+        (string_content)))))
+
+================================================================================
+Typeof comma operands and enum bases
+================================================================================
+
+typeof(a, b) value;
+enum E : typeof(1) { A };
+enum : typeof_unqual(1) { B };
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (typeof_specifier
+      (comma_expression
+        (identifier)
+        (identifier)))
+    (identifier))
+  (enum_specifier
+    (type_identifier)
+    (typeof_specifier
+      (number_literal))
+    (enumerator_list
+      (enumerator
+        (identifier))))
+  (enum_specifier
+    (typeof_specifier
+      (number_literal))
+    (enumerator_list
+      (enumerator
+        (identifier)))))
+
+================================================================================
+Computed goto comma operands
+================================================================================
+
+void f(void *p, void *q) { p = &&done; goto *p, q; done: return; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (pointer_declarator
+            (identifier)))
+        (parameter_declaration
+          (primitive_type)
+          (pointer_declarator
+            (identifier)))))
+    (compound_statement
+      (expression_statement
+        (assignment_expression
+          (identifier)
+          (pointer_expression
+            (pointer_expression
+              (identifier)))))
+      (goto_statement
+        (comma_expression
+          (identifier)
+          (identifier)))
+      (labeled_statement
+        (statement_identifier)
+        (return_statement)))))
+
+================================================================================
+Pragma operators between tokens
+================================================================================
+
+int n = 1 + _Pragma("clang diagnostic push") 2;
+int m = 1 + _Pragma/* gap */ ( L"clang diagnostic push" ) 2;
+void f(int x) { switch (x) { case 0: _Pragma("clang diagnostic pop") break; } }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (switch_statement
+        (parenthesized_expression
+          (identifier))
+        (compound_statement
+          (case_statement
+            (number_literal)
+            (pragma_operator)
+            (break_statement)))))))
+
+================================================================================
+Preprocessor initializer separators
+================================================================================
+
+unsigned char a[] = { 0
+#embed "a.bin" prefix(,) suffix(,)
+0 };
+unsigned char b[] = {
+#embed "a.bin" suffix(,)
+#embed "a.bin"
+};
+struct Entry table[] = {
+#ifdef X
+  { 1, "a" },
+#endif
+  { 2, "b" },
+};
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (sized_type_specifier
+      (primitive_type))
+    (init_declarator
+      (array_declarator
+        (identifier))
+      (initializer_list
+        (number_literal)
+        (preproc_call
+          (preproc_directive)
+          (preproc_arg))
+        (number_literal))))
+  (declaration
+    (sized_type_specifier
+      (primitive_type))
+    (init_declarator
+      (array_declarator
+        (identifier))
+      (initializer_list
+        (preproc_call
+          (preproc_directive)
+          (preproc_arg))
+        (preproc_call
+          (preproc_directive)
+          (preproc_arg)))))
+  (declaration
+    (struct_specifier
+      (type_identifier))
+    (init_declarator
+      (array_declarator
+        (identifier))
+      (initializer_list
+        (preproc_ifdef
+          (identifier)
+          (initializer_list
+            (number_literal)
+            (string_literal
+              (string_content))))
+        (initializer_list
+          (number_literal)
+          (string_literal
+            (string_content))))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (number_literal)))))
+
+================================================================================
+Pragma preprocessing token combinations
+================================================================================
+
+int a = 1 + _Pragma(u8"clang diagnostic push") 2;
+int b = 1 + _Pragma(u"clang diagnostic push") 2;
+int c = 1 + _Pragma(U"clang diagnostic push") 2;
+int d = 1 + _Pragma( // comment \
+ ignored continuation
+ "clang diagnostic push") 2;
+
+int e = 1 + _Pragma( // comment \\
+ ignored continuation
+ "clang diagnostic push") 2;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal)))))
+
+================================================================================
+Conditional initializer separators
+================================================================================
+
+int a[] = { 1
+#if 1
+,
+#endif
+2 };
+int b[] = { 1
+#ifdef X
+, 2,
+#elif Y
+, 3,
+#else
+,
+#endif
+4 };
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (array_declarator
+        (identifier))
+      (initializer_list
+        (number_literal)
+        (preproc_if
+          (number_literal))
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (array_declarator
+        (identifier))
+      (initializer_list
+        (number_literal)
+        (preproc_ifdef
+          (identifier)
+          (number_literal)
+          (preproc_elif
+            (identifier)
+            (number_literal)
+            (preproc_else)))
+        (number_literal))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (number_literal)))))
+
+================================================================================
+Pragma macro replacement lists
+================================================================================
+
+#define PUSH _Pragma("clang diagnostic push")
+#define WRAP(a) _Pragma("clang diagnostic push") a
+#define OBJECT (_Pragma("clang diagnostic push"))
+#include "header.h"
+int n = 1 + _Pragma("clang diagnostic push") 2;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (preproc_include
+    (string_literal
+      (string_content)))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal)))))
+
+================================================================================
+Pragmas after directive terminators
+================================================================================
+
+#define A 1
+_Pragma(/* spacing */ "clang diagnostic push") int a;
+#define B(x) (x)
+_Pragma("clang diagnostic pop") int b;
+#include <stdio.h>
+_Pragma("clang diagnostic push")
+int c;
+#pragma once
+_Pragma(/* spacing */ "clang diagnostic pop") int d;
+#if 1
+_Pragma("clang diagnostic push")
+int e;
+#endif
+_Pragma("clang diagnostic pop") int f;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (pragma_operator)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (pragma_operator)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_include
+    (system_lib_string))
+  (pragma_operator)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_call
+    (preproc_directive)
+    (preproc_arg))
+  (pragma_operator)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_if
+    (number_literal)
+    (pragma_operator)
+    (declaration
+      (primitive_type)
+      (identifier)))
+  (pragma_operator)
+  (declaration
+    (primitive_type)
+    (identifier)))
+
+================================================================================
+Bit-precise enum underlying types
+:error
+================================================================================
+
+enum E : unsigned _BitInt(8) { A };
+enum : signed _BitInt(8) { B };
+
+--------------------------------------------------------------------------------
+
+(translation_unit)
+
+================================================================================
+Legacy auto declarator ambiguity
+================================================================================
+
+typedef int T;
+void legacy(void) {
+  auto T (x) = 1;
+  auto T ((y)) = 2;
+  auto T (*p) = 0;
+  (void)x; (void)y; (void)p;
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (type_definition
+    (primitive_type)
+    (type_identifier))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (declaration
+        (storage_class_specifier)
+        (type_identifier)
+        (init_declarator
+          (parenthesized_declarator
+            (identifier))
+          (number_literal)))
+      (declaration
+        (storage_class_specifier)
+        (type_identifier)
+        (init_declarator
+          (parenthesized_declarator
+            (parenthesized_declarator
+              (identifier)))
+          (number_literal)))
+      (declaration
+        (storage_class_specifier)
+        (type_identifier)
+        (init_declarator
+          (parenthesized_declarator
+            (pointer_declarator
+              (identifier)))
+          (number_literal)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier))))))
+
+================================================================================
+Inferred auto derived declarators
+================================================================================
+
+void inferred(void) {
+  auto (x) = 1;
+  auto *p = &x;
+  auto y = 2, z = 3;
+  auto a [[maybe_unused]] = 4;
+  (void)p; (void)y; (void)z;
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (declaration
+        (storage_class_specifier)
+        (init_declarator
+          (parenthesized_declarator
+            (identifier))
+          (number_literal)))
+      (declaration
+        (storage_class_specifier)
+        (init_declarator
+          (pointer_declarator
+            (identifier))
+          (pointer_expression
+            (identifier))))
+      (declaration
+        (storage_class_specifier)
+        (init_declarator
+          (identifier)
+          (number_literal))
+        (init_declarator
+          (identifier)
+          (number_literal)))
+      (declaration
+        (storage_class_specifier)
+        (init_declarator
+          (attributed_declarator
+            (identifier)
+            (attribute_declaration
+              (attribute
+                (identifier))))
+          (number_literal)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier))))))

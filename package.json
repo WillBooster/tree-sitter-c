@@ -20,7 +20,9 @@
     "queries/*.scm",
     "src/node-types.json",
     "tree-sitter.json",
-    "*.wasm"
+    "*.wasm",
+    "src/pragma.h",
+    "src/scanner.c"
   ],
   "scripts": {
     "build-wasm": "script/tree-sitter build --wasm",

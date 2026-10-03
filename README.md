@@ -57,8 +57,8 @@ const parser = new Parser();
 parser.setLanguage(await Language.load(c));
 ```
 
-The package also ships `grammar.js`, the queries in `queries/`, and the node types in `src/node-types.json` for grammars
-extending C (such as C++).
+The package also ships `grammar.js`, the scanner sources `src/scanner.c` and `src/pragma.h`, the queries in `queries/`,
+and the node types in `src/node-types.json` for grammars extending C (such as C++).
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and

@@ -15,7 +15,9 @@ parser.setLanguage(await Language.load(WasmPath));
 // edit that brings the slowdown back.
 test('uses a Wasm build built from the current parser', () => {
   // src/parser.c is generated from grammar.js, so an edit to the grammar alone also makes the Wasm build stale.
-  const sources = ['grammar.js', 'src/parser.c'].map((name) => fs.statSync(path.join(Root, name)).mtimeMs);
+  const sources = ['grammar.js', 'src/parser.c', 'src/scanner.c', 'src/pragma.h'].map(
+    (name) => fs.statSync(path.join(Root, name)).mtimeMs
+  );
   expect(
     Math.max(...sources) > fs.statSync(WasmPath).mtimeMs,
     'grammar.js or src/ changed after the Wasm build was built; run `bun run build/ci`'
