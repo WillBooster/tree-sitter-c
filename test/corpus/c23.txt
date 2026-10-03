@@ -310,3 +310,24 @@ __typeof_unqual__(x) z;
     (typeof_specifier
       (identifier))
     (identifier)))
+
+================================================================================
+Malformed octal escape boundaries
+================================================================================
+
+const char *text = "\o{8}\o{A}";
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (string_literal
+        (escape_sequence)
+        (string_content)
+        (escape_sequence)
+        (string_content)))))

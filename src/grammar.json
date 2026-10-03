@@ -9922,7 +9922,11 @@
                 },
                 {
                   "type": "PATTERN",
-                  "value": "[xuo]\\{[0-9a-fA-F]+\\}"
+                  "value": "[xu]\\{[0-9a-fA-F]+\\}"
+                },
+                {
+                  "type": "PATTERN",
+                  "value": "o\\{[0-7]+\\}"
                 },
                 {
                   "type": "PATTERN",

@@ -1207,7 +1207,8 @@ module.exports = Object.assign(
               '\\',
               choice(
                 /[^xuU]/,
-                /[xuo]\{[0-9a-fA-F]+\}/,
+                /[xu]\{[0-9a-fA-F]+\}/,
+                /o\{[0-7]+\}/,
                 /N\{[^}\n]+\}/,
                 /\d{2,3}/,
                 /x[0-9a-fA-F]{1,4}/,
