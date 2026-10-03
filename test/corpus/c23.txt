@@ -517,3 +517,157 @@ int after(void) { return 0; }
     (compound_statement
       (return_statement
         (number_literal)))))
+
+================================================================================
+Pragma preprocessing token combinations
+================================================================================
+
+int a = 1 + _Pragma(u8"clang diagnostic push") 2;
+int b = 1 + _Pragma(u"clang diagnostic push") 2;
+int c = 1 + _Pragma(U"clang diagnostic push") 2;
+int d = 1 + _Pragma( // comment \
+ ignored continuation
+ "clang diagnostic push") 2;
+
+int e = 1 + _Pragma( // comment \\
+ ignored continuation
+ "clang diagnostic push") 2;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal)))))
+
+================================================================================
+Conditional initializer separators
+================================================================================
+
+int a[] = { 1
+#if 1
+,
+#endif
+2 };
+int b[] = { 1
+#ifdef X
+, 2,
+#elif Y
+, 3,
+#else
+,
+#endif
+4 };
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (array_declarator
+        (identifier))
+      (initializer_list
+        (number_literal)
+        (preproc_if
+          (number_literal))
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (array_declarator
+        (identifier))
+      (initializer_list
+        (number_literal)
+        (preproc_ifdef
+          (identifier)
+          (number_literal)
+          (preproc_elif
+            (identifier)
+            (number_literal)
+            (preproc_else)))
+        (number_literal))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (number_literal)))))
+
+================================================================================
+Pragma macro replacement lists
+================================================================================
+
+#define PUSH _Pragma("clang diagnostic push")
+#define WRAP(a) _Pragma("clang diagnostic push") a
+#define OBJECT (_Pragma("clang diagnostic push"))
+#include "header.h"
+int n = 1 + _Pragma("clang diagnostic push") 2;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (preproc_include
+    (string_literal
+      (string_content)))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal)))))

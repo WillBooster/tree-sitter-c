@@ -1,0 +1,33 @@
+#include "pragma.h"
+
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG };
+
+void *tree_sitter_c_external_scanner_create(void) {
+    return NULL;
+}
+
+void tree_sitter_c_external_scanner_destroy(void *payload) {
+    (void)payload;
+}
+
+unsigned tree_sitter_c_external_scanner_serialize(void *payload, char *buffer) {
+    (void)payload;
+    (void)buffer;
+    return 0;
+}
+
+void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffer, unsigned length) {
+    (void)payload;
+    (void)buffer;
+    (void)length;
+}
+
+bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
+    (void)payload;
+    if (valid_symbols[PREPROC_ARG]) {
+        lexer->result_symbol = PREPROC_ARG;
+        return scan_pragma_preproc_arg(lexer);
+    }
+    lexer->result_symbol = PRAGMA_OPERATOR;
+    return valid_symbols[PRAGMA_OPERATOR] && scan_pragma(lexer);
+}

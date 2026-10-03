@@ -35,7 +35,8 @@ const PREC = {
   SUBSCRIPT: 17,
 };
 
-const PRAGMA_SPACING = repeat(choice(/\s/, /\\\r?\n/, /\/\*[^*]*\*+([^/*][^*]*\*+)*\//, /\/\/[^\n]*/));
+const LINE_COMMENT = seq('//', /(\\+(.|\r?\n)|[^\\\n])*/);
+const PRAGMA_SPACING = repeat(choice(/\s/, /\\\r?\n/));
 
 // oxlint-disable-next-line unicorn/prefer-module -- This package is CommonJS, so tree-sitter loads grammar.js as CommonJS.
 module.exports = Object.assign(
@@ -64,6 +65,8 @@ module.exports = Object.assign(
       [$.type_specifier, $._top_level_expression_statement],
       [$.type_qualifier, $.extension_expression],
     ],
+
+    externals: () => [sym('pragma_operator'), sym('preproc_arg')],
 
     extras: ($) => [$.pragma_operator, /\s|\\\r?\n/, $.comment],
 
@@ -128,6 +131,8 @@ module.exports = Object.assign(
           $.preproc_call
         ),
 
+      // Derived grammars that replace externals still need this lexical fallback. Comment-rich spacing makes the
+      // lexer too large for the pinned Node Wasm optimizer; the external scanner handles those forms.
       pragma_operator: () =>
         token(
           seq(
@@ -135,7 +140,7 @@ module.exports = Object.assign(
             PRAGMA_SPACING,
             '(',
             PRAGMA_SPACING,
-            optional('L'),
+            optional(choice('L', 'u8', 'u', 'U')),
             '"',
             repeat(choice(/[^\\"\n]/, seq('\\', choice(/./, /\r?\n/)))),
             '"',
@@ -1182,6 +1187,8 @@ module.exports = Object.assign(
 
       _initializer_element: ($) => choice($.initializer_pair, $.expression, $.initializer_list),
 
+      _initializer_branch: ($) => choice(seq(',', optional($._initializer_sequence)), $._initializer_sequence),
+
       _initializer_preproc_call: ($) =>
         seq(
           field(
@@ -1192,7 +1199,7 @@ module.exports = Object.assign(
           '\n'
         ),
 
-      ...preprocIf('_in_initializer_list', () => sym('_initializer_sequence'), 0, false),
+      ...preprocIf('_in_initializer_list', () => sym('_initializer_branch'), 0, false),
 
       initializer_pair: ($) =>
         choice(
@@ -1303,7 +1310,7 @@ module.exports = Object.assign(
         prec.dynamic(-1, seq(field('name', $.identifier), '(', field('type', $.type_descriptor), ')')),
 
       // http://stackoverflow.com/questions/13014947/regex-to-match-a-c-style-multiline-comment/36328890#36328890
-      comment: () => token(choice(seq('//', /(\\+(.|\r?\n)|[^\\\n])*/), seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
+      comment: () => token(choice(LINE_COMMENT, seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
     },
   }),
   { PREC, preprocIf, preprocessor, commaSep, commaSep1 }
