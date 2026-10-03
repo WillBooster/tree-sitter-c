@@ -3,7 +3,8 @@
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
 
-"auto" @keyword
+((storage_class_specifier) @keyword
+ (#eq? @keyword "auto"))
 "_Thread_local" @keyword
 "break" @keyword
 "case" @keyword
@@ -85,4 +86,4 @@
 (typeof_specifier
   ["typeof" "typeof_unqual" "__typeof__" "__typeof" "__typeof_unqual" "__typeof_unqual__"] @keyword)
 (bit_int_specifier "_BitInt" @type)
-(pragma_operator "_Pragma" @keyword)
+(pragma_operator) @keyword

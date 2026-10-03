@@ -167,9 +167,7 @@ _Pragma("once")
 --------------------------------------------------------------------------------
 
 (translation_unit
-  (pragma_operator
-    (string_literal
-      (string_content))))
+  (pragma_operator))
 
 ================================================================================
 Declspec
@@ -331,3 +329,194 @@ const char *text = "\o{8}\o{A}";
         (string_content)
         (escape_sequence)
         (string_content)))))
+
+================================================================================
+Typeof comma operands and enum bases
+================================================================================
+
+typeof(a, b) value;
+enum E : typeof(1) { A };
+enum : typeof_unqual(1) { B };
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (typeof_specifier
+      (comma_expression
+        (identifier)
+        (identifier)))
+    (identifier))
+  (enum_specifier
+    (type_identifier)
+    (typeof_specifier
+      (number_literal))
+    (enumerator_list
+      (enumerator
+        (identifier))))
+  (enum_specifier
+    (typeof_specifier
+      (number_literal))
+    (enumerator_list
+      (enumerator
+        (identifier)))))
+
+================================================================================
+Computed goto comma operands
+================================================================================
+
+void f(void *p, void *q) { p = &&done; goto *p, q; done: return; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (pointer_declarator
+            (identifier)))
+        (parameter_declaration
+          (primitive_type)
+          (pointer_declarator
+            (identifier)))))
+    (compound_statement
+      (expression_statement
+        (assignment_expression
+          (identifier)
+          (pointer_expression
+            (pointer_expression
+              (identifier)))))
+      (goto_statement
+        (comma_expression
+          (identifier)
+          (identifier)))
+      (labeled_statement
+        (statement_identifier)
+        (return_statement)))))
+
+================================================================================
+Pragma operators between tokens
+================================================================================
+
+int n = 1 + _Pragma("clang diagnostic push") 2;
+int m = 1 + _Pragma/* gap */ ( L"clang diagnostic push" ) 2;
+void f(int x) { switch (x) { case 0: _Pragma("clang diagnostic pop") break; } }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (number_literal)
+        (pragma_operator)
+        (number_literal))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (switch_statement
+        (parenthesized_expression
+          (identifier))
+        (compound_statement
+          (case_statement
+            (number_literal)
+            (pragma_operator)
+            (break_statement)))))))
+
+================================================================================
+Preprocessor initializer separators
+================================================================================
+
+unsigned char a[] = { 0
+#embed "a.bin" prefix(,) suffix(,)
+0 };
+unsigned char b[] = {
+#embed "a.bin" suffix(,)
+#embed "a.bin"
+};
+struct Entry table[] = {
+#ifdef X
+  { 1, "a" },
+#endif
+  { 2, "b" },
+};
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (sized_type_specifier
+      (primitive_type))
+    (init_declarator
+      (array_declarator
+        (identifier))
+      (initializer_list
+        (number_literal)
+        (preproc_call
+          (preproc_directive)
+          (preproc_arg))
+        (number_literal))))
+  (declaration
+    (sized_type_specifier
+      (primitive_type))
+    (init_declarator
+      (array_declarator
+        (identifier))
+      (initializer_list
+        (preproc_call
+          (preproc_directive)
+          (preproc_arg))
+        (preproc_call
+          (preproc_directive)
+          (preproc_arg)))))
+  (declaration
+    (struct_specifier
+      (type_identifier))
+    (init_declarator
+      (array_declarator
+        (identifier))
+      (initializer_list
+        (preproc_call
+          (preproc_directive)
+          (preproc_arg))
+        (initializer_list
+          (number_literal)
+          (string_literal
+            (string_content)))
+        (preproc_call
+          (preproc_directive))
+        (initializer_list
+          (number_literal)
+          (string_literal
+            (string_content))))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (number_literal)))))

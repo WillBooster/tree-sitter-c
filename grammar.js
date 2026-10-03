@@ -35,12 +35,15 @@ const PREC = {
   SUBSCRIPT: 17,
 };
 
+const PRAGMA_SPACING = repeat(choice(/\s/, /\\\r?\n/, /\/\*[^*]*\*+([^/*][^*]*\*+)*\//, /\/\/[^\n]*/));
+
 // oxlint-disable-next-line unicorn/prefer-module -- This package is CommonJS, so tree-sitter loads grammar.js as CommonJS.
 module.exports = Object.assign(
   grammar({
     name: 'c',
 
     conflicts: ($) => [
+      [$.initializer_list],
       [$._declaration_modifiers, $._empty_declaration],
       [$.declaration, $.storage_class_specifier],
       [$.sized_type_specifier, $.enum_specifier],
@@ -63,7 +66,7 @@ module.exports = Object.assign(
       [$.type_qualifier, $.extension_expression],
     ],
 
-    extras: ($) => [/\s|\\\r?\n/, $.comment],
+    extras: ($) => [$.pragma_operator, /\s|\\\r?\n/, $.comment],
 
     inline: ($) => [
       $._type_identifier,
@@ -105,8 +108,7 @@ module.exports = Object.assign(
           $.preproc_include,
           $.preproc_def,
           $.preproc_function_def,
-          $.preproc_call,
-          $.pragma_operator
+          $.preproc_call
         ),
 
       _block_item: ($) =>
@@ -124,11 +126,24 @@ module.exports = Object.assign(
           $.preproc_include,
           $.preproc_def,
           $.preproc_function_def,
-          $.preproc_call,
-          $.pragma_operator
+          $.preproc_call
         ),
 
-      pragma_operator: ($) => seq('_Pragma', '(', $.string_literal, ')'),
+      pragma_operator: () =>
+        token(
+          seq(
+            '_Pragma',
+            PRAGMA_SPACING,
+            '(',
+            PRAGMA_SPACING,
+            optional('L'),
+            '"',
+            repeat(choice(/[^\\"\n]/, seq('\\', choice(/./, /\r?\n/)))),
+            '"',
+            PRAGMA_SPACING,
+            ')'
+          )
+        ),
       // Preprocesser
 
       preproc_include: ($) =>
@@ -615,7 +630,7 @@ module.exports = Object.assign(
         seq(
           choice('typeof', 'typeof_unqual', '__typeof__', '__typeof', '__typeof_unqual', '__typeof_unqual__'),
           '(',
-          choice($.type_descriptor, $.expression),
+          choice($.type_descriptor, $.expression, $.comma_expression),
           ')'
         ),
       bit_int_specifier: ($) => seq('_BitInt', '(', $.expression, ')'),
@@ -671,13 +686,25 @@ module.exports = Object.assign(
             seq(
               field('name', $._type_identifier),
               optional(
-                seq(':', field('underlying_type', choice($.primitive_type, $.sized_type_specifier, $._type_identifier)))
+                seq(
+                  ':',
+                  field(
+                    'underlying_type',
+                    choice($.primitive_type, $.sized_type_specifier, $.typeof_specifier, $._type_identifier)
+                  )
+                )
               ),
               field('body', optional($.enumerator_list))
             ),
             seq(
               optional(
-                seq(':', field('underlying_type', choice($.primitive_type, $.sized_type_specifier, $._type_identifier)))
+                seq(
+                  ':',
+                  field(
+                    'underlying_type',
+                    choice($.primitive_type, $.sized_type_specifier, $.typeof_specifier, $._type_identifier)
+                  )
+                )
               ),
               field('body', $.enumerator_list)
             )
@@ -871,7 +898,14 @@ module.exports = Object.assign(
       continue_statement: () => seq('continue', ';'),
 
       goto_statement: ($) =>
-        seq('goto', choice(field('label', $._statement_identifier), seq('*', field('label', $.expression))), ';'),
+        seq(
+          'goto',
+          choice(
+            field('label', $._statement_identifier),
+            seq('*', field('label', choice($.expression, $.comma_expression)))
+          ),
+          ';'
+        ),
 
       seh_try_statement: ($) =>
         seq('__try', field('body', $.compound_statement), choice($.seh_except_clause, $.seh_finally_clause)),
@@ -1121,13 +1155,25 @@ module.exports = Object.assign(
 
       parenthesized_expression: ($) => seq('(', choice($.expression, $.comma_expression, $.compound_statement), ')'),
 
-      initializer_list: ($) =>
-        seq(
-          '{',
-          commaSep(choice($.initializer_pair, $.expression, $.initializer_list, $.preproc_call)),
-          optional(','),
-          '}'
-        ),
+      initializer_list: ($) => {
+        const element = choice($.initializer_pair, $.expression, $.initializer_list);
+        const directives = prec.right(seq(repeat1($.preproc_call), optional(',')));
+        return prec.right(
+          seq(
+            '{',
+            optional(directives),
+            optional(
+              seq(
+                element,
+                repeat(choice(seq(',', optional(directives), element), seq(directives, element))),
+                optional(',')
+              )
+            ),
+            optional(directives),
+            '}'
+          )
+        );
+      },
 
       initializer_pair: ($) =>
         choice(
