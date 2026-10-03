@@ -53,7 +53,10 @@ module.exports = Object.assign(
       [$.type_specifier, $.expression, $.macro_type_specifier],
       [$.type_specifier, $.macro_type_specifier],
       [$.type_specifier, $.sized_type_specifier],
+      [$.type_specifier, $._sized_bit_int_specifier],
       [$.sized_type_specifier],
+      [$._sized_bit_int_specifier],
+      [$.sized_type_specifier, $._sized_bit_int_specifier],
       [$.attributed_statement],
       [$._declaration_modifiers, $.attributed_statement],
       [$.enum_specifier],
@@ -66,7 +69,7 @@ module.exports = Object.assign(
       [$.type_qualifier, $.extension_expression],
     ],
 
-    externals: () => [sym('pragma_operator'), sym('preproc_arg')],
+    externals: () => [sym('pragma_operator'), sym('preproc_arg'), sym('_preproc_newline')],
 
     extras: ($) => [$.pragma_operator, /\s|\\\r?\n/, $.comment],
 
@@ -162,7 +165,7 @@ module.exports = Object.assign(
               alias($.preproc_call_expression, $.call_expression)
             )
           ),
-          token.immediate(/\r?\n/)
+          sym('_preproc_newline')
         ),
 
       preproc_def: ($) =>
@@ -170,7 +173,7 @@ module.exports = Object.assign(
           preprocessor('define'),
           field('name', $.identifier),
           field('value', optional($.preproc_arg)),
-          token.immediate(/\r?\n/)
+          sym('_preproc_newline')
         ),
 
       preproc_function_def: ($) =>
@@ -179,7 +182,7 @@ module.exports = Object.assign(
           field('name', $.identifier),
           field('parameters', $.preproc_params),
           field('value', optional($.preproc_arg)),
-          token.immediate(/\r?\n/)
+          sym('_preproc_newline')
         ),
 
       preproc_params: ($) => seq(token.immediate('('), commaSep(choice($.identifier, '...')), ')'),
@@ -188,13 +191,15 @@ module.exports = Object.assign(
         seq(
           field('directive', $.preproc_directive),
           field('argument', optional($.preproc_arg)),
-          token.immediate(/\r?\n/)
+          sym('_preproc_newline')
         ),
 
       ...preprocIf('', () => sym('_block_item')),
       ...preprocIf('_in_field_declaration_list', () => sym('_field_declaration_list_item')),
       ...preprocIf('_in_enumerator_list', () => seq(sym('enumerator'), ',')),
       ...preprocIf('_in_enumerator_list_no_comma', () => sym('enumerator'), -1),
+
+      _preproc_newline: () => token.immediate(/\r?\n/),
 
       preproc_arg: () => token(prec(-1, /\S([^/\n]|\/[^*]|\\\r?\n)*/)),
       preproc_directive: () => /#[ \t]*[a-zA-Z0-9]\w*/,
@@ -293,7 +298,7 @@ module.exports = Object.assign(
           choice(
             $._declaration_specifiers,
             prec.dynamic(
-              -1,
+              PREC.PAREN_DECLARATOR - 1,
               seq(
                 repeat($._declaration_modifiers),
                 alias('auto', $.storage_class_specifier),
@@ -626,6 +631,7 @@ module.exports = Object.assign(
           $.bit_int_specifier,
           $.macro_type_specifier,
           $.sized_type_specifier,
+          alias($._sized_bit_int_specifier, $.sized_type_specifier),
           $.primitive_type,
           $._type_identifier
         ),
@@ -640,25 +646,9 @@ module.exports = Object.assign(
       bit_int_specifier: ($) => seq('_BitInt', '(', $.expression, ')'),
 
       sized_type_specifier: ($) =>
-        choice(
-          seq(
-            repeat(choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__')),
-            field(
-              'type',
-              optional(choice(prec.dynamic(-1, $._type_identifier), $.primitive_type, $.bit_int_specifier))
-            ),
-            repeat1(choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__'))
-          ),
-          seq(
-            repeat1(choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__')),
-            repeat($.type_qualifier),
-            field(
-              'type',
-              optional(choice(prec.dynamic(-1, $._type_identifier), $.primitive_type, $.bit_int_specifier))
-            ),
-            repeat(choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__'))
-          )
-        ),
+        sizedTypeSpecifier(optional(choice(prec.dynamic(-1, $._type_identifier), $.primitive_type))),
+
+      _sized_bit_int_specifier: ($) => sizedTypeSpecifier($.bit_int_specifier),
 
       primitive_type: () =>
         token(
@@ -1196,7 +1186,7 @@ module.exports = Object.assign(
             alias(token(/#[ \t]*(embed|include|undef|error|warning|line|pragma)/), $.preproc_directive)
           ),
           field('argument', optional($.preproc_arg)),
-          '\n'
+          alias(sym('_preproc_newline'), '\n')
         ),
 
       ...preprocIf('_in_initializer_list', () => sym('_initializer_branch'), 0, false),
@@ -1317,6 +1307,17 @@ module.exports = Object.assign(
 );
 
 /**
+ * @param {import('./types/treeSitterDsl').RuleOrLiteral} type
+ */
+function sizedTypeSpecifier(type) {
+  const modifier = choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__');
+  return choice(
+    seq(repeat(modifier), field('type', type), repeat1(modifier)),
+    seq(repeat1(modifier), repeat(sym('type_qualifier')), field('type', type), repeat(modifier))
+  );
+}
+
+/**
  *
  * @param {string} suffix
  *
@@ -1343,7 +1344,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('if'),
           field('condition', sym('_preproc_expression')),
-          '\n',
+          alias(sym('_preproc_newline'), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock())),
           preprocessor('endif')
@@ -1371,7 +1372,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('elif'),
           field('condition', sym('_preproc_expression')),
-          '\n',
+          alias(sym('_preproc_newline'), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock()))
         )

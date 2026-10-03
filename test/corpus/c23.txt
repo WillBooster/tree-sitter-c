@@ -671,3 +671,211 @@ int n = 1 + _Pragma("clang diagnostic push") 2;
         (number_literal)
         (pragma_operator)
         (number_literal)))))
+
+================================================================================
+Pragmas after directive terminators
+================================================================================
+
+#define A 1
+_Pragma(/* spacing */ "clang diagnostic push") int a;
+#define B(x) (x)
+_Pragma("clang diagnostic pop") int b;
+#include <stdio.h>
+_Pragma("clang diagnostic push")
+int c;
+#pragma once
+_Pragma(/* spacing */ "clang diagnostic pop") int d;
+#if 1
+_Pragma("clang diagnostic push")
+int e;
+#endif
+_Pragma("clang diagnostic pop") int f;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (pragma_operator)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (pragma_operator)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_include
+    (system_lib_string))
+  (pragma_operator)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_call
+    (preproc_directive)
+    (preproc_arg))
+  (pragma_operator)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_if
+    (number_literal)
+    (pragma_operator)
+    (declaration
+      (primitive_type)
+      (identifier)))
+  (pragma_operator)
+  (declaration
+    (primitive_type)
+    (identifier)))
+
+================================================================================
+Bit-precise enum underlying types
+:error
+================================================================================
+
+enum E : unsigned _BitInt(8) { A };
+enum : signed _BitInt(8) { B };
+
+--------------------------------------------------------------------------------
+
+(translation_unit)
+
+================================================================================
+Legacy auto declarator ambiguity
+================================================================================
+
+typedef int T;
+void legacy(void) {
+  auto T (x) = 1;
+  auto T ((y)) = 2;
+  auto T (*p) = 0;
+  (void)x; (void)y; (void)p;
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (type_definition
+    (primitive_type)
+    (type_identifier))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (declaration
+        (storage_class_specifier)
+        (type_identifier)
+        (init_declarator
+          (parenthesized_declarator
+            (identifier))
+          (number_literal)))
+      (declaration
+        (storage_class_specifier)
+        (type_identifier)
+        (init_declarator
+          (parenthesized_declarator
+            (parenthesized_declarator
+              (identifier)))
+          (number_literal)))
+      (declaration
+        (storage_class_specifier)
+        (type_identifier)
+        (init_declarator
+          (parenthesized_declarator
+            (pointer_declarator
+              (identifier)))
+          (number_literal)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier))))))
+
+================================================================================
+Inferred auto derived declarators
+================================================================================
+
+void inferred(void) {
+  auto (x) = 1;
+  auto *p = &x;
+  auto y = 2, z = 3;
+  auto a [[maybe_unused]] = 4;
+  (void)p; (void)y; (void)z;
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (declaration
+        (storage_class_specifier)
+        (init_declarator
+          (parenthesized_declarator
+            (identifier))
+          (number_literal)))
+      (declaration
+        (storage_class_specifier)
+        (init_declarator
+          (pointer_declarator
+            (identifier))
+          (pointer_expression
+            (identifier))))
+      (declaration
+        (storage_class_specifier)
+        (init_declarator
+          (identifier)
+          (number_literal))
+        (init_declarator
+          (identifier)
+          (number_literal)))
+      (declaration
+        (storage_class_specifier)
+        (init_declarator
+          (attributed_declarator
+            (identifier)
+            (attribute_declaration
+              (attribute
+                (identifier))))
+          (number_literal)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier)))
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (identifier))))))
