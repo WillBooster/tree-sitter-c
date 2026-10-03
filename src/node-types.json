@@ -304,6 +304,10 @@
     "named": true,
     "subtypes": [
       {
+        "type": "bit_int_specifier",
+        "named": true
+      },
+      {
         "type": "enum_specifier",
         "named": true
       },
@@ -325,6 +329,10 @@
       },
       {
         "type": "type_identifier",
+        "named": true
+      },
+      {
+        "type": "typeof_specifier",
         "named": true
       },
       {
@@ -505,6 +513,10 @@
         },
         {
           "type": "preproc_defined",
+          "named": true
+        },
+        {
+          "type": "system_lib_string",
           "named": true
         }
       ]
@@ -879,6 +891,21 @@
     }
   },
   {
+    "type": "bit_int_specifier",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "bitfield_clause",
     "named": true,
     "fields": {},
@@ -1161,6 +1188,14 @@
           "named": true
         },
         {
+          "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
+          "named": true
+        },
+        {
           "type": "preproc_call",
           "named": true
         },
@@ -1311,7 +1346,7 @@
       },
       "type": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "type_specifier",
@@ -1365,6 +1400,14 @@
         },
         {
           "type": "linkage_specification",
+          "named": true
+        },
+        {
+          "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         },
         {
@@ -1477,6 +1520,14 @@
         "types": [
           {
             "type": "primitive_type",
+            "named": true
+          },
+          {
+            "type": "sized_type_specifier",
+            "named": true
+          },
+          {
+            "type": "type_identifier",
             "named": true
           }
         ]
@@ -2157,6 +2208,10 @@
         "required": true,
         "types": [
           {
+            "type": "expression",
+            "named": true
+          },
+          {
             "type": "statement_identifier",
             "named": true
           }
@@ -2248,6 +2303,10 @@
         },
         {
           "type": "initializer_pair",
+          "named": true
+        },
+        {
+          "type": "preproc_call",
           "named": true
         }
       ]
@@ -2736,6 +2795,21 @@
     }
   },
   {
+    "type": "pragma_operator",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "string_literal",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "preproc_call",
     "named": true,
     "fields": {
@@ -2888,6 +2962,14 @@
           "named": true
         },
         {
+          "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
+          "named": true
+        },
+        {
           "type": "preproc_call",
           "named": true
         },
@@ -2984,6 +3066,14 @@
           "named": true
         },
         {
+          "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
+          "named": true
+        },
+        {
           "type": "preproc_call",
           "named": true
         },
@@ -3048,6 +3138,14 @@
         },
         {
           "type": "linkage_specification",
+          "named": true
+        },
+        {
+          "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         },
         {
@@ -3211,6 +3309,14 @@
           "named": true
         },
         {
+          "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
+          "named": true
+        },
+        {
           "type": "preproc_call",
           "named": true
         },
@@ -3304,6 +3410,14 @@
         },
         {
           "type": "linkage_specification",
+          "named": true
+        },
+        {
+          "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         },
         {
@@ -3492,6 +3606,10 @@
         "multiple": false,
         "required": false,
         "types": [
+          {
+            "type": "bit_int_specifier",
+            "named": true
+          },
           {
             "type": "primitive_type",
             "named": true
@@ -3763,6 +3881,14 @@
           "named": true
         },
         {
+          "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
+          "named": true
+        },
+        {
           "type": "preproc_call",
           "named": true
         },
@@ -3895,6 +4021,25 @@
       "types": [
         {
           "type": "alignas_qualifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "typeof_specifier",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        },
+        {
+          "type": "type_descriptor",
           "named": true
         }
       ]
@@ -4300,7 +4445,19 @@
     "named": false
   },
   {
+    "type": "_BitInt",
+    "named": false
+  },
+  {
+    "type": "_Complex",
+    "named": false
+  },
+  {
     "type": "_Generic",
+    "named": false
+  },
+  {
+    "type": "_Imaginary",
     "named": false
   },
   {
@@ -4309,6 +4466,14 @@
   },
   {
     "type": "_Noreturn",
+    "named": false
+  },
+  {
+    "type": "_Pragma",
+    "named": false
+  },
+  {
+    "type": "_Thread_local",
     "named": false
   },
   {
@@ -4349,6 +4514,10 @@
   },
   {
     "type": "__clrcall",
+    "named": false
+  },
+  {
+    "type": "__complex__",
     "named": false
   },
   {
@@ -4413,6 +4582,22 @@
   },
   {
     "type": "__try",
+    "named": false
+  },
+  {
+    "type": "__typeof",
+    "named": false
+  },
+  {
+    "type": "__typeof__",
+    "named": false
+  },
+  {
+    "type": "__typeof_unqual",
+    "named": false
+  },
+  {
+    "type": "__typeof_unqual__",
     "named": false
   },
   {
@@ -4642,6 +4827,14 @@
   },
   {
     "type": "typedef",
+    "named": false
+  },
+  {
+    "type": "typeof",
+    "named": false
+  },
+  {
+    "type": "typeof_unqual",
     "named": false
   },
   {

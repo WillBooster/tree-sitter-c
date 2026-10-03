@@ -41,6 +41,9 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._declaration_modifiers, $._empty_declaration],
+      [$.declaration, $.storage_class_specifier],
+      [$.sized_type_specifier, $.enum_specifier],
       [$.type_specifier, $._declarator],
       [$.type_specifier, $._declarator, $.macro_type_specifier],
       [$.type_specifier, $.expression],
@@ -102,7 +105,8 @@ module.exports = Object.assign(
           $.preproc_include,
           $.preproc_def,
           $.preproc_function_def,
-          $.preproc_call
+          $.preproc_call,
+          $.pragma_operator
         ),
 
       _block_item: ($) =>
@@ -120,9 +124,11 @@ module.exports = Object.assign(
           $.preproc_include,
           $.preproc_def,
           $.preproc_function_def,
-          $.preproc_call
+          $.preproc_call,
+          $.pragma_operator
         ),
 
+      pragma_operator: ($) => seq('_Pragma', '(', $.string_literal, ')'),
       // Preprocesser
 
       preproc_include: ($) =>
@@ -203,7 +209,8 @@ module.exports = Object.assign(
           seq(field('function', $.identifier), field('arguments', alias($.preproc_argument_list, $.argument_list)))
         ),
 
-      preproc_argument_list: ($) => seq('(', commaSep($._preproc_expression), ')'),
+      preproc_argument_list: ($) =>
+        seq('(', commaSep(choice($._preproc_expression, $.system_lib_string, $.string_literal)), ')'),
 
       preproc_binary_expression: ($) => {
         /** @type {[string, number][]} */
@@ -264,7 +271,17 @@ module.exports = Object.assign(
 
       declaration: ($) =>
         seq(
-          $._declaration_specifiers,
+          choice(
+            $._declaration_specifiers,
+            prec.dynamic(
+              -1,
+              seq(
+                repeat($._declaration_modifiers),
+                alias('auto', $.storage_class_specifier),
+                repeat($._declaration_modifiers)
+              )
+            )
+          ),
           commaSep1(
             field(
               'declarator',
@@ -560,6 +577,7 @@ module.exports = Object.assign(
           '__inline__',
           '__forceinline',
           'thread_local',
+          '_Thread_local',
           '__thread'
         ),
 
@@ -585,24 +603,41 @@ module.exports = Object.assign(
           $.struct_specifier,
           $.union_specifier,
           $.enum_specifier,
+          $.typeof_specifier,
+          $.bit_int_specifier,
           $.macro_type_specifier,
           $.sized_type_specifier,
           $.primitive_type,
           $._type_identifier
         ),
 
+      typeof_specifier: ($) =>
+        seq(
+          choice('typeof', 'typeof_unqual', '__typeof__', '__typeof', '__typeof_unqual', '__typeof_unqual__'),
+          '(',
+          choice($.type_descriptor, $.expression),
+          ')'
+        ),
+      bit_int_specifier: ($) => seq('_BitInt', '(', $.expression, ')'),
+
       sized_type_specifier: ($) =>
         choice(
           seq(
-            repeat(choice('signed', 'unsigned', 'long', 'short')),
-            field('type', optional(choice(prec.dynamic(-1, $._type_identifier), $.primitive_type))),
-            repeat1(choice('signed', 'unsigned', 'long', 'short'))
+            repeat(choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__')),
+            field(
+              'type',
+              optional(choice(prec.dynamic(-1, $._type_identifier), $.primitive_type, $.bit_int_specifier))
+            ),
+            repeat1(choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__'))
           ),
           seq(
-            repeat1(choice('signed', 'unsigned', 'long', 'short')),
+            repeat1(choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__')),
             repeat($.type_qualifier),
-            field('type', optional(choice(prec.dynamic(-1, $._type_identifier), $.primitive_type))),
-            repeat(choice('signed', 'unsigned', 'long', 'short'))
+            field(
+              'type',
+              optional(choice(prec.dynamic(-1, $._type_identifier), $.primitive_type, $.bit_int_specifier))
+            ),
+            repeat(choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__'))
           )
         ),
 
@@ -635,10 +670,17 @@ module.exports = Object.assign(
           choice(
             seq(
               field('name', $._type_identifier),
-              optional(seq(':', field('underlying_type', $.primitive_type))),
+              optional(
+                seq(':', field('underlying_type', choice($.primitive_type, $.sized_type_specifier, $._type_identifier)))
+              ),
               field('body', optional($.enumerator_list))
             ),
-            field('body', $.enumerator_list)
+            seq(
+              optional(
+                seq(':', field('underlying_type', choice($.primitive_type, $.sized_type_specifier, $._type_identifier)))
+              ),
+              field('body', $.enumerator_list)
+            )
           ),
           optional($.attribute_specifier)
         ),
@@ -828,7 +870,8 @@ module.exports = Object.assign(
 
       continue_statement: () => seq('continue', ';'),
 
-      goto_statement: ($) => seq('goto', field('label', $._statement_identifier), ';'),
+      goto_statement: ($) =>
+        seq('goto', choice(field('label', $._statement_identifier), seq('*', field('label', $.expression))), ';'),
 
       seh_try_statement: ($) =>
         seq('__try', field('body', $.compound_statement), choice($.seh_except_clause, $.seh_finally_clause)),
@@ -1079,7 +1122,12 @@ module.exports = Object.assign(
       parenthesized_expression: ($) => seq('(', choice($.expression, $.comma_expression, $.compound_statement), ')'),
 
       initializer_list: ($) =>
-        seq('{', commaSep(choice($.initializer_pair, $.expression, $.initializer_list)), optional(','), '}'),
+        seq(
+          '{',
+          commaSep(choice($.initializer_pair, $.expression, $.initializer_list, $.preproc_call)),
+          optional(','),
+          '}'
+        ),
 
       initializer_pair: ($) =>
         choice(
@@ -1153,7 +1201,21 @@ module.exports = Object.assign(
 
       escape_sequence: () =>
         token(
-          prec(1, seq('\\', choice(/[^xuU]/, /\d{2,3}/, /x[0-9a-fA-F]{1,4}/, /u[0-9a-fA-F]{4}/, /U[0-9a-fA-F]{8}/)))
+          prec(
+            1,
+            seq(
+              '\\',
+              choice(
+                /[^xuU]/,
+                /[xuo]\{[0-9a-fA-F]+\}/,
+                /N\{[^}\n]+\}/,
+                /\d{2,3}/,
+                /x[0-9a-fA-F]{1,4}/,
+                /u[0-9a-fA-F]{4}/,
+                /U[0-9a-fA-F]{8}/
+              )
+            )
+          )
         ),
 
       system_lib_string: () => token(seq('<', repeat(choice(/[^>\n]/, String.raw`\>`)), '>')),
@@ -1169,7 +1231,7 @@ module.exports = Object.assign(
       _field_identifier: ($) => alias($.identifier, sym('field_identifier')),
       _statement_identifier: ($) => alias($.identifier, sym('statement_identifier')),
 
-      _empty_declaration: ($) => seq($.type_specifier, ';'),
+      _empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
 
       macro_type_specifier: ($) =>
         prec.dynamic(-1, seq(field('name', $.identifier), '(', field('type', $.type_descriptor), ')')),
