@@ -1161,3 +1161,47 @@ int seventh = B;
     (init_declarator
       (identifier)
       (identifier))))
+
+================================================================================
+Adjacent character and number macro tokens
+================================================================================
+
+#define M L'a'1'000 /*tail*/
+#define P _Pragma("once") L'a'1'000 /*tail*/
+#define S_(...) #__VA_ARGS__
+#define S(...) S_(__VA_ARGS__)
+const char *after = S(M);
+int second;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_function_def
+    (identifier)
+    (preproc_params)
+    (preproc_arg))
+  (preproc_function_def
+    (identifier)
+    (preproc_params)
+    (preproc_arg))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)))))
+  (declaration
+    (primitive_type)
+    (identifier)))

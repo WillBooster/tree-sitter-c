@@ -154,6 +154,8 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
             after_comment = false;
         } else if (lexer->lookahead == '"' || (lexer->lookahead == '\'' && !in_number)) {
             int32_t quote = lexer->lookahead;
+            in_number = false;
+            in_identifier = false;
             lexer->advance(lexer, false);
             bool escaped = false;
             while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
