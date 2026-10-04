@@ -71,6 +71,7 @@ module.exports = Object.assign(
       [$.type_definition, $.sized_type_specifier],
       [$.type_definition, $._sized_bit_int_specifier],
       [$.attributed_statement],
+      [$._single_attributed_statement],
       [$._declaration_modifiers, $.attributed_statement],
       [$.enum_specifier],
       [$.type_specifier, $._old_style_parameter_list],
@@ -901,7 +902,55 @@ module.exports = Object.assign(
       else_clause: ($) => seq('else', $.statement),
 
       switch_statement: ($) =>
-        seq('switch', field('condition', $.parenthesized_expression), field('body', $.compound_statement)),
+        seq('switch', field('condition', $.parenthesized_expression), field('body', $._single_statement)),
+
+      _single_statement: ($) =>
+        choice(
+          $.compound_statement,
+          $.expression_statement,
+          $.switch_statement,
+          $.return_statement,
+          $.break_statement,
+          $.continue_statement,
+          $.goto_statement,
+          $.seh_try_statement,
+          $.seh_leave_statement,
+          alias($._single_case_statement, $.case_statement),
+          alias($._single_labeled_statement, $.labeled_statement),
+          alias($._single_if_statement, $.if_statement),
+          alias($._single_while_statement, $.while_statement),
+          alias($._single_do_statement, $.do_statement),
+          alias($._single_for_statement, $.for_statement),
+          alias($._single_attributed_statement, $.attributed_statement)
+        ),
+
+      _single_case_statement: ($) =>
+        seq(
+          choice(
+            seq('case', field('value', $.expression), optional(seq('...', field('end_value', $.expression)))),
+            'default'
+          ),
+          ':',
+          choice($._single_statement, $.declaration, $.type_definition)
+        ),
+      _single_labeled_statement: ($) =>
+        seq(field('label', $._statement_identifier), ':', choice($._single_statement, $.declaration)),
+      _single_if_statement: ($) =>
+        prec.right(
+          seq(
+            'if',
+            field('condition', $.parenthesized_expression),
+            field('consequence', $._single_statement),
+            optional(field('alternative', alias($._single_else_clause, $.else_clause)))
+          )
+        ),
+      _single_else_clause: ($) => seq('else', $._single_statement),
+      _single_while_statement: ($) =>
+        seq('while', field('condition', $.parenthesized_expression), field('body', $._single_statement)),
+      _single_do_statement: ($) =>
+        seq('do', field('body', $._single_statement), 'while', field('condition', $.parenthesized_expression), ';'),
+      _single_for_statement: ($) => seq('for', '(', $._for_statement_body, ')', field('body', $._single_statement)),
+      _single_attributed_statement: ($) => seq(repeat1($.attribute_declaration), $._single_statement),
 
       case_statement: ($) =>
         prec.right(
