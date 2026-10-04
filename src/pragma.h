@@ -97,7 +97,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash) {
     bool after_comment = false;
     bool in_number = false;
     bool in_identifier = consumed_backslash && scan_preproc_ucn(lexer, &in_number);
-    if (in_identifier) lexer->mark_end(lexer);
+    if (consumed_backslash) lexer->mark_end(lexer);
     int32_t number_last = 0;
     while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         int32_t c = lexer->lookahead;

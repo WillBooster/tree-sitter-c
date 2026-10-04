@@ -197,3 +197,32 @@ test('keeps LFCR splices inside ordinary, quoted and commented macro values', as
     parser.delete();
   }
 });
+
+test('retains leading backslash runs immediately before trailing block comments', async () => {
+  await Parser.init();
+  const parser = new Parser();
+  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  try {
+    for (const count of [1, 2, 3, 8]) {
+      const value = '\\'.repeat(count);
+      for (const prefix of ['', '\\\n', '\\\r\n', '\\\n\r']) {
+        const tree = parser.parse(`#define M ${prefix}${value}/*tail*/\nvoid first(void) {}\nint second;\n`)!;
+        try {
+          expect(tree.rootNode.hasError, JSON.stringify(prefix + value)).toBe(false);
+          const [macro, first, second] = tree.rootNode.namedChildren;
+          expect(macro?.type).toBe('preproc_def');
+          expect(macro?.childForFieldName('value')?.text).toBe(value);
+          expect(macro?.namedChildren.filter((node) => node.type === 'comment').map((node) => node.text)).toEqual([
+            '/*tail*/',
+          ]);
+          expect(first?.text).toBe('void first(void) {}');
+          expect(second?.text).toBe('int second;');
+        } finally {
+          tree.delete();
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
