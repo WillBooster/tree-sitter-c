@@ -7,6 +7,7 @@ static bool scan_pragma_spacing(TSLexer *lexer);
 static bool pragma_space(int32_t c);
 static bool scan_pragma_word(TSLexer *lexer);
 static bool scan_preproc_newline(TSLexer *lexer, bool skip);
+static bool scan_preproc_splices(TSLexer *lexer);
 
 static bool scan_pragma(TSLexer *lexer) {
     while (pragma_space(lexer->lookahead)) {
@@ -105,7 +106,8 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
         if (word && !in_number) in_identifier = true;
         if (lexer->lookahead == '/') {
             lexer->advance(lexer, false);
-            if (lexer->lookahead == '/') {
+            bool delimiter = scan_preproc_splices(lexer);
+            if (delimiter && lexer->lookahead == '/') {
                 if (!has_content || after_comment) break;
                 while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
                     if (lexer->lookahead == '\\') {
@@ -120,11 +122,15 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
                 lexer->mark_end(lexer);
                 return true;
             }
-            if (lexer->lookahead == '*') {
+            if (delimiter && lexer->lookahead == '*') {
                 if (!has_content) return false;
                 lexer->advance(lexer, false);
                 bool star = false;
                 while (!lexer->eof(lexer)) {
+                    if (lexer->lookahead == '\\') {
+                        if (!scan_preproc_splices(lexer)) star = false;
+                        continue;
+                    }
                     if (star && lexer->lookahead == '/') break;
                     star = lexer->lookahead == '*';
                     lexer->advance(lexer, false);
@@ -193,6 +199,14 @@ static bool scan_preproc_newline(TSLexer *lexer, bool skip) {
         return true;
     }
     return carriage_return;
+}
+
+static bool scan_preproc_splices(TSLexer *lexer) {
+    while (lexer->lookahead == '\\') {
+        lexer->advance(lexer, false);
+        if (!scan_preproc_newline(lexer, false)) return false;
+    }
+    return true;
 }
 
 static bool pragma_space(int32_t c) {

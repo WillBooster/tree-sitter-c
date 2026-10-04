@@ -1106,3 +1106,58 @@ int after = M0 + M1 + M2;
           (identifier)
           (identifier))
         (identifier)))))
+
+================================================================================
+Comment delimiters across physical line splices
+================================================================================
+
+#define M a /\
+/ /* inert
+int after; /*other*/ int second;
+int third;
+#define P _Pragma("once") a /\
+/ /* inert
+int fourth; /*other*/ int fifth;
+int sixth;
+#define B 1 /\
+* interior *\
+/ + 2
+int seventh = B;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (identifier))))
