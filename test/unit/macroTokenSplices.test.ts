@@ -54,6 +54,8 @@ test('distinguishes digit separators from adjacent character literals at macro b
       String.raw`1'000'\\'`,
       String.raw`1'000'\''`,
       "1'000'+'",
+      "1'$'",
+      "1'000'$'",
       "1'000'0",
       "1'000'e",
       String.raw`1'000'\u00e9'`,

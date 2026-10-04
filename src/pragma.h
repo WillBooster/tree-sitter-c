@@ -179,7 +179,8 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash) {
             if (quote == '\'' && in_number) {
                 bool spliced = scan_preproc_splices(lexer);
                 int32_t next = lexer->lookahead;
-                bool continuation = spliced && ((next < 0x80 && preproc_word(next, false)) || (next >= '0' && next <= '9'));
+                bool continuation = spliced && ((next >= '0' && next <= '9') || (next >= 'a' && next <= 'z') ||
+                                                (next >= 'A' && next <= 'Z') || next == '_');
                 escaped = !spliced;
                 if (continuation) {
                     has_content = true;
