@@ -104,7 +104,26 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
         if (word && !in_number) in_identifier = true;
         if (lexer->lookahead == '/') {
             lexer->advance(lexer, false);
-            if (lexer->lookahead == '/') break;
+            if (lexer->lookahead == '/') {
+                if (!has_content || after_comment) break;
+                while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
+                    if (lexer->lookahead == '\\') {
+                        do {
+                            lexer->advance(lexer, false);
+                        } while (lexer->lookahead == '\\');
+                        if (lexer->lookahead == '\r') {
+                            lexer->mark_end(lexer);
+                            lexer->advance(lexer, false);
+                            if (lexer->lookahead != '\n') return true;
+                        }
+                        if (lexer->lookahead == '\n') lexer->advance(lexer, false);
+                    } else {
+                        lexer->advance(lexer, false);
+                    }
+                }
+                lexer->mark_end(lexer);
+                return true;
+            }
             if (lexer->lookahead == '*') {
                 if (!has_content) return false;
                 lexer->advance(lexer, false);

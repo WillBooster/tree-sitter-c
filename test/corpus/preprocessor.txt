@@ -680,17 +680,6 @@ int final;
     (identifier))
   (preproc_def
     (identifier)
-    (preproc_arg)
-    (comment))
-  (declaration
-    (primitive_type)
-    (identifier))
-  (comment)
-  (declaration
-    (primitive_type)
-    (identifier))
-  (preproc_def
-    (identifier)
     (preproc_arg))
   (declaration
     (primitive_type)
@@ -712,17 +701,6 @@ int final;
   (preproc_def
     (identifier)
     (preproc_arg))
-  (declaration
-    (primitive_type)
-    (identifier))
-  (comment)
-  (declaration
-    (primitive_type)
-    (identifier))
-  (preproc_def
-    (identifier)
-    (preproc_arg)
-    (comment))
   (declaration
     (primitive_type)
     (identifier))
@@ -744,6 +722,26 @@ int final;
     (identifier)
     (preproc_arg)
     (comment))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
   (declaration
     (primitive_type)
     (identifier))
@@ -939,3 +937,40 @@ const char *fifth = CRLF;
       (pointer_declarator
         (identifier))
       (identifier))))
+
+================================================================================
+Line comments retain existing macro value boundaries
+================================================================================
+
+#define X 1 // c \
+ d
+#define EMPTY // comment
+#define TRAIL a /*tail*/ // line
+#define INITIAL /* first */ // line
+#define P _Pragma("once") 1 // /* inert
+int after;
+
+---
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (preproc_def
+    (identifier)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment)
+    (comment))
+  (preproc_def
+    (identifier)
+    (comment)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier)))
