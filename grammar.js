@@ -37,6 +37,7 @@ const PREC = {
 
 const LINE_COMMENT = seq('//', /(\\+(.|\r?\n)|[^\\\n])*/);
 const PRAGMA_SPACING = repeat(choice(/\s/, /\\\r?\n/));
+const PREPROC_ARGUMENT = /\S([^/\n]|\/[^*]|\\\r?\n)*/;
 const VA_ARG_KEYWORDS = choice('va_arg', '__builtin_va_arg');
 
 // oxlint-disable-next-line unicorn/prefer-module -- This package is CommonJS, so tree-sitter loads grammar.js as CommonJS.
@@ -84,7 +85,13 @@ module.exports = Object.assign(
       [$._compound_literal_constexpr_specifier, $.type_qualifier],
     ],
 
-    externals: () => [sym('pragma_operator'), sym('preproc_arg'), sym('_preproc_newline')],
+    externals: () => [
+      sym('pragma_operator'),
+      sym('preproc_arg'),
+      sym('_preproc_newline'),
+      sym('_preproc_lparen'),
+      sym('_preproc_directive_arg'),
+    ],
 
     extras: ($) => [$.pragma_operator, /\s|\\\r?\n/, $.comment],
 
@@ -201,12 +208,12 @@ module.exports = Object.assign(
           sym('_preproc_newline')
         ),
 
-      preproc_params: ($) => seq(token.immediate('('), commaSep(choice($.identifier, '...')), ')'),
+      preproc_params: ($) => seq(alias($._preproc_lparen, '('), commaSep(choice($.identifier, '...')), ')'),
 
       preproc_call: ($) =>
         seq(
           field('directive', $.preproc_directive),
-          field('argument', optional($.preproc_arg)),
+          field('argument', optional(alias($._preproc_directive_arg, $.preproc_arg))),
           sym('_preproc_newline')
         ),
 
@@ -217,7 +224,11 @@ module.exports = Object.assign(
 
       _preproc_newline: () => token.immediate(/\r?\n/),
 
-      preproc_arg: () => token(prec(-1, /\S([^/\n]|\/[^*]|\\\r?\n)*/)),
+      _preproc_lparen: () => token.immediate(/\(/),
+
+      preproc_arg: () => token(prec(-1, PREPROC_ARGUMENT)),
+
+      _preproc_directive_arg: () => token(prec(-2, PREPROC_ARGUMENT)),
       preproc_directive: () => /#[ \t]*[a-zA-Z0-9]\w*/,
 
       _preproc_expression: ($) =>
@@ -1255,7 +1266,7 @@ module.exports = Object.assign(
             'directive',
             alias(token(/#[ \t]*(embed|include|undef|error|warning|line|pragma)/), $.preproc_directive)
           ),
-          field('argument', optional($.preproc_arg)),
+          field('argument', optional(alias($._preproc_directive_arg, $.preproc_arg))),
           alias(sym('_preproc_newline'), '\n')
         ),
 
