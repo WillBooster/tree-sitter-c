@@ -38,18 +38,12 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
             if (lexer->lookahead != '\\') break;
             lexer->advance(lexer, false);
             lexer->mark_end(lexer);
-            bool carriage_return = lexer->lookahead == '\r';
-            if (carriage_return) lexer->advance(lexer, false);
-            if (lexer->lookahead != '\n') {
+            if (!scan_preproc_newline(lexer, true)) {
                 lexer->result_symbol = PREPROC_ARG;
-                return valid_symbols[PREPROC_ARG] && (carriage_return || scan_preproc_arg(lexer, true));
+                return valid_symbols[PREPROC_ARG] && scan_preproc_arg(lexer, true);
             }
-            lexer->advance(lexer, true);
         }
-        if (lexer->lookahead == '\r' || lexer->lookahead == '\n') {
-            bool carriage_return = lexer->lookahead == '\r';
-            lexer->advance(lexer, false);
-            if (carriage_return && lexer->lookahead == '\n') lexer->advance(lexer, false);
+        if (scan_preproc_newline(lexer, false)) {
             lexer->mark_end(lexer);
             lexer->result_symbol = PREPROC_NEWLINE;
             return true;

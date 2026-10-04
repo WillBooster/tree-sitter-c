@@ -6,6 +6,7 @@
 static bool scan_pragma_spacing(TSLexer *lexer);
 static bool pragma_space(int32_t c);
 static bool scan_pragma_word(TSLexer *lexer);
+static bool scan_preproc_newline(TSLexer *lexer, bool skip);
 
 static bool scan_pragma(TSLexer *lexer) {
     while (pragma_space(lexer->lookahead)) {
@@ -94,7 +95,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
     bool in_identifier = false;
     while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         int32_t c = lexer->lookahead;
-        bool word = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c >= 0x80;
+        bool word = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= 0x80 && !pragma_space(c));
         bool digit = c >= '0' && c <= '9';
         if (!word && !digit && c != '.' && c != '\'') {
             in_number = false;
@@ -111,12 +112,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
                         do {
                             lexer->advance(lexer, false);
                         } while (lexer->lookahead == '\\');
-                        if (lexer->lookahead == '\r') {
-                            lexer->mark_end(lexer);
-                            lexer->advance(lexer, false);
-                            if (lexer->lookahead != '\n') return true;
-                        }
-                        if (lexer->lookahead == '\n') lexer->advance(lexer, false);
+                        scan_preproc_newline(lexer, false);
                     } else {
                         lexer->advance(lexer, false);
                     }
@@ -142,9 +138,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
             after_comment = false;
         } else if (lexer->lookahead == '\\') {
             lexer->advance(lexer, false);
-            if (lexer->lookahead == '\r') lexer->advance(lexer, false);
-            if (lexer->lookahead == '\n') {
-                lexer->advance(lexer, false);
+            if (scan_preproc_newline(lexer, false)) {
                 if (!after_comment && has_content) lexer->mark_end(lexer);
                 continue;
             }
@@ -157,15 +151,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
             while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
                 if (lexer->lookahead == '\\') {
                     lexer->advance(lexer, false);
-                    if (lexer->lookahead == '\r') {
-                        lexer->mark_end(lexer);
-                        lexer->advance(lexer, false);
-                        if (lexer->lookahead != '\n') return true;
-                    }
-                    if (lexer->lookahead == '\n') {
-                        lexer->advance(lexer, false);
-                        continue;
-                    }
+                    if (scan_preproc_newline(lexer, false)) continue;
                     escaped = !escaped;
                     continue;
                 }
@@ -195,6 +181,16 @@ static bool scan_pragma_word(TSLexer *lexer) {
         lexer->advance(lexer, false);
     }
     return true;
+}
+
+static bool scan_preproc_newline(TSLexer *lexer, bool skip) {
+    bool carriage_return = lexer->lookahead == '\r';
+    if (carriage_return) lexer->advance(lexer, skip);
+    if (lexer->lookahead == '\n') {
+        lexer->advance(lexer, skip);
+        return true;
+    }
+    return carriage_return;
 }
 
 static bool pragma_space(int32_t c) {

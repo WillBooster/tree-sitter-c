@@ -974,3 +974,81 @@ int after;
   (declaration
     (primitive_type)
     (identifier)))
+
+================================================================================
+Macro splices with CR-only line endings
+================================================================================
+
+#define MAX(a, b) \ ((a) > (b) ? (a) : (b))int m = MAX(1, 2);#define TEXT "a\b" /*tail*/const char *text = TEXT;#define P _Pragma("once") "a\b" /*tail*/int second;#define COMMENT 1 // line \ continuedint third;#define BLOCK a /*c*/ \ b /*tail*/int fourth;
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier)
+      (identifier))
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (call_expression
+        (identifier)
+        (argument_list
+          (number_literal)
+          (number_literal)))))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (identifier)))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (declaration
+    (primitive_type)
+    (identifier)))
+
+================================================================================
+Digit separators after Unicode whitespace in macro values
+================================================================================
+
+#define NBSP a /*c*/ 1'000 /*tail*/
+#define IDEOGRAPHIC a /*c*/　1'000 /*tail*/
+int after;
+
+---
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (declaration
+    (primitive_type)
+    (identifier)))
