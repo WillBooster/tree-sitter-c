@@ -30,7 +30,6 @@ examples/curl/lib/curl_ntlm_core.c
 examples/curl/lib/curl_sasl.c
 examples/curl/lib/curl_setup.h
 examples/curl/lib/curl_sha512_256.c
-examples/curl/lib/curl_share.c
 examples/curl/lib/curl_trc.c
 examples/curl/lib/curl_trc.h
 examples/curl/lib/curlx/dynbuf.h
@@ -63,7 +62,6 @@ examples/curl/lib/md4.c
 examples/curl/lib/md5.c
 examples/curl/lib/memdebug.c
 examples/curl/lib/mime.h
-examples/curl/lib/mprintf.c
 examples/curl/lib/multi.c
 examples/curl/lib/multiif.h
 examples/curl/lib/netrc.c
@@ -123,7 +121,6 @@ examples/curl/lib/vtls/vtls.c
 examples/curl/lib/vtls/wolfssl.c
 examples/curl/lib/vtls/x509asn1.c
 examples/curl/lib/ws.c
-examples/curl/projects/OS400/ccsidcurl.c
 examples/curl/projects/OS400/ccsidcurl.h
 examples/curl/projects/OS400/os400sys.c
 examples/curl/projects/vms/curl_crtl_init.c
@@ -147,7 +144,6 @@ examples/curl/src/tool_operate.c
 examples/curl/src/tool_parsecfg.c
 examples/curl/src/tool_progress.c
 examples/curl/src/tool_progress.h
-examples/curl/src/tool_setopt.c
 examples/curl/src/tool_setopt.h
 examples/curl/src/tool_xattr.c
 examples/curl/src/tool_xattr.h
@@ -436,7 +432,6 @@ examples/git/config.c
 examples/git/config.h
 examples/git/connect.c
 examples/git/connected.c
-examples/git/contrib/credential/osxkeychain/git-credential-osxkeychain.c
 examples/git/contrib/credential/wincred/git-credential-wincred.c
 examples/git/convert.c
 examples/git/credential.c
@@ -577,7 +572,6 @@ examples/git/sideband.c
 examples/git/strbuf.c
 examples/git/string-list.c
 examples/git/strmap.c
-examples/git/strvec.c
 examples/git/strvec.h
 examples/git/sub-process.c
 examples/git/submodule-config.c
@@ -624,7 +618,6 @@ examples/git/t/t4051/appended2.c
 examples/git/t/unit-tests/clar/clar.c
 examples/git/t/unit-tests/clar/example/main.c
 examples/git/t/unit-tests/clar/test/main.c
-examples/git/t/unit-tests/clar/test/selftest.c
 examples/git/t/unit-tests/clar/test/suites/main.c
 examples/git/t/unit-tests/lib-reftable.c
 examples/git/t/unit-tests/test-lib.c
@@ -635,7 +628,6 @@ examples/git/t/unit-tests/u-oidtree.c
 examples/git/t/unit-tests/u-prio-queue.c
 examples/git/t/unit-tests/u-reftable-basics.c
 examples/git/t/unit-tests/u-reftable-stack.c
-examples/git/t/unit-tests/u-string-list.c
 examples/git/tempfile.c
 examples/git/trace2.c
 examples/git/trace2/tr2_cfg.c

@@ -37,6 +37,7 @@ const PREC = {
 
 const LINE_COMMENT = seq('//', /(\\+(.|\r?\n)|[^\\\n])*/);
 const PRAGMA_SPACING = repeat(choice(/\s/, /\\\r?\n/));
+const VA_ARG_KEYWORDS = choice('va_arg', '__builtin_va_arg');
 
 // oxlint-disable-next-line unicorn/prefer-module -- This package is CommonJS, so tree-sitter loads grammar.js as CommonJS.
 module.exports = Object.assign(
@@ -44,6 +45,8 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$.type_specifier, $.expression, $.va_arg_expression, $.macro_type_specifier],
+      [$.va_arg_expression, $.expression],
       [$.type_definition, $._declaration_modifiers],
       [$.type_definition, $.type_specifier],
       [$.type_definition, $.type_qualifier, $.extension_expression],
@@ -414,7 +417,8 @@ module.exports = Object.assign(
           $.function_declarator,
           $.array_declarator,
           $.parenthesized_declarator,
-          $.identifier
+          $.identifier,
+          alias(VA_ARG_KEYWORDS, $.identifier)
         ),
 
       _declaration_declarator: ($) =>
@@ -424,7 +428,8 @@ module.exports = Object.assign(
           alias($._function_declaration_declarator, $.function_declarator),
           $.array_declarator,
           $.parenthesized_declarator,
-          $.identifier
+          $.identifier,
+          alias(VA_ARG_KEYWORDS, $.identifier)
         ),
 
       _field_declarator: ($) =>
@@ -812,7 +817,8 @@ module.exports = Object.assign(
 
       parameter_list: ($) =>
         seq('(', choice(commaSep(choice($.parameter_declaration, $.variadic_parameter)), $.compound_statement), ')'),
-      _old_style_parameter_list: ($) => seq('(', commaSep(choice($.identifier, $.variadic_parameter)), ')'),
+      _old_style_parameter_list: ($) =>
+        seq('(', commaSep(choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier), $.variadic_parameter)), ')'),
 
       parameter_declaration: ($) =>
         seq(
@@ -956,6 +962,7 @@ module.exports = Object.assign(
           $.sizeof_expression,
           $.alignof_expression,
           $.offsetof_expression,
+          $.va_arg_expression,
           $.generic_expression,
           $.subscript_expression,
           $.call_expression,
@@ -963,6 +970,7 @@ module.exports = Object.assign(
           $.compound_literal_expression,
           $.identifier,
           alias('thread_local', $.identifier),
+          alias(VA_ARG_KEYWORDS, $.identifier),
           $.number_literal,
           $._string,
           $.true,
@@ -994,6 +1002,7 @@ module.exports = Object.assign(
 
       _assignment_left_expression: ($) =>
         choice(
+          alias(VA_ARG_KEYWORDS, $.identifier),
           $.identifier,
           $.call_expression,
           $.field_expression,
@@ -1069,17 +1078,23 @@ module.exports = Object.assign(
         ),
 
       sizeof_expression: ($) =>
-        prec(
-          PREC.SIZEOF,
-          seq('sizeof', choice(field('value', $.expression), seq('(', field('type', $.type_descriptor), ')')))
+        prec.dynamic(
+          2,
+          prec(
+            PREC.SIZEOF,
+            seq('sizeof', choice(field('value', $.expression), seq('(', field('type', $.type_descriptor), ')')))
+          )
         ),
 
       alignof_expression: ($) =>
-        prec(
-          PREC.SIZEOF,
-          seq(
-            choice('__alignof__', '__alignof', '_alignof', 'alignof', '_Alignof'),
-            seq('(', field('type', $.type_descriptor), ')')
+        prec.dynamic(
+          2,
+          prec(
+            PREC.SIZEOF,
+            seq(
+              choice('__alignof__', '__alignof', '_alignof', 'alignof', '_Alignof'),
+              seq('(', field('type', $.type_descriptor), ')')
+            )
           )
         ),
 
@@ -1087,6 +1102,12 @@ module.exports = Object.assign(
         prec(
           PREC.OFFSETOF,
           seq('offsetof', seq('(', field('type', $.type_descriptor), ',', field('member', $._field_identifier), ')'))
+        ),
+
+      va_arg_expression: ($) =>
+        prec.dynamic(
+          1,
+          seq(VA_ARG_KEYWORDS, '(', field('value', $.expression), ',', field('type', $.type_descriptor), ')')
         ),
 
       generic_expression: ($) =>
@@ -1339,14 +1360,22 @@ module.exports = Object.assign(
       identifier: () =>
         /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/u,
 
-      _type_identifier: ($) => alias($.identifier, sym('type_identifier')),
-      _field_identifier: ($) => alias($.identifier, sym('field_identifier')),
-      _statement_identifier: ($) => alias($.identifier, sym('statement_identifier')),
+      _type_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('type_identifier')),
+      _field_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('field_identifier')),
+      _statement_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('statement_identifier')),
 
       _empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
 
       macro_type_specifier: ($) =>
-        prec.dynamic(-1, seq(field('name', $.identifier), '(', field('type', $.type_descriptor), ')')),
+        prec.dynamic(
+          -1,
+          seq(
+            field('name', choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier))),
+            '(',
+            field('type', $.type_descriptor),
+            ')'
+          )
+        ),
 
       // http://stackoverflow.com/questions/13014947/regex-to-match-a-c-style-multiline-comment/36328890#36328890
       comment: () => token(choice(LINE_COMMENT, seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
