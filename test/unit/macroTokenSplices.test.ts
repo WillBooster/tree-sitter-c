@@ -226,3 +226,38 @@ test('retains leading backslash runs immediately before trailing block comments'
     parser.delete();
   }
 });
+
+test('preserves macro token boundaries around Unicode punctuation and identifiers', async () => {
+  await Parser.init();
+  const parser = new Parser();
+  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  try {
+    for (const token of [
+      ...['©', '±', '×', '÷', '☃', '😀', '\u0301', '\u200D'].map((mark) => `${mark}1'000`),
+      ...['é', '変数', '𐐀', 'a\u0301', 'a\u200D', '$'].map((name) => `${name}1'a/*'`),
+    ]) {
+      for (const prefix of ['', '_Pragma("once") ']) {
+        for (const splice of ['', '\\\n', '\\\r\n', '\\\r', '\\\n\r']) {
+          // oxlint-disable-next-line typescript/no-misused-spread -- The scanner consumes code points, not graphemes.
+          const [first, ...rest] = [...token];
+          const value = `${prefix}${first}${splice}${rest.join('')}`;
+          const tree = parser.parse(`#define M ${value} /*tail*/\nint after;\n`)!;
+          try {
+            expect(tree.rootNode.hasError, JSON.stringify(value)).toBe(false);
+            const [macro, declaration] = tree.rootNode.namedChildren;
+            expect(macro?.childForFieldName('value')?.text).toBe(`${value} `);
+            expect(macro?.namedChildren.filter((node) => node.type === 'comment').map((node) => node.text)).toEqual([
+              '/*tail*/',
+            ]);
+            expect(declaration?.type).toBe('declaration');
+            expect(declaration?.text).toBe('int after;');
+          } finally {
+            tree.delete();
+          }
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});

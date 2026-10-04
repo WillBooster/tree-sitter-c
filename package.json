@@ -22,11 +22,12 @@
     "tree-sitter.json",
     "*.wasm",
     "src/pragma.h",
+    "src/identifier.h",
     "src/scanner.c"
   ],
   "scripts": {
     "build-wasm": "script/tree-sitter build --wasm",
-    "build/ci": "script/tree-sitter generate && script/tree-sitter build --wasm",
+    "build/ci": "script/tree-sitter generate && bun script/generateIdentifierRanges.js && script/tree-sitter build --wasm",
     "cleanup": "bun wb lint --fix --format",
     "format": "bun wb lint --format",
     "lint": "bun wb lint",

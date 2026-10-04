@@ -2,6 +2,7 @@
 #define TREE_SITTER_C_PRAGMA_H_
 
 #include "tree_sitter/parser.h"
+#include "identifier.h"
 
 static bool scan_pragma_spacing(TSLexer *lexer);
 static bool pragma_space(int32_t c);
@@ -9,7 +10,7 @@ static bool scan_pragma_word(TSLexer *lexer);
 static bool scan_preproc_newline(TSLexer *lexer, bool skip);
 static bool scan_preproc_splices(TSLexer *lexer);
 static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number);
-static bool preproc_word(int32_t c);
+static bool preproc_word(int32_t c, bool continuation);
 
 static bool scan_pragma(TSLexer *lexer) {
     while (pragma_space(lexer->lookahead)) {
@@ -101,7 +102,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash) {
     int32_t number_last = 0;
     while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         int32_t c = lexer->lookahead;
-        bool word = preproc_word(c);
+        bool word = preproc_word(c, in_identifier || in_number);
         bool digit = c >= '0' && c <= '9';
         bool exponent_sign = in_number && (c == '+' || c == '-') &&
                              (number_last == 'e' || number_last == 'E' || number_last == 'p' || number_last == 'P');
@@ -178,7 +179,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash) {
             if (quote == '\'' && in_number) {
                 bool spliced = scan_preproc_splices(lexer);
                 int32_t next = lexer->lookahead;
-                bool continuation = spliced && ((next < 0x80 && preproc_word(next)) || (next >= '0' && next <= '9'));
+                bool continuation = spliced && ((next < 0x80 && preproc_word(next, false)) || (next >= '0' && next <= '9'));
                 escaped = !spliced;
                 if (continuation) {
                     has_content = true;
@@ -243,8 +244,11 @@ static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number) {
     }
 }
 
-static bool preproc_word(int32_t c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= 0x80 && !pragma_space(c));
+static bool preproc_word(int32_t c, bool continuation) {
+    if (c == '\\') return false;
+    return continuation
+        ? set_contains(preproc_identifier_continue, sizeof(preproc_identifier_continue) / sizeof(TSCharacterRange), c)
+        : set_contains(preproc_identifier_start, sizeof(preproc_identifier_start) / sizeof(TSCharacterRange), c);
 }
 
 static bool scan_pragma_word(TSLexer *lexer) {
