@@ -1,0 +1,95 @@
+==================
+Unbraced switch bodies retain one statement
+==================
+
+int f(int x) {
+  switch (x) case 0: ;
+  switch (x) case 0: switch (x) { case 0: goto next; default: return 1; }
+  x++;
+next:
+  switch (x) case 1: return 1;
+  switch (x) { case 0: x++; x++; break; default: break; }
+  switch (x) case 0: while (x) case 1: x--;
+  x++;
+  return x;
+}
+
+---
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (switch_statement
+        (parenthesized_expression
+          (identifier))
+        (case_statement
+          (number_literal)
+          (expression_statement)))
+      (switch_statement
+        (parenthesized_expression
+          (identifier))
+        (case_statement
+          (number_literal)
+          (switch_statement
+            (parenthesized_expression
+              (identifier))
+            (compound_statement
+              (case_statement
+                (number_literal)
+                (goto_statement
+                  (statement_identifier)))
+              (case_statement
+                (return_statement
+                  (number_literal)))))))
+      (expression_statement
+        (update_expression
+          (identifier)))
+      (labeled_statement
+        (statement_identifier)
+        (switch_statement
+          (parenthesized_expression
+            (identifier))
+          (case_statement
+            (number_literal)
+            (return_statement
+              (number_literal)))))
+      (switch_statement
+        (parenthesized_expression
+          (identifier))
+        (compound_statement
+          (case_statement
+            (number_literal)
+            (expression_statement
+              (update_expression
+                (identifier)))
+            (expression_statement
+              (update_expression
+                (identifier)))
+            (break_statement))
+          (case_statement
+            (break_statement))))
+      (switch_statement
+        (parenthesized_expression
+          (identifier))
+        (case_statement
+          (number_literal)
+          (while_statement
+            (parenthesized_expression
+              (identifier))
+            (case_statement
+              (number_literal)
+              (expression_statement
+                (update_expression
+                  (identifier)))))))
+      (expression_statement
+        (update_expression
+          (identifier)))
+      (return_statement
+        (identifier)))))
