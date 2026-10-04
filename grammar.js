@@ -45,6 +45,7 @@ module.exports = Object.assign(
 
     conflicts: ($) => [
       [$.va_arg_expression, $.expression],
+      [$.type_specifier, $.expression, $.va_arg_expression],
       [$._declaration_modifiers, $._empty_declaration],
       [$.declaration, $.storage_class_specifier],
       [$.sized_type_specifier, $.enum_specifier],
@@ -1330,7 +1331,7 @@ module.exports = Object.assign(
       identifier: () =>
         /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/u,
 
-      _type_identifier: ($) => alias($.identifier, sym('type_identifier')),
+      _type_identifier: ($) => alias(choice($.identifier, 'va_arg', '__builtin_va_arg'), sym('type_identifier')),
       _field_identifier: ($) => alias($.identifier, sym('field_identifier')),
       _statement_identifier: ($) =>
         alias(choice($.identifier, 'va_arg', '__builtin_va_arg'), sym('statement_identifier')),

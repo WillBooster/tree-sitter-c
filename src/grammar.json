@@ -11198,8 +11198,21 @@
     "_type_identifier": {
       "type": "ALIAS",
       "content": {
-        "type": "SYMBOL",
-        "name": "identifier"
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "identifier"
+          },
+          {
+            "type": "STRING",
+            "value": "va_arg"
+          },
+          {
+            "type": "STRING",
+            "value": "__builtin_va_arg"
+          }
+        ]
       },
       "named": true,
       "value": "type_identifier"
@@ -11345,6 +11358,11 @@
     [
       "va_arg_expression",
       "expression"
+    ],
+    [
+      "type_specifier",
+      "expression",
+      "va_arg_expression"
     ],
     [
       "_declaration_modifiers",

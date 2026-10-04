@@ -372,3 +372,46 @@ int builtins(int __builtin_va_arg) {
           (statement_identifier)))
       (return_statement
         (identifier)))))
+
+==================
+Ordinary va_arg type and label namespaces
+==================
+
+typedef int va_arg;
+va_arg global;
+void namespaces(void) {
+  va_arg local = global;
+  va_arg: ;
+  if (local) goto va_arg;
+}
+
+---
+
+(translation_unit
+  (type_definition
+    (primitive_type)
+    (type_identifier))
+  (declaration
+    (type_identifier)
+    (identifier))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (declaration
+        (type_identifier)
+        (init_declarator
+          (identifier)
+          (identifier)))
+      (labeled_statement
+        (statement_identifier)
+        (expression_statement))
+      (if_statement
+        (parenthesized_expression
+          (identifier))
+        (goto_statement
+          (statement_identifier))))))
