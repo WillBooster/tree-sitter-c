@@ -94,6 +94,16 @@ static bool scan_pragma_preproc_arg(TSLexer *lexer) {
     bool after_comment = false;
     lexer->mark_end(lexer);
     while (!lexer->eof(lexer)) {
+        if (after_comment && lexer->lookahead == '\\') {
+            lexer->advance(lexer, false);
+            if (lexer->lookahead == '\r') lexer->advance(lexer, false);
+            if (lexer->lookahead == '\n') {
+                lexer->advance(lexer, false);
+                continue;
+            }
+            after_comment = false;
+            lexer->mark_end(lexer);
+        }
         if (lexer->lookahead == '\n') {
             if (!backslash) break;
             lexer->advance(lexer, false);
@@ -114,7 +124,7 @@ static bool scan_pragma_preproc_arg(TSLexer *lexer) {
                 backslash = false;
                 continue;
             }
-            if (lexer->eof(lexer)) break;
+            if (lexer->eof(lexer) || (after_comment && lexer->lookahead == '/')) break;
             backslash = lexer->lookahead == '\\';
             lexer->advance(lexer, false);
             after_comment = false;

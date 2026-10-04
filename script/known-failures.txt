@@ -167,7 +167,6 @@ examples/curl/tests/libtest/lib3596.c
 examples/curl/tests/libtest/lib518.c
 examples/curl/tests/libtest/lib537.c
 examples/curl/tests/libtest/lib670.c
-examples/curl/tests/libtest/unitcheck.h
 examples/curl/tests/server/dnsd.c
 examples/curl/tests/server/first.h
 examples/curl/tests/server/mqttd.c
@@ -274,7 +273,6 @@ examples/git/archive-zip.c
 examples/git/archive.c
 examples/git/attr.c
 examples/git/attr.h
-examples/git/base85.c
 examples/git/bisect.c
 examples/git/blame.c
 examples/git/bloom.c
@@ -449,7 +447,6 @@ examples/git/diff-no-index.c
 examples/git/diff.c
 examples/git/diffcore-pickaxe.c
 examples/git/diffcore-rename.c
-examples/git/diffcore.h
 examples/git/dir.c
 examples/git/entry.c
 examples/git/environment.c
@@ -458,6 +455,7 @@ examples/git/exec-cmd.h
 examples/git/fetch-pack.c
 examples/git/fmt-merge-msg.c
 examples/git/fsck.c
+examples/git/fsck.h
 examples/git/fsmonitor-ipc.c
 examples/git/fsmonitor-settings.c
 examples/git/gettext.h
@@ -467,7 +465,6 @@ examples/git/grep.c
 examples/git/hash.c
 examples/git/hash.h
 examples/git/hashmap.c
-examples/git/hashmap.h
 examples/git/help.c
 examples/git/help.h
 examples/git/hook.c
@@ -478,6 +475,7 @@ examples/git/http-walker.c
 examples/git/http.c
 examples/git/ident.c
 examples/git/imap-send.c
+examples/git/khash.h
 examples/git/line-log.c
 examples/git/list-objects-filter.c
 examples/git/lockfile.c
@@ -657,7 +655,6 @@ examples/git/wt-status.c
 examples/git/xdiff/xdiff.h
 examples/git/xdiff/xdiffi.c
 examples/libuv/include/uv.h
-examples/libuv/include/uv/tree.h
 examples/libuv/include/uv/unix.h
 examples/libuv/include/uv/win.h
 examples/libuv/src/fs-poll.c
@@ -667,6 +664,7 @@ examples/libuv/src/threadpool.c
 examples/libuv/src/unix/async.c
 examples/libuv/src/unix/core.c
 examples/libuv/src/unix/fs.c
+examples/libuv/src/unix/fsevents.c
 examples/libuv/src/unix/internal.h
 examples/libuv/src/unix/kqueue.c
 examples/libuv/src/unix/linux.c
@@ -688,6 +686,7 @@ examples/libuv/src/win/getaddrinfo.c
 examples/libuv/src/win/getnameinfo.c
 examples/libuv/src/win/handle-inl.h
 examples/libuv/src/win/internal.h
+examples/libuv/src/win/loop-watcher.c
 examples/libuv/src/win/pipe.c
 examples/libuv/src/win/poll.c
 examples/libuv/src/win/process.c
@@ -696,6 +695,7 @@ examples/libuv/src/win/stream-inl.h
 examples/libuv/src/win/tcp.c
 examples/libuv/src/win/thread.c
 examples/libuv/src/win/tty.c
+examples/libuv/src/win/udp.c
 examples/libuv/src/win/util.c
 examples/libuv/src/win/winapi.h
 examples/libuv/src/win/winsock.c

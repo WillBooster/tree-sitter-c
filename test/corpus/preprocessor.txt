@@ -525,3 +525,67 @@ int after;
   (declaration
     type: (primitive_type)
     declarator: (identifier)))
+
+================================================================================
+Trailing macro comments and empty continuations
+================================================================================
+
+#define A a /*block*/ // line
+#define P _Pragma("once") /*block*/ // line
+#define URL a /*c*/ // see http://x.org/*.h
+int preserved;
+/* next comment */
+#define EMPTY a /*block*/\
+
+#define PEMPTY _Pragma("once") /*block*/\
+
+#define FULL a /*block*/\
+ b
+#define PFULL _Pragma("once") /*block*/\
+ b
+#define MULTILINE a /* first
+ second */ b
+int after;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg)
+    (comment)
+    (comment))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg)
+    (comment)
+    (comment))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg)
+    (comment)
+    (comment))
+  (declaration
+    type: (primitive_type)
+    declarator: (identifier))
+  (comment)
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg)
+    (comment))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg)
+    (comment))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (declaration
+    type: (primitive_type)
+    declarator: (identifier)))

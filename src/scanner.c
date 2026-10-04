@@ -25,7 +25,14 @@ void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffe
 bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     (void)payload;
     if (valid_symbols[PREPROC_NEWLINE]) {
-        while (pragma_space(lexer->lookahead) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
+        for (;;) {
+            while (pragma_space(lexer->lookahead) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
+                lexer->advance(lexer, true);
+            }
+            if (lexer->lookahead != '\\') break;
+            lexer->advance(lexer, true);
+            if (lexer->lookahead == '\r') lexer->advance(lexer, true);
+            if (lexer->lookahead != '\n') return false;
             lexer->advance(lexer, true);
         }
         if (lexer->lookahead == '\r') lexer->advance(lexer, false);
