@@ -1,0 +1,116 @@
+================================================================================
+GNU attributes in pointer declarators
+================================================================================
+
+int * __attribute__((used)) pointer(void) { return 0; }
+int * const __attribute__((used)) qualified(void) { return 0; }
+int * __attribute__((used)) const interleaved(void) { return 0; }
+typedef int * __attribute__((aligned(8))) Pointer;
+struct S { int * __attribute__((aligned(8))) member; };
+void consume(int * __attribute__((unused)) argument) {}
+int main(void) { return sizeof(int * __attribute__((address_space(1)))) == 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (pointer_declarator
+      (attribute_specifier
+        (argument_list
+          (identifier)))
+      (function_declarator
+        (identifier)
+        (parameter_list
+          (parameter_declaration
+            (primitive_type)))))
+    (compound_statement
+      (return_statement
+        (number_literal))))
+  (function_definition
+    (primitive_type)
+    (pointer_declarator
+      (type_qualifier)
+      (attribute_specifier
+        (argument_list
+          (identifier)))
+      (function_declarator
+        (identifier)
+        (parameter_list
+          (parameter_declaration
+            (primitive_type)))))
+    (compound_statement
+      (return_statement
+        (number_literal))))
+  (function_definition
+    (primitive_type)
+    (pointer_declarator
+      (attribute_specifier
+        (argument_list
+          (identifier)))
+      (type_qualifier)
+      (function_declarator
+        (identifier)
+        (parameter_list
+          (parameter_declaration
+            (primitive_type)))))
+    (compound_statement
+      (return_statement
+        (number_literal))))
+  (type_definition
+    (primitive_type)
+    (pointer_declarator
+      (attribute_specifier
+        (argument_list
+          (call_expression
+            (identifier)
+            (argument_list
+              (number_literal)))))
+      (type_identifier)))
+  (struct_specifier
+    (type_identifier)
+    (field_declaration_list
+      (field_declaration
+        (primitive_type)
+        (pointer_declarator
+          (attribute_specifier
+            (argument_list
+              (call_expression
+                (identifier)
+                (argument_list
+                  (number_literal)))))
+          (field_identifier)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (pointer_declarator
+            (attribute_specifier
+              (argument_list
+                (identifier)))
+            (identifier)))))
+    (compound_statement))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (binary_expression
+          (sizeof_expression
+            (type_descriptor
+              (primitive_type)
+              (abstract_pointer_declarator
+                (attribute_specifier
+                  (argument_list
+                    (call_expression
+                      (identifier)
+                      (argument_list
+                        (number_literal))))))))
+          (number_literal))))))
