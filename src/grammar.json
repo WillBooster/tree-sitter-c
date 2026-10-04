@@ -9426,6 +9426,22 @@
           "value": "("
         },
         {
+          "type": "REPEAT",
+          "content": {
+            "type": "FIELD",
+            "name": "storage_class",
+            "content": {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_compound_literal_storage_class_specifier"
+              },
+              "named": true,
+              "value": "storage_class_specifier"
+            }
+          }
+        },
+        {
           "type": "FIELD",
           "name": "type",
           "content": {
@@ -9446,6 +9462,39 @@
           }
         }
       ]
+    },
+    "_compound_literal_storage_class_specifier": {
+      "type": "PREC_DYNAMIC",
+      "value": -1,
+      "content": {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "static"
+          },
+          {
+            "type": "STRING",
+            "value": "register"
+          },
+          {
+            "type": "STRING",
+            "value": "thread_local"
+          },
+          {
+            "type": "STRING",
+            "value": "_Thread_local"
+          },
+          {
+            "type": "STRING",
+            "value": "__thread"
+          },
+          {
+            "type": "STRING",
+            "value": "constexpr"
+          }
+        ]
+      }
     },
     "parenthesized_expression": {
       "type": "SEQ",
@@ -11117,6 +11166,10 @@
     [
       "declaration",
       "storage_class_specifier"
+    ],
+    [
+      "type_qualifier",
+      "_compound_literal_storage_class_specifier"
     ],
     [
       "sized_type_specifier",

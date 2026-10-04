@@ -1538,3 +1538,56 @@ void f(void) {
           value: (binary_expression
             left: (builtin_available_expression)
             right: (identifier)))))))
+
+================================================================================
+C23 compound literal storage classes
+================================================================================
+
+void f(void) {
+  (static int){42};
+  (register int){1};
+  (static thread_local long){1l};
+  (constexpr static int){7};
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (expression_statement
+        (compound_literal_expression
+          storage_class: (storage_class_specifier)
+          type: (type_descriptor
+            type: (primitive_type))
+          value: (initializer_list
+            (number_literal))))
+      (expression_statement
+        (compound_literal_expression
+          storage_class: (storage_class_specifier)
+          type: (type_descriptor
+            type: (primitive_type))
+          value: (initializer_list
+            (number_literal))))
+      (expression_statement
+        (compound_literal_expression
+          storage_class: (storage_class_specifier)
+          storage_class: (storage_class_specifier)
+          type: (type_descriptor
+            type: (sized_type_specifier))
+          value: (initializer_list
+            (number_literal))))
+      (expression_statement
+        (compound_literal_expression
+          storage_class: (storage_class_specifier)
+          storage_class: (storage_class_specifier)
+          type: (type_descriptor
+            type: (primitive_type))
+          value: (initializer_list
+            (number_literal)))))))
