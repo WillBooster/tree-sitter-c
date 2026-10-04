@@ -44,6 +44,7 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$.type_definition, $._declaration_modifiers],
       [$.type_definition, $.type_specifier],
       [$.type_definition, $.type_qualifier, $.extension_expression],
       [$.type_definition, $.type_qualifier],
@@ -329,7 +330,7 @@ module.exports = Object.assign(
         seq(
           optional(prec.dynamic(1, '__extension__')),
           choice(
-            seq(repeat($._declaration_modifiers), 'typedef', $._type_definition_type),
+            seq(repeat($.type_qualifier), 'typedef', $._type_definition_type),
             seq(
               repeat($._declaration_modifiers),
               field('type', $._non_identifier_type_specifier),
