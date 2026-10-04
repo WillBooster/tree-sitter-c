@@ -5078,6 +5078,19 @@
         {
           "type": "SYMBOL",
           "name": "_type_identifier"
+        },
+        {
+          "type": "PREC_DYNAMIC",
+          "value": -1,
+          "content": {
+            "type": "ALIAS",
+            "content": {
+              "type": "STRING",
+              "value": "thread_local"
+            },
+            "named": true,
+            "value": "type_identifier"
+          }
         }
       ]
     },
@@ -7381,6 +7394,15 @@
           "name": "identifier"
         },
         {
+          "type": "ALIAS",
+          "content": {
+            "type": "STRING",
+            "value": "thread_local"
+          },
+          "named": true,
+          "value": "identifier"
+        },
+        {
           "type": "SYMBOL",
           "name": "number_literal"
         },
@@ -9426,6 +9448,48 @@
           "value": "("
         },
         {
+          "type": "REPEAT",
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "FIELD",
+                    "name": "storage_class",
+                    "content": {
+                      "type": "ALIAS",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_compound_literal_constexpr_specifier"
+                      },
+                      "named": true,
+                      "value": "storage_class_specifier"
+                    }
+                  },
+                  {
+                    "type": "BLANK"
+                  }
+                ]
+              },
+              {
+                "type": "FIELD",
+                "name": "storage_class",
+                "content": {
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_compound_literal_storage_class_specifier"
+                  },
+                  "named": true,
+                  "value": "storage_class_specifier"
+                }
+              }
+            ]
+          }
+        },
+        {
           "type": "FIELD",
           "name": "type",
           "content": {
@@ -9444,6 +9508,35 @@
             "type": "SYMBOL",
             "name": "initializer_list"
           }
+        }
+      ]
+    },
+    "_compound_literal_constexpr_specifier": {
+      "type": "STRING",
+      "value": "constexpr"
+    },
+    "_compound_literal_storage_class_specifier": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "static"
+        },
+        {
+          "type": "STRING",
+          "value": "register"
+        },
+        {
+          "type": "STRING",
+          "value": "thread_local"
+        },
+        {
+          "type": "STRING",
+          "value": "_Thread_local"
+        },
+        {
+          "type": "STRING",
+          "value": "__thread"
         }
       ]
     },
@@ -11199,6 +11292,18 @@
     [
       "type_qualifier",
       "extension_expression"
+    ],
+    [
+      "storage_class_specifier",
+      "type_specifier"
+    ],
+    [
+      "_compound_literal_storage_class_specifier",
+      "type_specifier"
+    ],
+    [
+      "_compound_literal_constexpr_specifier",
+      "type_qualifier"
     ]
   ],
   "precedences": [],
