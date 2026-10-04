@@ -11049,8 +11049,12 @@
     "_type_identifier": {
       "type": "ALIAS",
       "content": {
-        "type": "SYMBOL",
-        "name": "identifier"
+        "type": "RESERVED",
+        "content": {
+          "type": "SYMBOL",
+          "name": "identifier"
+        },
+        "context_name": "type_identifier"
       },
       "named": true,
       "value": "type_identifier"
@@ -11325,5 +11329,25 @@
     "_type_declarator",
     "_abstract_declarator"
   ],
-  "reserved": {}
+  "reserved": {
+    "global": [],
+    "type_identifier": [
+      {
+        "type": "STRING",
+        "value": "enum"
+      },
+      {
+        "type": "STRING",
+        "value": "struct"
+      },
+      {
+        "type": "STRING",
+        "value": "union"
+      },
+      {
+        "type": "STRING",
+        "value": "typedef"
+      }
+    ]
+  }
 }

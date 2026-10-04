@@ -8,7 +8,7 @@
 // @ts-check
 
 // Tree-sitter injects its DSL before loading this CommonJS grammar.
-const { grammar, alias, choice, field, optional, prec, repeat, repeat1, seq, sym, token } =
+const { grammar, alias, choice, field, optional, prec, repeat, repeat1, reserved, seq, sym, token } =
   /** @type {typeof globalThis & typeof import('./types/treeSitterDsl')} */ (globalThis);
 
 const PREC = {
@@ -98,6 +98,11 @@ module.exports = Object.assign(
     ],
 
     word: ($) => $.identifier,
+
+    reserved: {
+      global: () => [],
+      type_identifier: () => ['enum', 'struct', 'union', 'typedef'],
+    },
 
     rules: {
       translation_unit: ($) => repeat($._top_level_item),
@@ -1300,7 +1305,7 @@ module.exports = Object.assign(
       identifier: () =>
         /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/u,
 
-      _type_identifier: ($) => alias($.identifier, sym('type_identifier')),
+      _type_identifier: ($) => alias(reserved('type_identifier', $.identifier), sym('type_identifier')),
       _field_identifier: ($) => alias($.identifier, sym('field_identifier')),
       _statement_identifier: ($) => alias($.identifier, sym('statement_identifier')),
 
