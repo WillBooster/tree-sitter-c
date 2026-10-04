@@ -1,10 +1,14 @@
+import path from 'node:path';
+
 import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
+
+const wasmPath = path.join(import.meta.dirname, '../../tree-sitter-c.wasm');
 
 test('preserves declarations after an unexpanded header macro before typedef', async () => {
   await Parser.init();
   const parser = new Parser();
-  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  parser.setLanguage(await Language.load(wasmPath));
   try {
     for (const [declaration, type, declarator] of [
       ['enum { A, B } Level;', 'enum { A, B }', 'Level'],
@@ -37,7 +41,7 @@ test('preserves declarations after an unexpanded header macro before typedef', a
 test('retains legacy implicit-int declaration recovery after qualifiers', async () => {
   await Parser.init();
   const parser = new Parser();
-  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  parser.setLanguage(await Language.load(wasmPath));
   try {
     const source = 'const x = 1; volatile y = 2; const z; void f(void) { const local = 3; int after; }';
     const tree = parser.parse(source)!;
