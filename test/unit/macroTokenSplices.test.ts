@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
+import path from 'node:path';
 
 import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
+const wasmPath = path.join(import.meta.dirname, '../../tree-sitter-c.wasm');
+
 test('preserves macro values and trailing comments across every Unicode escape splice position', async () => {
   await Parser.init();
   const parser = new Parser();
-  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  parser.setLanguage(await Language.load(wasmPath));
   try {
     for (const token of [
       String.raw`1\u00e9'0`,
@@ -46,7 +49,7 @@ test('preserves macro values and trailing comments across every Unicode escape s
 test('distinguishes digit separators from adjacent character literals at macro boundaries', async () => {
   await Parser.init();
   const parser = new Parser();
-  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  parser.setLanguage(await Language.load(wasmPath));
   try {
     for (const token of [
       "1'000'/*'",
@@ -95,7 +98,7 @@ test('distinguishes digit separators from adjacent character literals at macro b
 test('retains trailing comments with spliced delimiters in the macro value', async () => {
   await Parser.init();
   const parser = new Parser();
-  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  parser.setLanguage(await Language.load(wasmPath));
   try {
     for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
       for (const comment of [`/\\${newline}*c*/`, `/*c*\\${newline}/`, `/\\${newline}*c*\\${newline}/`]) {
@@ -125,7 +128,7 @@ test('retains trailing comments with spliced delimiters in the macro value', asy
 test('preserves leading and slash-adjacent escaped identifiers across every splice position', async () => {
   await Parser.init();
   const parser = new Parser();
-  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  parser.setLanguage(await Language.load(wasmPath));
   try {
     for (const token of [
       String.raw`\u00e91'a/*'`,
@@ -179,7 +182,7 @@ test('preserves leading and slash-adjacent escaped identifiers across every spli
 test('keeps LFCR splices inside ordinary, quoted and commented macro values', async () => {
   await Parser.init();
   const parser = new Parser();
-  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  parser.setLanguage(await Language.load(wasmPath));
   try {
     const splice = '\\\n\r';
     for (const value of [`1 ${splice}+ 2`, `"a${splice}b"`, `1 // comment${splice}continued`]) {
@@ -203,7 +206,7 @@ test('keeps LFCR splices inside ordinary, quoted and commented macro values', as
 test('retains leading backslash runs immediately before trailing block comments', async () => {
   await Parser.init();
   const parser = new Parser();
-  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  parser.setLanguage(await Language.load(wasmPath));
   try {
     for (const count of [1, 2, 3, 8]) {
       const value = '\\'.repeat(count);
@@ -232,7 +235,7 @@ test('retains leading backslash runs immediately before trailing block comments'
 test('preserves macro token boundaries around Unicode punctuation and identifiers', async () => {
   await Parser.init();
   const parser = new Parser();
-  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  parser.setLanguage(await Language.load(wasmPath));
   try {
     for (const token of [
       ...['©', '±', '×', '÷', '☃', '😀', '\u0301', '\u200D'].map((mark) => `${mark}1'000`),
@@ -268,7 +271,7 @@ test('preserves macro token boundaries around Unicode punctuation and identifier
 test('preserves directive arguments and trailing comments across whitespace and line endings', async () => {
   await Parser.init();
   const parser = new Parser();
-  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  parser.setLanguage(await Language.load(wasmPath));
   try {
     for (const directive of ['#define M', '#pragma', '#error', '#warning', '#line']) {
       for (const value of [
@@ -314,7 +317,7 @@ test('preserves directive arguments and trailing comments across whitespace and 
 test('keeps block markers inert in unmatched directive quote line comments', async () => {
   await Parser.init();
   const parser = new Parser();
-  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  parser.setLanguage(await Language.load(wasmPath));
   try {
     for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
       for (const continuation of ['', `\\${newline}continued /* inert`]) {
