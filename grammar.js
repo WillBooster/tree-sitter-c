@@ -61,6 +61,11 @@ module.exports = Object.assign(
       [$.sized_type_specifier],
       [$._sized_bit_int_specifier],
       [$.sized_type_specifier, $._sized_bit_int_specifier],
+      [$._type_declarator, $.sized_type_specifier, $._sized_bit_int_specifier],
+      [$.type_qualifier, $.atomic_type_specifier],
+      [$.type_definition, $._type_declarator],
+      [$.type_definition, $.sized_type_specifier],
+      [$.type_definition, $._sized_bit_int_specifier],
       [$.attributed_statement],
       [$._declaration_modifiers, $.attributed_statement],
       [$.enum_specifier],
@@ -336,7 +341,7 @@ module.exports = Object.assign(
               field('type', $._non_identifier_type_specifier),
               repeat($.type_qualifier),
               'typedef',
-              repeat($.type_qualifier)
+              repeat(choice($.type_qualifier, $._non_identifier_type_specifier))
             )
           ),
           $._type_definition_declarators,

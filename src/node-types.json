@@ -4032,6 +4032,10 @@
       "required": false,
       "types": [
         {
+          "type": "atomic_type_specifier",
+          "named": true
+        },
+        {
           "type": "attribute_declaration",
           "named": true
         },
@@ -4040,7 +4044,23 @@
           "named": true
         },
         {
+          "type": "bit_int_specifier",
+          "named": true
+        },
+        {
+          "type": "enum_specifier",
+          "named": true
+        },
+        {
           "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "primitive_type",
+          "named": true
+        },
+        {
+          "type": "sized_type_specifier",
           "named": true
         },
         {
@@ -4048,7 +4068,19 @@
           "named": true
         },
         {
+          "type": "struct_specifier",
+          "named": true
+        },
+        {
           "type": "type_qualifier",
+          "named": true
+        },
+        {
+          "type": "typeof_specifier",
+          "named": true
+        },
+        {
+          "type": "union_specifier",
           "named": true
         }
       ]
