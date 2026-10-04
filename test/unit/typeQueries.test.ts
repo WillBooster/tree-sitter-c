@@ -166,3 +166,67 @@ test('keeps constexpr recovery fields independent of prefix edit history', async
     parser.delete();
   }
 });
+
+test('preserves thread_local typedef queries across compound literal role edits', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const source = 'typedef int thread_local; void f(void){(thread_local){0};}';
+  let tree = parser.parse(source)!;
+  let query: Query | undefined;
+  try {
+    query = new Query(
+      language,
+      '(compound_literal_expression storage_class: (storage_class_specifier) @storage) (compound_literal_expression type: (type_descriptor) @type value: (initializer_list) @value) (type_specifier/type_identifier) @typedef (expression/compound_literal_expression) @expression'
+    );
+    const snapshot = (root: typeof tree.rootNode): { name: string; text: string; start: number; end: number }[] =>
+      query!
+        .captures(root)
+        .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
+    expect(tree.rootNode.hasError).toBe(false);
+    const captures = snapshot(tree.rootNode);
+    expect(captures.filter(({ name }) => name === 'storage')).toEqual([]);
+    expect(captures.filter(({ name }) => name === 'type').map(({ text }) => text)).toEqual(['thread_local']);
+    expect(captures.filter(({ name }) => name === 'typedef').map(({ text }) => text)).toEqual(['thread_local']);
+    expect(captures.filter(({ name }) => name === 'value').map(({ text }) => text)).toEqual(['{0}']);
+    expect(captures.filter(({ name }) => name === 'expression').map(({ text }) => text)).toEqual(['(thread_local){0}']);
+    let currentSource = source;
+    for (const nextSource of [
+      source.replace('(thread_local)', '(static thread_local int)'),
+      source.replace('(thread_local)', '(thread_local *)'),
+      source.replace('(thread_local)', '(const thread_local)'),
+      source,
+    ]) {
+      const startIndex = source.indexOf('(thread_local)') + 1;
+      const oldEndIndex = currentSource.indexOf('){0}', startIndex);
+      const newEndIndex = nextSource.indexOf('){0}', startIndex);
+      tree.edit(
+        new Edit({
+          startIndex,
+          oldEndIndex,
+          newEndIndex,
+          startPosition: { row: 0, column: startIndex },
+          oldEndPosition: { row: 0, column: oldEndIndex },
+          newEndPosition: { row: 0, column: newEndIndex },
+        })
+      );
+      const next = parser.parse(nextSource, tree)!;
+      tree.delete();
+      tree = next;
+      const fresh = parser.parse(nextSource)!;
+      try {
+        expect(tree.rootNode.hasError).toBe(false);
+        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+        expect(snapshot(tree.rootNode)).toEqual(snapshot(fresh.rootNode));
+      } finally {
+        fresh.delete();
+      }
+      currentSource = nextSource;
+    }
+  } finally {
+    query?.delete();
+    tree.delete();
+    parser.delete();
+  }
+});

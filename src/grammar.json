@@ -5078,6 +5078,19 @@
         {
           "type": "SYMBOL",
           "name": "_type_identifier"
+        },
+        {
+          "type": "PREC_DYNAMIC",
+          "value": -1,
+          "content": {
+            "type": "ALIAS",
+            "content": {
+              "type": "STRING",
+              "value": "thread_local"
+            },
+            "named": true,
+            "value": "type_identifier"
+          }
         }
       ]
     },
@@ -7379,6 +7392,15 @@
         {
           "type": "SYMBOL",
           "name": "identifier"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "STRING",
+            "value": "thread_local"
+          },
+          "named": true,
+          "value": "identifier"
         },
         {
           "type": "SYMBOL",
@@ -11270,6 +11292,18 @@
     [
       "type_qualifier",
       "extension_expression"
+    ],
+    [
+      "storage_class_specifier",
+      "type_specifier"
+    ],
+    [
+      "_compound_literal_storage_class_specifier",
+      "type_specifier"
+    ],
+    [
+      "_compound_literal_constexpr_specifier",
+      "type_qualifier"
     ]
   ],
   "precedences": [],
