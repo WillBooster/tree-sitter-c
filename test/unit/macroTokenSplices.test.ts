@@ -343,6 +343,40 @@ test('preserves trailing macro comments after unmatched quotes containing line m
   }
 });
 
+test('preserves declarations and trailing comments after quotes cross physical newlines', () => {
+  const parser = createParser();
+  try {
+    for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
+      const comment = `/* see${newline}   John's notes */`;
+      const tree = parser.parse(`#define X don't ${comment}${newline}int after;${newline}`)!;
+      try {
+        expect(tree.rootNode.hasError).toBe(false);
+        const [macro, declaration] = tree.rootNode.namedChildren;
+        expect(macro?.childForFieldName('value')?.text).toBe("don't ");
+        expect(macro?.descendantsOfType('comment').map((node) => node.text)).toEqual([comment]);
+        expect(declaration?.text).toBe('int after;');
+      } finally {
+        tree.delete();
+      }
+    }
+    for (const newline of ['\n', '\r\n', '\n\r']) {
+      const broken = parser.parse(
+        `#define OPEN "/*${newline}int x = 1;${newline}const char *s = "hi";${newline}int y;${newline}`
+      )!;
+      try {
+        expect(broken.rootNode.hasError).toBe(true);
+        expect(
+          broken.rootNode.namedChildren.filter((node) => node.type === 'declaration').map((node) => node.text)
+        ).toEqual(['int x = 1;', 'const char *s = "hi";', 'int y;']);
+      } finally {
+        broken.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
 function createParser(): Parser {
   const parser = new Parser();
   parser.setLanguage(language);

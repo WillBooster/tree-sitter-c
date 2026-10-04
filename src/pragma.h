@@ -210,6 +210,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
 
 static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped, bool directive_text) {
     lexer->mark_end(lexer);
+    bool literal = true;
     bool slash = false;
     bool block = false;
     bool line = false;
@@ -219,7 +220,8 @@ static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped, bool
     while (!lexer->eof(lexer) && (block || (lexer->lookahead != '\n' && lexer->lookahead != '\r'))) {
         int32_t c = lexer->lookahead;
         lexer->advance(lexer, false);
-        if (c == quote && !escaped) {
+        if (c == '\n' || c == '\r') literal = false;
+        if (literal && c == quote && !escaped) {
             lexer->mark_end(lexer);
             return true;
         }
