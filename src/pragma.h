@@ -91,6 +91,7 @@ static bool scan_pragma_preproc_arg(TSLexer *lexer) {
     }
     if (!scan_pragma_word(lexer)) return false;
     bool backslash = false;
+    bool after_comment = false;
     lexer->mark_end(lexer);
     while (!lexer->eof(lexer)) {
         if (lexer->lookahead == '\n') {
@@ -99,15 +100,30 @@ static bool scan_pragma_preproc_arg(TSLexer *lexer) {
             backslash = false;
         } else if (lexer->lookahead == '/') {
             lexer->advance(lexer, false);
-            if (lexer->lookahead == '*') break;
+            if (lexer->lookahead == '*') {
+                lexer->advance(lexer, false);
+                bool star = false;
+                while (!lexer->eof(lexer)) {
+                    if (star && lexer->lookahead == '/') break;
+                    star = lexer->lookahead == '*';
+                    lexer->advance(lexer, false);
+                }
+                if (lexer->eof(lexer)) break;
+                lexer->advance(lexer, false);
+                after_comment = true;
+                backslash = false;
+                continue;
+            }
             if (lexer->eof(lexer)) break;
             backslash = lexer->lookahead == '\\';
             lexer->advance(lexer, false);
+            after_comment = false;
         } else {
+            if (!pragma_space(lexer->lookahead)) after_comment = false;
             if (lexer->lookahead != '\r') backslash = lexer->lookahead == '\\';
             lexer->advance(lexer, false);
         }
-        lexer->mark_end(lexer);
+        if (!after_comment) lexer->mark_end(lexer);
     }
     return true;
 }

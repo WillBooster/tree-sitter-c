@@ -201,7 +201,13 @@ module.exports = Object.assign(
 
       _preproc_newline: () => token.immediate(/\r?\n/),
 
-      preproc_arg: () => token(prec(-1, /\S([^/\n]|\/[^*]|\\\r?\n)*/)),
+      preproc_arg: () =>
+        token(
+          prec(
+            -1,
+            /\S([^/\n]|\/[^*]|\\\r?\n|\/\*[^*]*\*+([^/*][^*]*\*+)*\/([ \t]|\/\*[^*]*\*+([^/*][^*]*\*+)*\/)*(\\\r?\n|[^\s/]|\/[^*\n]))*/
+          )
+        ),
       preproc_directive: () => /#[ \t]*[a-zA-Z0-9]\w*/,
 
       _preproc_expression: ($) =>

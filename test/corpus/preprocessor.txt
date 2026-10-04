@@ -447,3 +447,52 @@ uint32_t a;
     (declaration
       (primitive_type)
       (identifier))))
+
+================================================================================
+Block comments within macro bodies and trailing comments
+================================================================================
+
+#define M a /*c*/ b
+#define BRACED do { /*c*/; } while (0)
+#define TRAILING a /*end*/  
+#define MULTI a /*first*/ /*second*/ b /*last*/  
+#define CONT a /*comment*/\
+ b
+#define PRAGMA _Pragma("once") /*c*/ value
+#define QUOTED "/*not a comment*/"
+void after(void) {}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg)
+    (comment))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg)
+    (comment))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement)))
