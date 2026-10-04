@@ -11,6 +11,7 @@ static bool scan_preproc_newline(TSLexer *lexer, bool skip);
 static bool scan_preproc_splices(TSLexer *lexer);
 static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number);
 static bool preproc_word(int32_t c, bool continuation);
+static bool scan_directive_quote(TSLexer *lexer);
 
 static bool scan_pragma(TSLexer *lexer) {
     while (pragma_space(lexer->lookahead)) {
@@ -173,6 +174,12 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
             has_content = true;
             after_comment = false;
         } else if (lexer->lookahead == '"' || (!directive_text && lexer->lookahead == '\'')) {
+            if (directive_text) {
+                if (!scan_directive_quote(lexer)) return true;
+                has_content = true;
+                after_comment = false;
+                continue;
+            }
             int32_t quote = lexer->lookahead;
             lexer->advance(lexer, false);
             bool escaped = false;
@@ -216,6 +223,52 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
         if (!after_comment && has_content) lexer->mark_end(lexer);
     }
     return has_content;
+}
+
+static bool scan_directive_quote(TSLexer *lexer) {
+    lexer->advance(lexer, false);
+    lexer->mark_end(lexer);
+    bool escaped = false;
+    bool slash = false;
+    bool block = false;
+    bool star = false;
+    bool split_comment = false;
+    bool after_comment = false;
+    while (!lexer->eof(lexer) && (block || (lexer->lookahead != '\n' && lexer->lookahead != '\r'))) {
+        int32_t c = lexer->lookahead;
+        lexer->advance(lexer, false);
+        if (c == '"' && !escaped) {
+            lexer->mark_end(lexer);
+            return true;
+        }
+        if (c == '\\' && scan_preproc_newline(lexer, false)) {
+            if (slash || star) split_comment = true;
+            if (!block && !slash && !after_comment) lexer->mark_end(lexer);
+            continue;
+        }
+        escaped = c == '\\' && !escaped;
+        if (block) {
+            if (star && c == '/') {
+                block = false;
+                after_comment = !split_comment;
+                if (split_comment) lexer->mark_end(lexer);
+                split_comment = false;
+                star = false;
+            } else {
+                star = c == '*';
+            }
+        } else if (slash && c == '*') {
+            block = true;
+            slash = false;
+        } else {
+            if (slash || !pragma_space(c)) after_comment = false;
+            slash = c == '/';
+            if (!slash) split_comment = false;
+            if (!slash && !after_comment) lexer->mark_end(lexer);
+        }
+    }
+    if (slash) lexer->mark_end(lexer);
+    return false;
 }
 
 static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number) {

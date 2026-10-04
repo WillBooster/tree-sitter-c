@@ -274,7 +274,17 @@ test('preserves directive arguments and trailing comments across whitespace and 
       for (const value of [
         'mark /*inside*/ Section',
         '"/*literal*/" /*inside*/ tail',
-        ...(directive === '#define M' ? [] : ["mark don't"]),
+        ...(directive === '#define M'
+          ? []
+          : [
+              "mark don't",
+              'mark "title',
+              'mark "title /*inner*/ continued',
+              'mark "title /*inner\n*/ continued',
+              'mark "balanced /*opaque*/"',
+              'mark "title /\\\n*split*/',
+              'mark "title /*split*\\\n/',
+            ]),
       ]) {
         for (const padding of ['  ', '\t', '\u00A0', '\u3000']) {
           for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
