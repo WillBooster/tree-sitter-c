@@ -70,6 +70,9 @@ module.exports = Object.assign(
       [$._top_level_item, $._top_level_statement],
       [$.type_specifier, $._top_level_expression_statement],
       [$.type_qualifier, $.extension_expression],
+      [$.storage_class_specifier, $.type_specifier],
+      [$._compound_literal_storage_class_specifier, $.type_specifier],
+      [$._compound_literal_constexpr_specifier, $.type_qualifier],
     ],
 
     externals: () => [sym('pragma_operator'), sym('preproc_arg'), sym('_preproc_newline')],
@@ -634,7 +637,13 @@ module.exports = Object.assign(
 
       alignas_qualifier: ($) => seq(choice('alignas', '_Alignas'), '(', choice($.expression, $.type_descriptor), ')'),
 
-      type_specifier: ($) => choice($._non_identifier_type_specifier, $.macro_type_specifier, $._type_identifier),
+      type_specifier: ($) =>
+        choice(
+          $._non_identifier_type_specifier,
+          $.macro_type_specifier,
+          $._type_identifier,
+          prec.dynamic(-1, alias('thread_local', sym('type_identifier')))
+        ),
 
       _non_identifier_type_specifier: ($) =>
         choice(
@@ -947,6 +956,7 @@ module.exports = Object.assign(
           $.field_expression,
           $.compound_literal_expression,
           $.identifier,
+          alias('thread_local', $.identifier),
           $.number_literal,
           $._string,
           $.true,
@@ -1160,7 +1170,25 @@ module.exports = Object.assign(
         ),
 
       compound_literal_expression: ($) =>
-        seq('(', field('type', $.type_descriptor), ')', field('value', $.initializer_list)),
+        seq(
+          '(',
+          repeat(
+            seq(
+              optional(
+                field('storage_class', alias($._compound_literal_constexpr_specifier, $.storage_class_specifier))
+              ),
+              field('storage_class', alias($._compound_literal_storage_class_specifier, $.storage_class_specifier))
+            )
+          ),
+          field('type', $.type_descriptor),
+          ')',
+          field('value', $.initializer_list)
+        ),
+
+      _compound_literal_constexpr_specifier: () => 'constexpr',
+
+      _compound_literal_storage_class_specifier: () =>
+        choice('static', 'register', 'thread_local', '_Thread_local', '__thread'),
 
       parenthesized_expression: ($) => seq('(', choice($.expression, $.comma_expression, $.compound_statement), ')'),
 
