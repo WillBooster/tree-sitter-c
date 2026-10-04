@@ -134,15 +134,27 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
         } else if (lexer->lookahead == '"' || (lexer->lookahead == '\'' && !in_number)) {
             int32_t quote = lexer->lookahead;
             lexer->advance(lexer, false);
-            while (!lexer->eof(lexer) && lexer->lookahead != quote && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
+            bool escaped = false;
+            while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
                 if (lexer->lookahead == '\\') {
                     lexer->advance(lexer, false);
-                    if (lexer->lookahead == '\r') lexer->advance(lexer, false);
-                    if (lexer->eof(lexer)) break;
+                    if (lexer->lookahead == '\r') {
+                        lexer->mark_end(lexer);
+                        lexer->advance(lexer, false);
+                        if (lexer->lookahead != '\n') return true;
+                    }
+                    if (lexer->lookahead == '\n') {
+                        lexer->advance(lexer, false);
+                        continue;
+                    }
+                    escaped = !escaped;
+                    continue;
                 }
+                bool closing = lexer->lookahead == quote && !escaped;
                 lexer->advance(lexer, false);
+                if (closing) break;
+                escaped = false;
             }
-            if (lexer->lookahead == quote) lexer->advance(lexer, false);
             has_content = true;
             after_comment = false;
         } else {
