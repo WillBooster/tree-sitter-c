@@ -318,6 +318,31 @@ test('keeps block markers inert in unmatched directive quote line comments', () 
   }
 });
 
+test('preserves trailing macro comments after unmatched quotes containing line markers', () => {
+  const parser = createParser();
+  try {
+    for (const quote of ['"', "'"]) {
+      for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
+        for (const middle of ['// c', '// c /*inner*/ continued', `/\\${newline}/ c`]) {
+          const value = `mark ${quote}title ${middle} `;
+          const tree = parser.parse(`#define M ${value}/*tail*/${newline}int after;${newline}`)!;
+          try {
+            expect(tree.rootNode.hasError).toBe(false);
+            const [macro, declaration] = tree.rootNode.namedChildren;
+            expect(macro?.childForFieldName('value')?.text).toBe(value);
+            expect(macro?.descendantsOfType('comment').map((node) => node.text)).toEqual(['/*tail*/']);
+            expect(declaration?.text).toBe('int after;');
+          } finally {
+            tree.delete();
+          }
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
 function createParser(): Parser {
   const parser = new Parser();
   parser.setLanguage(language);

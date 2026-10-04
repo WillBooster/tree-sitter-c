@@ -11,7 +11,7 @@ static bool scan_preproc_newline(TSLexer *lexer, bool skip);
 static bool scan_preproc_splices(TSLexer *lexer);
 static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number);
 static bool preproc_word(int32_t c, bool continuation);
-static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped);
+static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped, bool directive_text);
 
 static bool scan_pragma(TSLexer *lexer) {
     while (pragma_space(lexer->lookahead)) {
@@ -193,7 +193,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
             }
             in_number = false;
             in_identifier = false;
-            if (!scan_preproc_quote(lexer, quote, escaped)) return true;
+            if (!scan_preproc_quote(lexer, quote, escaped, directive_text)) return true;
             has_content = true;
             after_comment = false;
         } else {
@@ -208,7 +208,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
     return has_content;
 }
 
-static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped) {
+static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped, bool directive_text) {
     lexer->mark_end(lexer);
     bool slash = false;
     bool block = false;
@@ -242,7 +242,7 @@ static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped) {
                 star = c == '*';
             }
         } else if (slash && c == '/') {
-            line = true;
+            line = directive_text;
             slash = false;
             if (!after_comment) lexer->mark_end(lexer);
         } else if (slash && c == '*') {
