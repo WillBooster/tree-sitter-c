@@ -8,7 +8,7 @@
 // @ts-check
 
 // Tree-sitter injects its DSL before loading this CommonJS grammar.
-const { grammar, alias, choice, field, optional, prec, repeat, repeat1, reserved, seq, sym, token } =
+const { grammar, alias, choice, field, optional, prec, repeat, repeat1, seq, sym, token } =
   /** @type {typeof globalThis & typeof import('./types/treeSitterDsl')} */ (globalThis);
 
 const PREC = {
@@ -44,11 +44,10 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$.type_definition, $.type_specifier],
+      [$.type_definition, $._declaration_modifiers],
       [$.type_definition, $.type_qualifier, $.extension_expression],
       [$.type_definition, $.type_qualifier],
-      [$._type_definition_type, $._declaration_modifiers],
-      [$.expression, $.macro_type_specifier],
-      [$.type_definition, $._type_definition_type, $._declaration_modifiers],
       [$._declaration_modifiers, $._empty_declaration],
       [$.declaration, $.storage_class_specifier],
       [$.sized_type_specifier, $.enum_specifier],
@@ -79,6 +78,7 @@ module.exports = Object.assign(
     extras: ($) => [$.pragma_operator, /\s|\\\r?\n/, $.comment],
 
     inline: ($) => [
+      $._non_identifier_type_specifier,
       $._type_identifier,
       $._field_identifier,
       $._statement_identifier,
@@ -98,11 +98,6 @@ module.exports = Object.assign(
     ],
 
     word: ($) => $.identifier,
-
-    reserved: {
-      global: () => [],
-      type_identifier: () => ['enum', 'struct', 'union', 'typedef'],
-    },
 
     rules: {
       translation_unit: ($) => repeat($._top_level_item),
@@ -333,7 +328,13 @@ module.exports = Object.assign(
           optional(prec.dynamic(1, '__extension__')),
           choice(
             seq(repeat($.type_qualifier), 'typedef', $._type_definition_type),
-            seq($._type_definition_type, 'typedef', repeat($.type_qualifier))
+            seq(
+              repeat($.type_qualifier),
+              field('type', $._non_identifier_type_specifier),
+              repeat($.type_qualifier),
+              'typedef',
+              repeat($.type_qualifier)
+            )
           ),
           $._type_definition_declarators,
           repeat($.attribute_specifier),
@@ -634,7 +635,9 @@ module.exports = Object.assign(
 
       alignas_qualifier: ($) => seq(choice('alignas', '_Alignas'), '(', choice($.expression, $.type_descriptor), ')'),
 
-      type_specifier: ($) =>
+      type_specifier: ($) => choice($._non_identifier_type_specifier, $.macro_type_specifier, $._type_identifier),
+
+      _non_identifier_type_specifier: ($) =>
         choice(
           $.struct_specifier,
           $.union_specifier,
@@ -642,11 +645,9 @@ module.exports = Object.assign(
           $.typeof_specifier,
           $.bit_int_specifier,
           $.atomic_type_specifier,
-          $.macro_type_specifier,
           $.sized_type_specifier,
           alias($._sized_bit_int_specifier, $.sized_type_specifier),
-          $.primitive_type,
-          $._type_identifier
+          $.primitive_type
         ),
 
       typeof_specifier: ($) =>
@@ -1305,7 +1306,7 @@ module.exports = Object.assign(
       identifier: () =>
         /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/u,
 
-      _type_identifier: ($) => alias(reserved('type_identifier', $.identifier), sym('type_identifier')),
+      _type_identifier: ($) => alias($.identifier, sym('type_identifier')),
       _field_identifier: ($) => alias($.identifier, sym('field_identifier')),
       _statement_identifier: ($) => alias($.identifier, sym('statement_identifier')),
 

@@ -3279,8 +3279,26 @@
               "type": "SEQ",
               "members": [
                 {
-                  "type": "SYMBOL",
-                  "name": "_type_definition_type"
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "type_qualifier"
+                  }
+                },
+                {
+                  "type": "FIELD",
+                  "name": "type",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_non_identifier_type_specifier"
+                  }
+                },
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "type_qualifier"
+                  }
                 },
                 {
                   "type": "STRING",
@@ -5077,6 +5095,23 @@
       "members": [
         {
           "type": "SYMBOL",
+          "name": "_non_identifier_type_specifier"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "macro_type_specifier"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_type_identifier"
+        }
+      ]
+    },
+    "_non_identifier_type_specifier": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
           "name": "struct_specifier"
         },
         {
@@ -5101,10 +5136,6 @@
         },
         {
           "type": "SYMBOL",
-          "name": "macro_type_specifier"
-        },
-        {
-          "type": "SYMBOL",
           "name": "sized_type_specifier"
         },
         {
@@ -5119,10 +5150,6 @@
         {
           "type": "SYMBOL",
           "name": "primitive_type"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_type_identifier"
         }
       ]
     },
@@ -11049,12 +11076,8 @@
     "_type_identifier": {
       "type": "ALIAS",
       "content": {
-        "type": "RESERVED",
-        "content": {
-          "type": "SYMBOL",
-          "name": "identifier"
-        },
-        "context_name": "type_identifier"
+        "type": "SYMBOL",
+        "name": "identifier"
       },
       "named": true,
       "value": "type_identifier"
@@ -11186,25 +11209,20 @@
   "conflicts": [
     [
       "type_definition",
+      "type_specifier"
+    ],
+    [
+      "type_definition",
+      "_declaration_modifiers"
+    ],
+    [
+      "type_definition",
       "type_qualifier",
       "extension_expression"
     ],
     [
       "type_definition",
       "type_qualifier"
-    ],
-    [
-      "_type_definition_type",
-      "_declaration_modifiers"
-    ],
-    [
-      "expression",
-      "macro_type_specifier"
-    ],
-    [
-      "type_definition",
-      "_type_definition_type",
-      "_declaration_modifiers"
     ],
     [
       "_declaration_modifiers",
@@ -11313,6 +11331,7 @@
     }
   ],
   "inline": [
+    "_non_identifier_type_specifier",
     "_type_identifier",
     "_field_identifier",
     "_statement_identifier",
@@ -11329,25 +11348,5 @@
     "_type_declarator",
     "_abstract_declarator"
   ],
-  "reserved": {
-    "global": [],
-    "type_identifier": [
-      {
-        "type": "STRING",
-        "value": "enum"
-      },
-      {
-        "type": "STRING",
-        "value": "struct"
-      },
-      {
-        "type": "STRING",
-        "value": "union"
-      },
-      {
-        "type": "STRING",
-        "value": "typedef"
-      }
-    ]
-  }
+  "reserved": {}
 }
