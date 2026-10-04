@@ -236,6 +236,7 @@ test('preserves macro token boundaries around Unicode punctuation and identifier
   try {
     for (const token of [
       ...['©', '±', '×', '÷', '☃', '😀', '\u0301', '\u200D'].map((mark) => `${mark}1'000`),
+      ...['©', '±', '×', '÷', '☃', '😀', '·', '′'].map((mark) => `x${mark}1'0'`),
       ...['é', '変数', '𐐀', 'a\u0301', 'a\u200D', '$'].map((name) => `${name}1'a/*'`),
     ]) {
       for (const prefix of ['', '_Pragma("once") ']) {
@@ -270,7 +271,11 @@ test('preserves directive arguments and trailing comments across whitespace and 
   parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
   try {
     for (const directive of ['#define M', '#pragma', '#error', '#warning', '#line']) {
-      for (const value of ['mark /*inside*/ Section', '"/*literal*/" /*inside*/ tail']) {
+      for (const value of [
+        'mark /*inside*/ Section',
+        '"/*literal*/" /*inside*/ tail',
+        ...(directive === '#define M' ? [] : ["mark don't"]),
+      ]) {
         for (const padding of ['  ', '\t', '\u00A0', '\u3000']) {
           for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
             const source = `${directive} ${value} /*tail*/${padding}${newline}int after;${newline}`;

@@ -90,7 +90,7 @@ static bool scan_pragma_spacing(TSLexer *lexer) {
     }
 }
 
-static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash) {
+static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool directive_text) {
     bool has_content = consumed_backslash;
     while (!has_content && pragma_space(lexer->lookahead) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         lexer->advance(lexer, true);
@@ -172,7 +172,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash) {
             }
             has_content = true;
             after_comment = false;
-        } else if (lexer->lookahead == '"' || lexer->lookahead == '\'') {
+        } else if (lexer->lookahead == '"' || (!directive_text && lexer->lookahead == '\'')) {
             int32_t quote = lexer->lookahead;
             lexer->advance(lexer, false);
             bool escaped = false;
@@ -247,6 +247,7 @@ static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number) {
 
 static bool preproc_word(int32_t c, bool continuation) {
     if (c == '\\') return false;
+    if (continuation && c >= 0x80 && !pragma_space(c)) return true;
     return continuation
         ? set_contains(preproc_identifier_continue, sizeof(preproc_identifier_continue) / sizeof(TSCharacterRange), c)
         : set_contains(preproc_identifier_start, sizeof(preproc_identifier_start) / sizeof(TSCharacterRange), c);

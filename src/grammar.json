@@ -508,8 +508,13 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "SYMBOL",
-                "name": "preproc_arg"
+                "type": "ALIAS",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "_preproc_directive_arg"
+                },
+                "named": true,
+                "value": "preproc_arg"
               },
               {
                 "type": "BLANK"
@@ -2115,6 +2120,17 @@
       "content": {
         "type": "PREC",
         "value": -1,
+        "content": {
+          "type": "PATTERN",
+          "value": "\\S([^/\\n]|\\/[^*]|\\\\\\r?\\n)*"
+        }
+      }
+    },
+    "_preproc_directive_arg": {
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": -2,
         "content": {
           "type": "PATTERN",
           "value": "\\S([^/\\n]|\\/[^*]|\\\\\\r?\\n)*"
@@ -9727,8 +9743,13 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "SYMBOL",
-                "name": "preproc_arg"
+                "type": "ALIAS",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "_preproc_directive_arg"
+                },
+                "named": true,
+                "value": "preproc_arg"
               },
               {
                 "type": "BLANK"
@@ -11227,6 +11248,10 @@
     {
       "type": "SYMBOL",
       "name": "_preproc_lparen"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_preproc_directive_arg"
     }
   ],
   "inline": [

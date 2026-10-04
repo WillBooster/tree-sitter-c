@@ -1,6 +1,6 @@
 #include "pragma.h"
 
-enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN };
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG };
 
 void *tree_sitter_c_external_scanner_create(void) {
     return NULL;
@@ -24,6 +24,8 @@ void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffe
 
 bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     (void)payload;
+    bool directive_text = !valid_symbols[PREPROC_ARG] && valid_symbols[PREPROC_DIRECTIVE_ARG];
+    TSSymbol argument_symbol = directive_text ? PREPROC_DIRECTIVE_ARG : PREPROC_ARG;
     if (valid_symbols[PREPROC_LPAREN] && lexer->lookahead == '(') {
         lexer->advance(lexer, false);
         lexer->mark_end(lexer);
@@ -39,8 +41,8 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
             lexer->advance(lexer, false);
             lexer->mark_end(lexer);
             if (!scan_preproc_newline(lexer, true)) {
-                lexer->result_symbol = PREPROC_ARG;
-                return valid_symbols[PREPROC_ARG] && scan_preproc_arg(lexer, true);
+                lexer->result_symbol = argument_symbol;
+                return (valid_symbols[PREPROC_ARG] || directive_text) && scan_preproc_arg(lexer, true, directive_text);
             }
         }
         if (scan_preproc_newline(lexer, false)) {
@@ -49,9 +51,9 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
             return true;
         }
     }
-    if (valid_symbols[PREPROC_ARG]) {
-        lexer->result_symbol = PREPROC_ARG;
-        return scan_preproc_arg(lexer, false);
+    if (valid_symbols[PREPROC_ARG] || directive_text) {
+        lexer->result_symbol = argument_symbol;
+        return scan_preproc_arg(lexer, false, directive_text);
     }
     lexer->result_symbol = PRAGMA_OPERATOR;
     return valid_symbols[PRAGMA_OPERATOR] && scan_pragma(lexer);
