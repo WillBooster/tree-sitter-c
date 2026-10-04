@@ -42,3 +42,50 @@ test('preserves macro values and trailing comments across every Unicode escape s
     parser.delete();
   }
 });
+
+test('distinguishes digit separators from adjacent character literals at macro boundaries', async () => {
+  await Parser.init();
+  const parser = new Parser();
+  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  try {
+    for (const token of [
+      "1'000'/*'",
+      "1'000'//'",
+      String.raw`1'000'\\'`,
+      String.raw`1'000'\''`,
+      "1'000'+'",
+      "1'000'0",
+      "1'000'e",
+      String.raw`1'000'\u00e9'`,
+      "1'000'é'",
+    ]) {
+      for (const newline of ['\n', '\r\n', '\r']) {
+        for (let position = 1; position < token.length; position++) {
+          const value = `${token.slice(0, position)}\\${newline}${token.slice(position)}`;
+          for (const prefix of ['', '_Pragma("once") ']) {
+            const tree = parser.parse(
+              `#define M ${prefix}${value} /*tail*/\nvoid first(void) {}\n/*other*/ void second(void) {}\n`
+            )!;
+            try {
+              expect(tree.rootNode.hasError, JSON.stringify(prefix + value)).toBe(false);
+              const macro = tree.rootNode.namedChildren[0]!;
+              expect(macro.childForFieldName('value')?.text).toBe(`${prefix}${value} `);
+              expect(macro.namedChildren.filter((node) => node.type === 'comment').map((node) => node.text)).toEqual([
+                '/*tail*/',
+              ]);
+              expect(
+                tree.rootNode.namedChildren
+                  .filter((node) => node.type === 'function_definition')
+                  .map((node) => node.text)
+              ).toEqual(['void first(void) {}', 'void second(void) {}']);
+            } finally {
+              tree.delete();
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});

@@ -9,6 +9,7 @@ static bool scan_pragma_word(TSLexer *lexer);
 static bool scan_preproc_newline(TSLexer *lexer, bool skip);
 static bool scan_preproc_splices(TSLexer *lexer);
 static bool scan_preproc_ucn(TSLexer *lexer);
+static bool preproc_word(int32_t c);
 
 static bool scan_pragma(TSLexer *lexer) {
     while (pragma_space(lexer->lookahead)) {
@@ -98,7 +99,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
     int32_t number_last = 0;
     while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         int32_t c = lexer->lookahead;
-        bool word = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= 0x80 && !pragma_space(c));
+        bool word = preproc_word(c);
         bool digit = c >= '0' && c <= '9';
         bool exponent_sign = in_number && (c == '+' || c == '-') &&
                              (number_last == 'e' || number_last == 'E' || number_last == 'p' || number_last == 'P');
@@ -163,12 +164,25 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
             }
             has_content = true;
             after_comment = false;
-        } else if (lexer->lookahead == '"' || (lexer->lookahead == '\'' && !in_number)) {
+        } else if (lexer->lookahead == '"' || lexer->lookahead == '\'') {
             int32_t quote = lexer->lookahead;
-            in_number = false;
-            in_identifier = false;
             lexer->advance(lexer, false);
             bool escaped = false;
+            if (quote == '\'' && in_number) {
+                bool spliced = scan_preproc_splices(lexer);
+                int32_t next = lexer->lookahead;
+                bool continuation = spliced && ((next < 0x80 && preproc_word(next)) || (next >= '0' && next <= '9'));
+                escaped = !spliced;
+                if (continuation) {
+                    has_content = true;
+                    after_comment = false;
+                    number_last = 0;
+                    lexer->mark_end(lexer);
+                    continue;
+                }
+            }
+            in_number = false;
+            in_identifier = false;
             while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
                 if (lexer->lookahead == '\\') {
                     lexer->advance(lexer, false);
@@ -220,6 +234,10 @@ static bool scan_preproc_ucn(TSLexer *lexer) {
         content = true;
         if (!braced && --remaining == 0) return true;
     }
+}
+
+static bool preproc_word(int32_t c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= 0x80 && !pragma_space(c));
 }
 
 static bool scan_pragma_word(TSLexer *lexer) {
