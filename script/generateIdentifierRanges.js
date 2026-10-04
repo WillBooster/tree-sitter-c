@@ -1,3 +1,4 @@
+// @ts-check
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 
@@ -6,9 +7,10 @@ const tables = [1, 2].map((index) => {
   const match = parser.match(
     new RegExp(`static const TSCharacterRange sym_identifier_character_set_${index}\\[\\] = {([\\s\\S]*?)\n};`)
   );
-  assert.ok(match, `Missing generated identifier character set ${index}`);
+  assert.ok(match?.[1], `Missing generated identifier character set ${index}`);
   return match[1];
 });
+assert.ok(tables[0] && tables[1]);
 assert.ok(!tables[0].includes("{'0', '9'}") && tables[1].includes("{'0', '9'}"));
 await writeFile(
   new URL('../src/identifier.h', import.meta.url),
