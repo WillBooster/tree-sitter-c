@@ -1,0 +1,240 @@
+==================
+Variadic argument type operands
+==================
+
+#include <stdarg.h>
+struct Pair { int x, y; };
+typedef int (*Callback)(int);
+void consume(int count, ...) {
+  va_list args;
+  va_start(args, count);
+  const char *text = va_arg(args, const char *);
+  unsigned long number = va_arg(args, unsigned long);
+  int (*callback)(int) = va_arg(args, int (*)(int));
+  struct Pair pair = va_arg(args, struct Pair);
+  Callback alias = va_arg(args, Callback);
+  int sum = (int)va_arg(args, unsigned long) + 'u' + 'U';
+  const char *builtin = __builtin_va_arg(args, const char *);
+  va_end(args);
+}
+
+---
+
+(translation_unit
+  (preproc_include
+    (system_lib_string))
+  (struct_specifier
+    (type_identifier)
+    (field_declaration_list
+      (field_declaration
+        (primitive_type)
+        (field_identifier)
+        (field_identifier))))
+  (type_definition
+    (primitive_type)
+    (function_declarator
+      (parenthesized_declarator
+        (pointer_declarator
+          (type_identifier)))
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))
+        (variadic_parameter)))
+    (compound_statement
+      (declaration
+        (type_identifier)
+        (identifier))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (identifier)
+            (identifier))))
+      (declaration
+        (type_qualifier)
+        (primitive_type)
+        (init_declarator
+          (pointer_declarator
+            (identifier))
+          (va_arg_expression
+            (identifier)
+            (type_descriptor
+              (type_qualifier)
+              (primitive_type)
+              (abstract_pointer_declarator)))))
+      (declaration
+        (sized_type_specifier)
+        (init_declarator
+          (identifier)
+          (va_arg_expression
+            (identifier)
+            (type_descriptor
+              (sized_type_specifier)))))
+      (declaration
+        (primitive_type)
+        (init_declarator
+          (function_declarator
+            (parenthesized_declarator
+              (pointer_declarator
+                (identifier)))
+            (parameter_list
+              (parameter_declaration
+                (primitive_type))))
+          (va_arg_expression
+            (identifier)
+            (type_descriptor
+              (primitive_type)
+              (abstract_function_declarator
+                (abstract_parenthesized_declarator
+                  (abstract_pointer_declarator))
+                (parameter_list
+                  (parameter_declaration
+                    (primitive_type))))))))
+      (declaration
+        (struct_specifier
+          (type_identifier))
+        (init_declarator
+          (identifier)
+          (va_arg_expression
+            (identifier)
+            (type_descriptor
+              (struct_specifier
+                (type_identifier))))))
+      (declaration
+        (type_identifier)
+        (init_declarator
+          (identifier)
+          (va_arg_expression
+            (identifier)
+            (type_descriptor
+              (type_identifier)))))
+      (declaration
+        (primitive_type)
+        (init_declarator
+          (identifier)
+          (binary_expression
+            (binary_expression
+              (cast_expression
+                (type_descriptor
+                  (primitive_type))
+                (va_arg_expression
+                  (identifier)
+                  (type_descriptor
+                    (sized_type_specifier))))
+              (char_literal
+                (character)))
+            (char_literal
+              (character)))))
+      (declaration
+        (type_qualifier)
+        (primitive_type)
+        (init_declarator
+          (pointer_declarator
+            (identifier))
+          (va_arg_expression
+            (identifier)
+            (type_descriptor
+              (type_qualifier)
+              (primitive_type)
+              (abstract_pointer_declarator)))))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (identifier)))))))
+
+==================
+Ordinary va_arg identifiers and calls remain usable
+==================
+
+static int va_arg(int left, int right) { return left + right; }
+int named_calls(int x) {
+  int result = va_arg(x, x + 1);
+  int (*function)(int, int) = &va_arg;
+  {
+    int va_arg = 3;
+    result += va_arg;
+  }
+  return result + function(1, 2);
+}
+
+---
+
+(translation_unit
+  (function_definition
+    (storage_class_specifier)
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (return_statement
+        (binary_expression
+          (identifier)
+          (identifier)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (declaration
+        (primitive_type)
+        (init_declarator
+          (identifier)
+          (call_expression
+            (identifier)
+            (argument_list
+              (identifier)
+              (binary_expression
+                (identifier)
+                (number_literal))))))
+      (declaration
+        (primitive_type)
+        (init_declarator
+          (function_declarator
+            (parenthesized_declarator
+              (pointer_declarator
+                (identifier)))
+            (parameter_list
+              (parameter_declaration
+                (primitive_type))
+              (parameter_declaration
+                (primitive_type))))
+          (pointer_expression
+            (identifier))))
+      (compound_statement
+        (declaration
+          (primitive_type)
+          (init_declarator
+            (identifier)
+            (number_literal)))
+        (expression_statement
+          (assignment_expression
+            (identifier)
+            (identifier))))
+      (return_statement
+        (binary_expression
+          (identifier)
+          (call_expression
+            (identifier)
+            (argument_list
+              (number_literal)
+              (number_literal))))))))

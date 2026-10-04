@@ -44,6 +44,7 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$.va_arg_expression, $.expression],
       [$._declaration_modifiers, $._empty_declaration],
       [$.declaration, $.storage_class_specifier],
       [$.sized_type_specifier, $.enum_specifier],
@@ -930,6 +931,7 @@ module.exports = Object.assign(
           $.sizeof_expression,
           $.alignof_expression,
           $.offsetof_expression,
+          $.va_arg_expression,
           $.generic_expression,
           $.subscript_expression,
           $.call_expression,
@@ -937,6 +939,7 @@ module.exports = Object.assign(
           $.compound_literal_expression,
           $.identifier,
           alias('thread_local', $.identifier),
+          alias(choice('va_arg', '__builtin_va_arg'), $.identifier),
           $.number_literal,
           $._string,
           $.true,
@@ -1061,6 +1064,19 @@ module.exports = Object.assign(
         prec(
           PREC.OFFSETOF,
           seq('offsetof', seq('(', field('type', $.type_descriptor), ',', field('member', $._field_identifier), ')'))
+        ),
+
+      va_arg_expression: ($) =>
+        prec.dynamic(
+          1,
+          seq(
+            choice('va_arg', '__builtin_va_arg'),
+            '(',
+            field('value', $.expression),
+            ',',
+            field('type', $.type_descriptor),
+            ')'
+          )
         ),
 
       generic_expression: ($) =>

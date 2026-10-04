@@ -7371,6 +7371,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "va_arg_expression"
+        },
+        {
+          "type": "SYMBOL",
           "name": "generic_expression"
         },
         {
@@ -7398,6 +7402,24 @@
           "content": {
             "type": "STRING",
             "value": "thread_local"
+          },
+          "named": true,
+          "value": "identifier"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "va_arg"
+              },
+              {
+                "type": "STRING",
+                "value": "__builtin_va_arg"
+              }
+            ]
           },
           "named": true,
           "value": "identifier"
@@ -8624,6 +8646,56 @@
                 "value": ")"
               }
             ]
+          }
+        ]
+      }
+    },
+    "va_arg_expression": {
+      "type": "PREC_DYNAMIC",
+      "value": 1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "va_arg"
+              },
+              {
+                "type": "STRING",
+                "value": "__builtin_va_arg"
+              }
+            ]
+          },
+          {
+            "type": "STRING",
+            "value": "("
+          },
+          {
+            "type": "FIELD",
+            "name": "value",
+            "content": {
+              "type": "SYMBOL",
+              "name": "expression"
+            }
+          },
+          {
+            "type": "STRING",
+            "value": ","
+          },
+          {
+            "type": "FIELD",
+            "name": "type",
+            "content": {
+              "type": "SYMBOL",
+              "name": "type_descriptor"
+            }
+          },
+          {
+            "type": "STRING",
+            "value": ")"
           }
         ]
       }
@@ -11203,6 +11275,10 @@
     }
   ],
   "conflicts": [
+    [
+      "va_arg_expression",
+      "expression"
+    ],
     [
       "_declaration_modifiers",
       "_empty_declaration"
