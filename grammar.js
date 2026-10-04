@@ -44,6 +44,11 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$.type_definition, $.type_qualifier, $.extension_expression],
+      [$.type_definition, $.type_qualifier],
+      [$._type_definition_type, $._declaration_modifiers],
+      [$.expression, $.macro_type_specifier],
+      [$.type_definition, $._type_definition_type, $._declaration_modifiers],
       [$._declaration_modifiers, $._empty_declaration],
       [$.declaration, $.storage_class_specifier],
       [$.sized_type_specifier, $.enum_specifier],
@@ -320,9 +325,11 @@ module.exports = Object.assign(
 
       type_definition: ($) =>
         seq(
-          optional('__extension__'),
-          'typedef',
-          $._type_definition_type,
+          optional(prec.dynamic(1, '__extension__')),
+          choice(
+            seq(repeat($.type_qualifier), 'typedef', $._type_definition_type),
+            seq($._type_definition_type, 'typedef', repeat($.type_qualifier))
+          ),
           $._type_definition_declarators,
           repeat($.attribute_specifier),
           ';'

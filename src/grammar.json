@@ -3240,8 +3240,12 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "STRING",
-              "value": "__extension__"
+              "type": "PREC_DYNAMIC",
+              "value": 1,
+              "content": {
+                "type": "STRING",
+                "value": "__extension__"
+              }
             },
             {
               "type": "BLANK"
@@ -3249,12 +3253,49 @@
           ]
         },
         {
-          "type": "STRING",
-          "value": "typedef"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_type_definition_type"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "type_qualifier"
+                  }
+                },
+                {
+                  "type": "STRING",
+                  "value": "typedef"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_type_definition_type"
+                }
+              ]
+            },
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_type_definition_type"
+                },
+                {
+                  "type": "STRING",
+                  "value": "typedef"
+                },
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "type_qualifier"
+                  }
+                }
+              ]
+            }
+          ]
         },
         {
           "type": "SYMBOL",
@@ -11110,6 +11151,28 @@
     }
   ],
   "conflicts": [
+    [
+      "type_definition",
+      "type_qualifier",
+      "extension_expression"
+    ],
+    [
+      "type_definition",
+      "type_qualifier"
+    ],
+    [
+      "_type_definition_type",
+      "_declaration_modifiers"
+    ],
+    [
+      "expression",
+      "macro_type_specifier"
+    ],
+    [
+      "type_definition",
+      "_type_definition_type",
+      "_declaration_modifiers"
+    ],
     [
       "_declaration_modifiers",
       "_empty_declaration"
