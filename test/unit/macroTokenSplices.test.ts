@@ -282,6 +282,7 @@ test('preserves directive arguments and trailing comments across whitespace and 
               'mark "title /*inner*/ continued',
               'mark "title /*inner\n*/ continued',
               'mark "balanced /*opaque*/"',
+              'mark "/*opaque*/ //literal"',
               'mark "title /\\\n*split*/',
               'mark "title /*split*\\\n/',
             ]),
@@ -302,6 +303,31 @@ test('preserves directive arguments and trailing comments across whitespace and 
               tree.delete();
             }
           }
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test('keeps block markers inert in unmatched directive quote line comments', async () => {
+  await Parser.init();
+  const parser = new Parser();
+  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  try {
+    for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
+      for (const continuation of ['', `\\${newline}continued /* inert`]) {
+        const value = `mark "title // /* inert${continuation}`;
+        const tree = parser.parse(`#pragma ${value}${newline}int after; /*other*/ int second;${newline}`)!;
+        try {
+          expect(tree.rootNode.hasError).toBe(false);
+          expect(tree.rootNode.namedChildren[0]?.childForFieldName('argument')?.text).toBe(value);
+          expect(
+            tree.rootNode.namedChildren.filter((node) => node.type === 'declaration').map((node) => node.text)
+          ).toEqual(['int after;', 'int second;']);
+        } finally {
+          tree.delete();
         }
       }
     }

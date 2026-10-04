@@ -231,6 +231,7 @@ static bool scan_directive_quote(TSLexer *lexer) {
     bool escaped = false;
     bool slash = false;
     bool block = false;
+    bool line = false;
     bool star = false;
     bool split_comment = false;
     bool after_comment = false;
@@ -247,7 +248,9 @@ static bool scan_directive_quote(TSLexer *lexer) {
             continue;
         }
         escaped = c == '\\' && !escaped;
-        if (block) {
+        if (line) {
+            if (!after_comment) lexer->mark_end(lexer);
+        } else if (block) {
             if (star && c == '/') {
                 block = false;
                 after_comment = !split_comment;
@@ -257,11 +260,15 @@ static bool scan_directive_quote(TSLexer *lexer) {
             } else {
                 star = c == '*';
             }
+        } else if (slash && c == '/') {
+            line = true;
+            slash = false;
+            if (!after_comment) lexer->mark_end(lexer);
         } else if (slash && c == '*') {
             block = true;
             slash = false;
         } else {
-            if (slash || !pragma_space(c)) after_comment = false;
+            if (slash || (c != '/' && !pragma_space(c))) after_comment = false;
             slash = c == '/';
             if (!slash) split_comment = false;
             if (!slash && !after_comment) lexer->mark_end(lexer);
