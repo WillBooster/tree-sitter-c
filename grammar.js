@@ -925,13 +925,15 @@ module.exports = Object.assign(
         ),
 
       _single_case_statement: ($) =>
-        seq(
-          choice(
-            seq('case', field('value', $.expression), optional(seq('...', field('end_value', $.expression)))),
-            'default'
-          ),
-          ':',
-          choice($._single_statement, $.declaration, $.type_definition)
+        prec.right(
+          seq(
+            choice(
+              seq('case', field('value', $.expression), optional(seq('...', field('end_value', $.expression)))),
+              'default'
+            ),
+            ':',
+            optional(choice($._single_statement, $.declaration, $.type_definition))
+          )
         ),
       _single_labeled_statement: ($) =>
         seq(field('label', $._statement_identifier), ':', choice($._single_statement, $.declaration)),

@@ -50,3 +50,18 @@ test('bounds unbraced switch bodies without changing grouped cases', () => {
     parser.delete();
   }
 });
+
+test.each(['case 0:', 'default:', 'case 0: case 1:'])('accepts trailing C23 switch label %s', (body) => {
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const tree = parser.parse(`void f(int x) { switch (x) ${body} }`)!;
+  try {
+    expect(tree.rootNode.hasError, body).toBe(false);
+    const node = tree.rootNode.descendantsOfType('switch_statement')[0]!;
+    expect(node.childForFieldName('body')?.text).toBe(body);
+    expect(node.descendantsOfType('expression_statement')).toHaveLength(0);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
