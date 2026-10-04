@@ -261,6 +261,7 @@ static bool scan_preproc_newline(TSLexer *lexer, bool skip) {
     if (carriage_return) lexer->advance(lexer, skip);
     if (lexer->lookahead == '\n') {
         lexer->advance(lexer, skip);
+        if (!carriage_return && lexer->lookahead == '\r') lexer->advance(lexer, skip);
         return true;
     }
     return carriage_return;

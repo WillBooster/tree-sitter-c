@@ -14,7 +14,7 @@ test('preserves macro values and trailing comments across every Unicode escape s
       String.raw`1\u{e9}'0`,
       String.raw`1\N{LATIN SMALL LETTER E WITH ACUTE}'0`,
     ]) {
-      for (const newline of ['\n', '\r\n', '\r']) {
+      for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
         for (let position = 1; position < token.length; position++) {
           const spliced = `${token.slice(0, position)}\\${newline}${token.slice(position)}`;
           for (const prefix of ['', '_Pragma("once") ']) {
@@ -59,7 +59,7 @@ test('distinguishes digit separators from adjacent character literals at macro b
       String.raw`1'000'\u00e9'`,
       "1'000'é'",
     ]) {
-      for (const newline of ['\n', '\r\n', '\r']) {
+      for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
         for (let position = 1; position < token.length; position++) {
           const value = `${token.slice(0, position)}\\${newline}${token.slice(position)}`;
           for (const prefix of ['', '_Pragma("once") ']) {
@@ -95,7 +95,7 @@ test('retains trailing comments with spliced delimiters in the macro value', asy
   const parser = new Parser();
   parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
   try {
-    for (const newline of ['\n', '\r\n', '\r']) {
+    for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
       for (const comment of [`/\\${newline}*c*/`, `/*c*\\${newline}/`, `/\\${newline}*c*\\${newline}/`]) {
         for (const prefix of ['a ', '_Pragma("once") a ', 'a /*previous*/ ']) {
           const value = prefix + comment;
@@ -131,7 +131,7 @@ test('preserves leading and slash-adjacent escaped identifiers across every spli
       String.raw`\u{e9}1'a/*'`,
       String.raw`\N{LATIN SMALL LETTER E WITH ACUTE}1'a/*'`,
     ]) {
-      for (const newline of ['\n', '\r\n', '\r']) {
+      for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
         for (let position = 0; position < token.length; position++) {
           for (const prefix of [
             '',
@@ -167,6 +167,30 @@ test('preserves leading and slash-adjacent escaped identifiers across every spli
             }
           }
         }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test('keeps LFCR splices inside ordinary, quoted and commented macro values', async () => {
+  await Parser.init();
+  const parser = new Parser();
+  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  try {
+    const splice = '\\\n\r';
+    for (const value of [`1 ${splice}+ 2`, `"a${splice}b"`, `1 // comment${splice}continued`]) {
+      const tree = parser.parse(`#define M ${value}\nint after;\n`)!;
+      try {
+        expect(tree.rootNode.hasError, JSON.stringify(value)).toBe(false);
+        const [macro, declaration] = tree.rootNode.namedChildren;
+        expect(macro?.type).toBe('preproc_def');
+        expect(macro?.childForFieldName('value')?.text).toBe(value);
+        expect(declaration?.type).toBe('declaration');
+        expect(declaration?.text).toBe('int after;');
+      } finally {
+        tree.delete();
       }
     }
   } finally {
