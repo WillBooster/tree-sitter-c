@@ -219,7 +219,7 @@ module.exports = Object.assign(
         ),
 
       ...preprocIf('', () => sym('_block_item')),
-      ...preprocIf('_in_single_case', () => sym('_single_case_body'), 0, false),
+      ...preprocIf('_in_single_case', () => sym('_single_case_body'), 0, true),
       ...preprocIf('_in_field_declaration_list', () => sym('_field_declaration_list_item')),
       ...preprocIf('_in_enumerator_list', () => seq(sym('enumerator'), ',')),
       ...preprocIf('_in_enumerator_list_no_comma', () => sym('enumerator'), -1),

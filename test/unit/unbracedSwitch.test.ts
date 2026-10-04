@@ -73,6 +73,9 @@ test('keeps conditionally compiled case statements inside the switch', () => {
       '#if 1\nx++;\n#endif',
       '#ifdef ENABLE\nx++;\n#else\nx--;\n#endif',
       '#if A\n#if B\nx++;\n#endif\n#endif',
+      '#ifdef ENABLE\nx++; x--;\n#else\nx--; x++;\n#endif',
+      '#if A\nx++;\n#if B\nx--;\n#endif\n#endif',
+      '#if A\nx++; case 1: x--;\n#endif',
     ]) {
       const source = `int f(int x) { switch (x) case 0:\n${conditional}\nreturn x; }`;
       const tree = parser.parse(source)!;
