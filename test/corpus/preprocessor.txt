@@ -843,3 +843,28 @@ Macro whitespace and non-splice backslashes
   (declaration
     (primitive_type)
     (identifier)))
+
+================================================================================
+Macro values beginning with non-splice backslashes
+================================================================================
+
+#define X \\y /*c*/ z
+#define V \x "/*" b
+#define W \ /*c*/ z
+int after;
+
+---
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier)))

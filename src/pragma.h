@@ -85,11 +85,10 @@ static bool scan_pragma_spacing(TSLexer *lexer) {
     }
 }
 
-static bool scan_preproc_arg(TSLexer *lexer) {
-    while (pragma_space(lexer->lookahead) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
+static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
+    while (!has_content && pragma_space(lexer->lookahead) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         lexer->advance(lexer, true);
     }
-    bool has_content = false;
     bool after_comment = false;
     bool in_number = false;
     bool in_identifier = false;

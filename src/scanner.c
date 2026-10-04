@@ -36,9 +36,14 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
                 lexer->advance(lexer, true);
             }
             if (lexer->lookahead != '\\') break;
-            lexer->advance(lexer, true);
-            if (lexer->lookahead == '\r') lexer->advance(lexer, true);
-            if (lexer->lookahead != '\n') return false;
+            lexer->advance(lexer, false);
+            lexer->mark_end(lexer);
+            bool carriage_return = lexer->lookahead == '\r';
+            if (carriage_return) lexer->advance(lexer, false);
+            if (lexer->lookahead != '\n') {
+                lexer->result_symbol = PREPROC_ARG;
+                return valid_symbols[PREPROC_ARG] && (carriage_return || scan_preproc_arg(lexer, true));
+            }
             lexer->advance(lexer, true);
         }
         if (lexer->lookahead == '\r' || lexer->lookahead == '\n') {
@@ -52,7 +57,7 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     }
     if (valid_symbols[PREPROC_ARG]) {
         lexer->result_symbol = PREPROC_ARG;
-        return scan_preproc_arg(lexer);
+        return scan_preproc_arg(lexer, false);
     }
     lexer->result_symbol = PRAGMA_OPERATOR;
     return valid_symbols[PRAGMA_OPERATOR] && scan_pragma(lexer);
