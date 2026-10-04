@@ -1052,3 +1052,57 @@ int after;
   (declaration
     (primitive_type)
     (identifier)))
+
+================================================================================
+Digit separators after physical line splices
+================================================================================
+
+#define M0 1\
+'000 /*tail*/
+#define P0 _Pragma("once") 1\
+'000 /*tail*/
+#define M1 1\
+'000 /*tail*/
+#define P1 _Pragma("once") 1\
+'000 /*tail*/
+#define M2 1\'000 /*tail*/
+#define P2 _Pragma("once") 1\'000 /*tail*/
+
+int after = M0 + M1 + M2;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (binary_expression
+          (identifier)
+          (identifier))
+        (identifier)))))

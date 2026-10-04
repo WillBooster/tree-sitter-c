@@ -97,7 +97,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
         int32_t c = lexer->lookahead;
         bool word = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= 0x80 && !pragma_space(c));
         bool digit = c >= '0' && c <= '9';
-        if (!word && !digit && c != '.' && c != '\'') {
+        if (!word && !digit && c != '.' && c != '\'' && c != '\\') {
             in_number = false;
             in_identifier = false;
         }
@@ -142,6 +142,8 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
                 if (!after_comment && has_content) lexer->mark_end(lexer);
                 continue;
             }
+            in_number = false;
+            in_identifier = false;
             has_content = true;
             after_comment = false;
         } else if (lexer->lookahead == '"' || (lexer->lookahead == '\'' && !in_number)) {
