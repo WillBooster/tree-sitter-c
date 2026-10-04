@@ -89,3 +89,33 @@ test('distinguishes digit separators from adjacent character literals at macro b
     parser.delete();
   }
 });
+
+test('retains trailing comments with spliced delimiters in the macro value', async () => {
+  await Parser.init();
+  const parser = new Parser();
+  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  try {
+    for (const newline of ['\n', '\r\n', '\r']) {
+      for (const comment of [`/\\${newline}*c*/`, `/*c*\\${newline}/`, `/\\${newline}*c*\\${newline}/`]) {
+        for (const prefix of ['a ', '_Pragma("once") a ', 'a /*previous*/ ']) {
+          const value = prefix + comment;
+          const tree = parser.parse(`#define M ${value} /*tail*/\nint after;\n`)!;
+          try {
+            expect(tree.rootNode.hasError, JSON.stringify(value)).toBe(false);
+            const [macro, declaration] = tree.rootNode.namedChildren;
+            assert.ok(macro && declaration);
+            expect(macro.childForFieldName('value')?.text).toBe(`${value} `);
+            expect(macro.namedChildren.filter((node) => node.type === 'comment').map((node) => node.text)).toEqual([
+              '/*tail*/',
+            ]);
+            expect(declaration.text).toBe('int after;');
+          } finally {
+            tree.delete();
+          }
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});

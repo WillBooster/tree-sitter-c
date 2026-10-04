@@ -113,6 +113,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
         if (in_number && c != '\\') number_last = c;
         if (lexer->lookahead == '/') {
             lexer->advance(lexer, false);
+            bool split_opener = lexer->lookahead == '\\';
             bool delimiter = scan_preproc_splices(lexer);
             if (delimiter && lexer->lookahead == '/') {
                 if (!has_content || after_comment) break;
@@ -133,9 +134,11 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
                 if (!has_content) return false;
                 lexer->advance(lexer, false);
                 bool star = false;
+                bool split_delimiter = split_opener;
                 while (!lexer->eof(lexer)) {
                     if (lexer->lookahead == '\\') {
                         if (!scan_preproc_splices(lexer)) star = false;
+                        else if (star && lexer->lookahead == '/') split_delimiter = true;
                         continue;
                     }
                     if (star && lexer->lookahead == '/') break;
@@ -144,7 +147,8 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
                 }
                 if (lexer->eof(lexer)) break;
                 lexer->advance(lexer, false);
-                after_comment = true;
+                after_comment = !split_delimiter;
+                if (split_delimiter) lexer->mark_end(lexer);
                 continue;
             }
             has_content = true;
