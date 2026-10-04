@@ -46,7 +46,6 @@ module.exports = Object.assign(
     conflicts: ($) => [
       [$._declaration_modifiers, $._empty_declaration],
       [$.declaration, $.storage_class_specifier],
-      [$.type_qualifier, $._compound_literal_storage_class_specifier],
       [$.sized_type_specifier, $.enum_specifier],
       [$.type_specifier, $._declarator],
       [$.type_specifier, $._declarator, $.macro_type_specifier],
@@ -1148,14 +1147,23 @@ module.exports = Object.assign(
       compound_literal_expression: ($) =>
         seq(
           '(',
-          repeat(field('storage_class', alias($._compound_literal_storage_class_specifier, $.storage_class_specifier))),
+          repeat(
+            seq(
+              optional(
+                field('storage_class', alias($._compound_literal_constexpr_specifier, $.storage_class_specifier))
+              ),
+              field('storage_class', alias($._compound_literal_storage_class_specifier, $.storage_class_specifier))
+            )
+          ),
           field('type', $.type_descriptor),
           ')',
           field('value', $.initializer_list)
         ),
 
+      _compound_literal_constexpr_specifier: () => 'constexpr',
+
       _compound_literal_storage_class_specifier: () =>
-        prec.dynamic(-1, choice('static', 'register', 'thread_local', '_Thread_local', '__thread', 'constexpr')),
+        choice('static', 'register', 'thread_local', '_Thread_local', '__thread'),
 
       parenthesized_expression: ($) => seq('(', choice($.expression, $.comma_expression, $.compound_statement), ')'),
 

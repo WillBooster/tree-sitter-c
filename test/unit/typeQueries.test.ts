@@ -105,3 +105,64 @@ test('preserves compound literal fields and queries across storage-class edits',
     parser.delete();
   }
 });
+
+test('keeps constexpr recovery fields independent of prefix edit history', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const source = 'void f(void){(static _Atomic(int)){0};}';
+  let tree = parser.parse(source)!;
+  let query: Query | undefined;
+  try {
+    query = new Query(
+      language,
+      '(compound_literal_expression storage_class: (storage_class_specifier) @storage) (compound_literal_expression type: (type_descriptor) @type) ((type_qualifier) @constexpr (#eq? @constexpr "constexpr"))'
+    );
+    let currentSource = source;
+    for (const nextSource of [source.replace('static', 'constexpr'), source]) {
+      const startIndex = source.indexOf('static');
+      const oldEndIndex = currentSource.indexOf(' _Atomic');
+      const newEndIndex = nextSource.indexOf(' _Atomic');
+      tree.edit(
+        new Edit({
+          startIndex,
+          oldEndIndex,
+          newEndIndex,
+          startPosition: { row: 0, column: startIndex },
+          oldEndPosition: { row: 0, column: oldEndIndex },
+          newEndPosition: { row: 0, column: newEndIndex },
+        })
+      );
+      const next = parser.parse(nextSource, tree)!;
+      tree.delete();
+      tree = next;
+      const fresh = parser.parse(nextSource)!;
+      try {
+        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+        const captures = query
+          .captures(tree.rootNode)
+          .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
+        expect(captures).toEqual(
+          query
+            .captures(fresh.rootNode)
+            .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }))
+        );
+        if (nextSource.includes('constexpr')) {
+          expect(captures.filter(({ name }) => name === 'storage')).toEqual([]);
+          expect(captures.filter(({ name }) => name === 'type').map(({ text }) => text)).toEqual([
+            'constexpr _Atomic(int)',
+          ]);
+          expect(captures.filter(({ name }) => name === 'constexpr').map(({ text }) => text)).toEqual(['constexpr']);
+        }
+      } finally {
+        fresh.delete();
+      }
+      currentSource = nextSource;
+    }
+  } finally {
+    query?.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
