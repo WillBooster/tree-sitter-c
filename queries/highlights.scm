@@ -87,3 +87,5 @@
   ["typeof" "typeof_unqual" "__typeof__" "__typeof" "__typeof_unqual" "__typeof_unqual__"] @keyword)
 (bit_int_specifier "_BitInt" @type)
 (pragma_operator) @keyword
+
+(va_arg_expression ["va_arg" "__builtin_va_arg"] @keyword)

@@ -45,8 +45,8 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$.type_specifier, $.expression, $.va_arg_expression, $.macro_type_specifier],
       [$.va_arg_expression, $.expression],
-      [$.type_specifier, $.expression, $.va_arg_expression],
       [$._declaration_modifiers, $._empty_declaration],
       [$.declaration, $.storage_class_specifier],
       [$.sized_type_specifier, $.enum_specifier],
@@ -399,7 +399,8 @@ module.exports = Object.assign(
           $.function_declarator,
           $.array_declarator,
           $.parenthesized_declarator,
-          $.identifier
+          $.identifier,
+          alias(VA_ARG_KEYWORDS, $.identifier)
         ),
 
       _declaration_declarator: ($) =>
@@ -409,7 +410,8 @@ module.exports = Object.assign(
           alias($._function_declaration_declarator, $.function_declarator),
           $.array_declarator,
           $.parenthesized_declarator,
-          $.identifier
+          $.identifier,
+          alias(VA_ARG_KEYWORDS, $.identifier)
         ),
 
       _field_declarator: ($) =>
@@ -1050,17 +1052,23 @@ module.exports = Object.assign(
         ),
 
       sizeof_expression: ($) =>
-        prec(
-          PREC.SIZEOF,
-          seq('sizeof', choice(field('value', $.expression), seq('(', field('type', $.type_descriptor), ')')))
+        prec.dynamic(
+          2,
+          prec(
+            PREC.SIZEOF,
+            seq('sizeof', choice(field('value', $.expression), seq('(', field('type', $.type_descriptor), ')')))
+          )
         ),
 
       alignof_expression: ($) =>
-        prec(
-          PREC.SIZEOF,
-          seq(
-            choice('__alignof__', '__alignof', '_alignof', 'alignof', '_Alignof'),
-            seq('(', field('type', $.type_descriptor), ')')
+        prec.dynamic(
+          2,
+          prec(
+            PREC.SIZEOF,
+            seq(
+              choice('__alignof__', '__alignof', '_alignof', 'alignof', '_Alignof'),
+              seq('(', field('type', $.type_descriptor), ')')
+            )
           )
         ),
 
@@ -1327,13 +1335,21 @@ module.exports = Object.assign(
         /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/u,
 
       _type_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('type_identifier')),
-      _field_identifier: ($) => alias($.identifier, sym('field_identifier')),
+      _field_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('field_identifier')),
       _statement_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('statement_identifier')),
 
       _empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
 
       macro_type_specifier: ($) =>
-        prec.dynamic(-1, seq(field('name', $.identifier), '(', field('type', $.type_descriptor), ')')),
+        prec.dynamic(
+          -1,
+          seq(
+            field('name', choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier))),
+            '(',
+            field('type', $.type_descriptor),
+            ')'
+          )
+        ),
 
       // http://stackoverflow.com/questions/13014947/regex-to-match-a-c-style-multiline-comment/36328890#36328890
       comment: () => token(choice(LINE_COMMENT, seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),

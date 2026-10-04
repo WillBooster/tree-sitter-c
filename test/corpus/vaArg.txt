@@ -437,3 +437,124 @@ int old_style(va_arg) int va_arg; { return va_arg; }
     (compound_statement
       (return_statement
         (identifier)))))
+
+==================
+Variadic builtin names in macro types and GNU designators
+==================
+
+#define va_arg(T) T
+va_arg(int) global;
+void macro_context(void) { va_arg(int) local; (void)local; }
+#undef va_arg
+struct S { int va_arg; };
+struct S value = { va_arg: 1 };
+int va_arg(int, int);
+void calls(int x, int y) { (void)va_arg(x, sizeof(y)); (void)va_arg(x, _Alignof(int)); (void)va_arg(x, _Generic(y, int: 1)); }
+
+---
+
+(translation_unit
+  (preproc_function_def
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier))
+    value: (preproc_arg))
+  (declaration
+    type: (macro_type_specifier
+      name: (identifier)
+      type: (type_descriptor
+        type: (primitive_type)))
+    declarator: (identifier))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (declaration
+        type: (macro_type_specifier
+          name: (identifier)
+          type: (type_descriptor
+            type: (primitive_type)))
+        declarator: (identifier))
+      (expression_statement
+        (cast_expression
+          type: (type_descriptor
+            type: (primitive_type))
+          value: (identifier)))))
+  (preproc_call
+    directive: (preproc_directive)
+    argument: (preproc_arg))
+  (struct_specifier
+    name: (type_identifier)
+    body: (field_declaration_list
+      (field_declaration
+        type: (primitive_type)
+        declarator: (field_identifier))))
+  (declaration
+    type: (struct_specifier
+      name: (type_identifier))
+    declarator: (init_declarator
+      declarator: (identifier)
+      value: (initializer_list
+        (initializer_pair
+          designator: (field_identifier)
+          value: (number_literal)))))
+  (declaration
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))
+        (parameter_declaration
+          type: (primitive_type)))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (identifier))
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (identifier))))
+    body: (compound_statement
+      (expression_statement
+        (cast_expression
+          type: (type_descriptor
+            type: (primitive_type))
+          value: (call_expression
+            function: (identifier)
+            arguments: (argument_list
+              (identifier)
+              (sizeof_expression
+                value: (parenthesized_expression
+                  (identifier)))))))
+      (expression_statement
+        (cast_expression
+          type: (type_descriptor
+            type: (primitive_type))
+          value: (call_expression
+            function: (identifier)
+            arguments: (argument_list
+              (identifier)
+              (alignof_expression
+                type: (type_descriptor
+                  type: (primitive_type)))))))
+      (expression_statement
+        (cast_expression
+          type: (type_descriptor
+            type: (primitive_type))
+          value: (call_expression
+            function: (identifier)
+            arguments: (argument_list
+              (identifier)
+              (generic_expression
+                (identifier)
+                (type_descriptor
+                  type: (primitive_type))
+                (number_literal)))))))))
