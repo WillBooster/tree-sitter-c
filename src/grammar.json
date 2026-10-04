@@ -6471,6 +6471,24 @@
                       "name": "identifier"
                     },
                     {
+                      "type": "ALIAS",
+                      "content": {
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "va_arg"
+                          },
+                          {
+                            "type": "STRING",
+                            "value": "__builtin_va_arg"
+                          }
+                        ]
+                      },
+                      "named": true,
+                      "value": "identifier"
+                    },
+                    {
                       "type": "SYMBOL",
                       "name": "variadic_parameter"
                     }
@@ -6491,6 +6509,24 @@
                           {
                             "type": "SYMBOL",
                             "name": "identifier"
+                          },
+                          {
+                            "type": "ALIAS",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "va_arg"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "__builtin_va_arg"
+                                }
+                              ]
+                            },
+                            "named": true,
+                            "value": "identifier"
                           },
                           {
                             "type": "SYMBOL",
@@ -11205,12 +11241,17 @@
             "name": "identifier"
           },
           {
-            "type": "STRING",
-            "value": "va_arg"
-          },
-          {
-            "type": "STRING",
-            "value": "__builtin_va_arg"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "va_arg"
+              },
+              {
+                "type": "STRING",
+                "value": "__builtin_va_arg"
+              }
+            ]
           }
         ]
       },
@@ -11236,12 +11277,17 @@
             "name": "identifier"
           },
           {
-            "type": "STRING",
-            "value": "va_arg"
-          },
-          {
-            "type": "STRING",
-            "value": "__builtin_va_arg"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "va_arg"
+              },
+              {
+                "type": "STRING",
+                "value": "__builtin_va_arg"
+              }
+            ]
           }
         ]
       },

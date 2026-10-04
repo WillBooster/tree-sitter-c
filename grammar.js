@@ -37,6 +37,7 @@ const PREC = {
 
 const LINE_COMMENT = seq('//', /(\\+(.|\r?\n)|[^\\\n])*/);
 const PRAGMA_SPACING = repeat(choice(/\s/, /\\\r?\n/));
+const VA_ARG_KEYWORDS = choice('va_arg', '__builtin_va_arg');
 
 // oxlint-disable-next-line unicorn/prefer-module -- This package is CommonJS, so tree-sitter loads grammar.js as CommonJS.
 module.exports = Object.assign(
@@ -788,7 +789,8 @@ module.exports = Object.assign(
 
       parameter_list: ($) =>
         seq('(', choice(commaSep(choice($.parameter_declaration, $.variadic_parameter)), $.compound_statement), ')'),
-      _old_style_parameter_list: ($) => seq('(', commaSep(choice($.identifier, $.variadic_parameter)), ')'),
+      _old_style_parameter_list: ($) =>
+        seq('(', commaSep(choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier), $.variadic_parameter)), ')'),
 
       parameter_declaration: ($) =>
         seq(
@@ -940,7 +942,7 @@ module.exports = Object.assign(
           $.compound_literal_expression,
           $.identifier,
           alias('thread_local', $.identifier),
-          alias(choice('va_arg', '__builtin_va_arg'), $.identifier),
+          alias(VA_ARG_KEYWORDS, $.identifier),
           $.number_literal,
           $._string,
           $.true,
@@ -972,7 +974,7 @@ module.exports = Object.assign(
 
       _assignment_left_expression: ($) =>
         choice(
-          alias(choice('va_arg', '__builtin_va_arg'), $.identifier),
+          alias(VA_ARG_KEYWORDS, $.identifier),
           $.identifier,
           $.call_expression,
           $.field_expression,
@@ -1071,14 +1073,7 @@ module.exports = Object.assign(
       va_arg_expression: ($) =>
         prec.dynamic(
           1,
-          seq(
-            choice('va_arg', '__builtin_va_arg'),
-            '(',
-            field('value', $.expression),
-            ',',
-            field('type', $.type_descriptor),
-            ')'
-          )
+          seq(VA_ARG_KEYWORDS, '(', field('value', $.expression), ',', field('type', $.type_descriptor), ')')
         ),
 
       generic_expression: ($) =>
@@ -1331,10 +1326,9 @@ module.exports = Object.assign(
       identifier: () =>
         /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/u,
 
-      _type_identifier: ($) => alias(choice($.identifier, 'va_arg', '__builtin_va_arg'), sym('type_identifier')),
+      _type_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('type_identifier')),
       _field_identifier: ($) => alias($.identifier, sym('field_identifier')),
-      _statement_identifier: ($) =>
-        alias(choice($.identifier, 'va_arg', '__builtin_va_arg'), sym('statement_identifier')),
+      _statement_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('statement_identifier')),
 
       _empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
 

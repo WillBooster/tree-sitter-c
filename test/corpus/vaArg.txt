@@ -415,3 +415,25 @@ void namespaces(void) {
           (identifier))
         (goto_statement
           (statement_identifier))))))
+
+==================
+Old-style va_arg parameter names
+==================
+
+int old_style(va_arg) int va_arg; { return va_arg; }
+
+---
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (identifier)))
+    (declaration
+      (primitive_type)
+      (identifier))
+    (compound_statement
+      (return_statement
+        (identifier)))))
