@@ -94,16 +94,21 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
     bool after_comment = false;
     bool in_number = false;
     bool in_identifier = false;
+    int32_t number_last = 0;
     while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         int32_t c = lexer->lookahead;
         bool word = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= 0x80 && !pragma_space(c));
         bool digit = c >= '0' && c <= '9';
-        if (!word && !digit && c != '.' && c != '\'' && c != '\\') {
+        bool exponent_sign = in_number && (c == '+' || c == '-') &&
+                             (number_last == 'e' || number_last == 'E' || number_last == 'p' || number_last == 'P');
+        if (c == '.') in_identifier = false;
+        if (!word && !digit && c != '.' && c != '\'' && c != '\\' && !exponent_sign) {
             in_number = false;
             in_identifier = false;
         }
         if (digit && !in_identifier) in_number = true;
         if (word && !in_number) in_identifier = true;
+        if (in_number && c != '\\') number_last = c;
         if (lexer->lookahead == '/') {
             lexer->advance(lexer, false);
             bool delimiter = scan_preproc_splices(lexer);
@@ -148,8 +153,21 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
                 if (!after_comment && has_content) lexer->mark_end(lexer);
                 continue;
             }
-            in_number = false;
-            in_identifier = false;
+            if (lexer->lookahead == 'u' || lexer->lookahead == 'U') {
+                unsigned digits = lexer->lookahead == 'u' ? 4 : 8;
+                lexer->advance(lexer, false);
+                while (digits > 0 && ((lexer->lookahead >= '0' && lexer->lookahead <= '9') ||
+                       (lexer->lookahead >= 'a' && lexer->lookahead <= 'f') ||
+                       (lexer->lookahead >= 'A' && lexer->lookahead <= 'F'))) {
+                    lexer->advance(lexer, false);
+                    digits--;
+                }
+                if (!in_number) in_identifier = true;
+                number_last = 0;
+            } else {
+                in_number = false;
+                in_identifier = false;
+            }
             has_content = true;
             after_comment = false;
         } else if (lexer->lookahead == '"' || (lexer->lookahead == '\'' && !in_number)) {
