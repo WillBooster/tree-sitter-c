@@ -454,6 +454,10 @@
           "named": true
         },
         {
+          "type": "attribute_specifier",
+          "named": true
+        },
+        {
           "type": "ms_pointer_modifier",
           "named": true
         },
@@ -2777,6 +2781,10 @@
       "types": [
         {
           "type": "attribute_declaration",
+          "named": true
+        },
+        {
+          "type": "attribute_specifier",
           "named": true
         },
         {

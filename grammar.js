@@ -462,7 +462,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat($.type_qualifier),
+              repeat(choice($.type_qualifier, $.attribute_specifier)),
               field('declarator', $._declarator)
             )
           )
@@ -476,7 +476,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat($.type_qualifier),
+              repeat(choice($.type_qualifier, $.attribute_specifier)),
               field('declarator', $._field_declarator)
             )
           )
@@ -490,7 +490,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat($.type_qualifier),
+              repeat(choice($.type_qualifier, $.attribute_specifier)),
               field('declarator', $._type_declarator)
             )
           )
@@ -503,7 +503,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat($.type_qualifier),
+              repeat(choice($.type_qualifier, $.attribute_specifier)),
               field('declarator', optional($._abstract_declarator))
             )
           )
@@ -971,6 +971,7 @@ module.exports = Object.assign(
 
       _assignment_left_expression: ($) =>
         choice(
+          alias(choice('va_arg', '__builtin_va_arg'), $.identifier),
           $.identifier,
           $.call_expression,
           $.field_expression,
@@ -1331,7 +1332,8 @@ module.exports = Object.assign(
 
       _type_identifier: ($) => alias($.identifier, sym('type_identifier')),
       _field_identifier: ($) => alias($.identifier, sym('field_identifier')),
-      _statement_identifier: ($) => alias($.identifier, sym('statement_identifier')),
+      _statement_identifier: ($) =>
+        alias(choice($.identifier, 'va_arg', '__builtin_va_arg'), sym('statement_identifier')),
 
       _empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
 
