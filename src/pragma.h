@@ -196,6 +196,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
 }
 
 static bool scan_preproc_ucn(TSLexer *lexer) {
+    if (!scan_preproc_splices(lexer)) return false;
     int32_t prefix = lexer->lookahead;
     if (prefix != 'u' && prefix != 'U' && prefix != 'N') return false;
     lexer->advance(lexer, false);
