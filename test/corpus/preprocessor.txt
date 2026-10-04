@@ -800,3 +800,46 @@ int final;
   (declaration
     (primitive_type)
     (identifier)))
+
+================================================================================
+Macro whitespace and non-splice backslashes
+================================================================================
+
+#define M a /*c*/ \\x b
+#define P _Pragma("once") /*c*/ \\ x
+#define A a /*c*/ 
+#define B _Pragma("once") /*c*/　
+#define C a /*c*/int after_c;
+#define D _Pragma("once") /*c*/int after_d;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (declaration
+    (primitive_type)
+    (identifier)))

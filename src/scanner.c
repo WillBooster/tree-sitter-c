@@ -41,9 +41,10 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
             if (lexer->lookahead != '\n') return false;
             lexer->advance(lexer, true);
         }
-        if (lexer->lookahead == '\r') lexer->advance(lexer, false);
-        if (lexer->lookahead == '\n') {
+        if (lexer->lookahead == '\r' || lexer->lookahead == '\n') {
+            bool carriage_return = lexer->lookahead == '\r';
             lexer->advance(lexer, false);
+            if (carriage_return && lexer->lookahead == '\n') lexer->advance(lexer, false);
             lexer->mark_end(lexer);
             lexer->result_symbol = PREPROC_NEWLINE;
             return true;
