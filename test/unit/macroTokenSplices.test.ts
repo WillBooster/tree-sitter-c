@@ -119,3 +119,45 @@ test('retains trailing comments with spliced delimiters in the macro value', asy
     parser.delete();
   }
 });
+
+test('preserves escaped identifiers after slashes across every splice position', async () => {
+  await Parser.init();
+  const parser = new Parser();
+  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  try {
+    for (const token of [
+      String.raw`/\u00e91'a/*'`,
+      String.raw`/\U000000e91'a/*'`,
+      String.raw`/\u{e9}1'a/*'`,
+      String.raw`/\N{LATIN SMALL LETTER E WITH ACUTE}1'a/*'`,
+    ]) {
+      for (const newline of ['\n', '\r\n', '\r']) {
+        for (let position = 1; position < token.length; position++) {
+          for (const prefix of ['', '_Pragma("once") ']) {
+            const value = `${prefix}${token.slice(0, position)}\\${newline}${token.slice(position)}`;
+            const tree = parser.parse(
+              `#define M ${value} /*tail*/\nvoid after(void) {}\n/*other*/ void second(void) {}\n`
+            )!;
+            try {
+              expect(tree.rootNode.hasError, JSON.stringify(value)).toBe(false);
+              const macro = tree.rootNode.namedChildren[0]!;
+              expect(macro.childForFieldName('value')?.text).toBe(`${value} `);
+              expect(macro.namedChildren.filter((node) => node.type === 'comment').map((node) => node.text)).toEqual([
+                '/*tail*/',
+              ]);
+              expect(
+                tree.rootNode.namedChildren
+                  .filter((node) => node.type === 'function_definition')
+                  .map((node) => node.text)
+              ).toEqual(['void after(void) {}', 'void second(void) {}']);
+            } finally {
+              tree.delete();
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});

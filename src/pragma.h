@@ -151,6 +151,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
                 if (split_delimiter) lexer->mark_end(lexer);
                 continue;
             }
+            if (!delimiter) in_identifier = scan_preproc_ucn(lexer);
             has_content = true;
             after_comment = false;
         } else if (lexer->lookahead == '\\') {
