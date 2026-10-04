@@ -44,6 +44,10 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$.type_definition, $._declaration_modifiers],
+      [$.type_definition, $.type_specifier],
+      [$.type_definition, $.type_qualifier, $.extension_expression],
+      [$.type_definition, $.type_qualifier],
       [$._declaration_modifiers, $._empty_declaration],
       [$.declaration, $.storage_class_specifier],
       [$.sized_type_specifier, $.enum_specifier],
@@ -57,6 +61,11 @@ module.exports = Object.assign(
       [$.sized_type_specifier],
       [$._sized_bit_int_specifier],
       [$.sized_type_specifier, $._sized_bit_int_specifier],
+      [$._type_declarator, $.sized_type_specifier, $._sized_bit_int_specifier],
+      [$.type_qualifier, $.atomic_type_specifier],
+      [$.type_definition, $._type_declarator],
+      [$.type_definition, $.sized_type_specifier],
+      [$.type_definition, $._sized_bit_int_specifier],
       [$.attributed_statement],
       [$._declaration_modifiers, $.attributed_statement],
       [$.enum_specifier],
@@ -77,6 +86,7 @@ module.exports = Object.assign(
     extras: ($) => [$.pragma_operator, /\s|\\\r?\n/, $.comment],
 
     inline: ($) => [
+      $._non_identifier_type_specifier,
       $._type_identifier,
       $._field_identifier,
       $._statement_identifier,
@@ -323,9 +333,17 @@ module.exports = Object.assign(
 
       type_definition: ($) =>
         seq(
-          optional('__extension__'),
-          'typedef',
-          $._type_definition_type,
+          optional(prec.dynamic(1, '__extension__')),
+          choice(
+            seq(repeat($.type_qualifier), 'typedef', $._type_definition_type),
+            seq(
+              repeat($._declaration_modifiers),
+              field('type', $._non_identifier_type_specifier),
+              repeat($.type_qualifier),
+              'typedef',
+              repeat(choice($.type_qualifier, $._non_identifier_type_specifier))
+            )
+          ),
           $._type_definition_declarators,
           repeat($.attribute_specifier),
           ';'
@@ -627,17 +645,23 @@ module.exports = Object.assign(
 
       type_specifier: ($) =>
         choice(
+          $._non_identifier_type_specifier,
+          $.macro_type_specifier,
+          $._type_identifier,
+          prec.dynamic(-1, alias('thread_local', sym('type_identifier')))
+        ),
+
+      _non_identifier_type_specifier: ($) =>
+        choice(
           $.struct_specifier,
           $.union_specifier,
           $.enum_specifier,
           $.typeof_specifier,
           $.bit_int_specifier,
-          $.macro_type_specifier,
+          $.atomic_type_specifier,
           $.sized_type_specifier,
           alias($._sized_bit_int_specifier, $.sized_type_specifier),
-          $.primitive_type,
-          $._type_identifier,
-          prec.dynamic(-1, alias('thread_local', sym('type_identifier')))
+          $.primitive_type
         ),
 
       typeof_specifier: ($) =>
@@ -647,6 +671,8 @@ module.exports = Object.assign(
           choice($.type_descriptor, $.expression, $.comma_expression),
           ')'
         ),
+      atomic_type_specifier: ($) => seq('_Atomic', '(', field('type', $.type_descriptor), ')'),
+
       bit_int_specifier: ($) => seq('_BitInt', '(', $.expression, ')'),
 
       sized_type_specifier: ($) =>

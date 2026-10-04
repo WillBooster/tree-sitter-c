@@ -1,0 +1,40 @@
+==================
+Type specifiers split by typedef
+==================
+
+int typedef unsigned X;
+int typedef long Y;
+int const typedef unsigned Z;
+char typedef unsigned C;
+int typedef signed S;
+int typedef const unsigned Q;
+
+---
+
+(translation_unit
+  (type_definition
+    (primitive_type)
+    (sized_type_specifier)
+    (type_identifier))
+  (type_definition
+    (primitive_type)
+    (sized_type_specifier)
+    (type_identifier))
+  (type_definition
+    (primitive_type)
+    (type_qualifier)
+    (sized_type_specifier)
+    (type_identifier))
+  (type_definition
+    (primitive_type)
+    (sized_type_specifier)
+    (type_identifier))
+  (type_definition
+    (primitive_type)
+    (sized_type_specifier)
+    (type_identifier))
+  (type_definition
+    (primitive_type)
+    (type_qualifier)
+    (sized_type_specifier)
+    (type_identifier)))
