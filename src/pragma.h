@@ -235,6 +235,7 @@ static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped, bool
             if (!after_comment) lexer->mark_end(lexer);
         } else if (block) {
             if (star && c == '/') {
+                if (!literal) return false;
                 block = false;
                 after_comment = !split_comment;
                 if (split_comment) lexer->mark_end(lexer);

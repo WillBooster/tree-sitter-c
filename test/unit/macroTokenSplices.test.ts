@@ -265,7 +265,7 @@ test('preserves directive arguments and trailing comments across whitespace and 
         "mark don't",
         'mark "title',
         'mark "title /*inner*/ continued',
-        'mark "title /*inner\n*/ continued',
+        'mark /*inner\n*/ continued',
         'mark "balanced /*opaque*/"',
         'mark "/*opaque*/ //literal"',
         'mark "title /\\\n*split*/',
@@ -351,12 +351,23 @@ test('preserves declarations and trailing comments after quotes cross physical n
       const tree = parser.parse(`#define X don't ${comment}${newline}int after;${newline}`)!;
       try {
         expect(tree.rootNode.hasError).toBe(false);
-        const [macro, declaration] = tree.rootNode.namedChildren;
+        const [macro, ...declarations] = tree.rootNode.namedChildren;
         expect(macro?.childForFieldName('value')?.text).toBe("don't ");
         expect(macro?.descendantsOfType('comment').map((node) => node.text)).toEqual([comment]);
-        expect(declaration?.text).toBe('int after;');
+        expect(declarations.map((node) => node.text)).toEqual(['int after;']);
       } finally {
         tree.delete();
+      }
+    }
+    for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
+      const closed = parser.parse(`#define X don't /* c${newline}*/ int before;${newline}int after;${newline}`)!;
+      try {
+        expect(closed.rootNode.hasError).toBe(true);
+        expect(
+          closed.rootNode.namedChildren.filter((node) => node.type === 'declaration').map((node) => node.text)
+        ).toEqual(['int before;', 'int after;']);
+      } finally {
+        closed.delete();
       }
     }
     for (const newline of ['\n', '\r\n', '\n\r']) {
