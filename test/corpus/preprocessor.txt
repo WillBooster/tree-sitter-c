@@ -496,3 +496,32 @@ void after(void) {}
         (parameter_declaration
           type: (primitive_type))))
     body: (compound_statement)))
+
+================================================================================
+C whitespace after interior macro comments
+================================================================================
+
+#define FF a /*c*/b
+#define VT a /*c*/b
+#define PFF _Pragma("once") /*c*/b
+#define PVT _Pragma("once") /*c*/b
+int after;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (preproc_def
+    name: (identifier)
+    value: (preproc_arg))
+  (declaration
+    type: (primitive_type)
+    declarator: (identifier)))
