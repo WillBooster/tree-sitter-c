@@ -219,6 +219,7 @@ module.exports = Object.assign(
         ),
 
       ...preprocIf('', () => sym('_block_item')),
+      ...preprocIf('_in_single_case', () => sym('_single_case_body'), 0, false),
       ...preprocIf('_in_field_declaration_list', () => sym('_field_declaration_list_item')),
       ...preprocIf('_in_enumerator_list', () => seq(sym('enumerator'), ',')),
       ...preprocIf('_in_enumerator_list_no_comma', () => sym('enumerator'), -1),
@@ -932,8 +933,16 @@ module.exports = Object.assign(
               'default'
             ),
             ':',
-            optional(choice($._single_statement, $.declaration, $.type_definition))
+            optional($._single_case_body)
           )
+        ),
+      _single_case_body: ($) =>
+        choice(
+          $._single_statement,
+          $.declaration,
+          $.type_definition,
+          alias(sym('preproc_if_in_single_case'), sym('preproc_if')),
+          alias(sym('preproc_ifdef_in_single_case'), sym('preproc_ifdef'))
         ),
       _single_labeled_statement: ($) =>
         seq(field('label', $._statement_identifier), ':', choice($._single_statement, $.declaration)),

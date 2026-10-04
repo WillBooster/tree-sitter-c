@@ -65,3 +65,32 @@ test.each(['case 0:', 'default:', 'case 0: case 1:'])('accepts trailing C23 swit
     parser.delete();
   }
 });
+
+test('keeps conditionally compiled case statements inside the switch', () => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const conditional of [
+      '#if 1\nx++;\n#endif',
+      '#ifdef ENABLE\nx++;\n#else\nx--;\n#endif',
+      '#if A\n#if B\nx++;\n#endif\n#endif',
+    ]) {
+      const source = `int f(int x) { switch (x) case 0:\n${conditional}\nreturn x; }`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(false);
+        const statements = tree.rootNode.firstNamedChild!.childForFieldName('body')!.namedChildren;
+        expect(
+          statements.map((n) => n.type),
+          source
+        ).toEqual(['switch_statement', 'return_statement']);
+        expect(statements[0]!.childForFieldName('body')?.text, source).toBe(`case 0:\n${conditional}`);
+        expect(statements[0]!.descendantsOfType('update_expression').length, source).toBeGreaterThan(0);
+        expect(statements[1]!.text, source).toBe('return x;');
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
