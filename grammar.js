@@ -479,7 +479,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat($.type_qualifier),
+              repeat(choice($.type_qualifier, $.attribute_specifier)),
               field('declarator', $._declarator)
             )
           )
@@ -493,7 +493,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat($.type_qualifier),
+              repeat(choice($.type_qualifier, $.attribute_specifier)),
               field('declarator', $._field_declarator)
             )
           )
@@ -507,7 +507,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat($.type_qualifier),
+              repeat(choice($.type_qualifier, $.attribute_specifier)),
               field('declarator', $._type_declarator)
             )
           )
@@ -520,7 +520,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat($.type_qualifier),
+              repeat(choice($.type_qualifier, $.attribute_specifier)),
               field('declarator', optional($._abstract_declarator))
             )
           )
