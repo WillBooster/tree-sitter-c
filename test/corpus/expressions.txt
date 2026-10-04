@@ -1543,11 +1543,15 @@ void f(void) {
 C23 compound literal storage classes
 ================================================================================
 
-void f(void) {
+int f(void) {
   (static int){42};
   (register int){1};
   (static thread_local long){1l};
   (constexpr static int){7};
+  int a = (static _Thread_local int){2};
+  int b = (static __thread int){3};
+  int c = (static constexpr int){4};
+  return a + b + c;
 }
 
 --------------------------------------------------------------------------------
@@ -1590,4 +1594,43 @@ void f(void) {
           type: (type_descriptor
             type: (primitive_type))
           value: (initializer_list
-            (number_literal)))))))
+            (number_literal))))
+      (declaration
+        type: (primitive_type)
+        declarator: (init_declarator
+          declarator: (identifier)
+          value: (compound_literal_expression
+            storage_class: (storage_class_specifier)
+            storage_class: (storage_class_specifier)
+            type: (type_descriptor
+              type: (primitive_type))
+            value: (initializer_list
+              (number_literal)))))
+      (declaration
+        type: (primitive_type)
+        declarator: (init_declarator
+          declarator: (identifier)
+          value: (compound_literal_expression
+            storage_class: (storage_class_specifier)
+            storage_class: (storage_class_specifier)
+            type: (type_descriptor
+              type: (primitive_type))
+            value: (initializer_list
+              (number_literal)))))
+      (declaration
+        type: (primitive_type)
+        declarator: (init_declarator
+          declarator: (identifier)
+          value: (compound_literal_expression
+            storage_class: (storage_class_specifier)
+            type: (type_descriptor
+              (type_qualifier)
+              type: (primitive_type))
+            value: (initializer_list
+              (number_literal)))))
+      (return_statement
+        (binary_expression
+          left: (binary_expression
+            left: (identifier)
+            right: (identifier))
+          right: (identifier))))))
