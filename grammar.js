@@ -69,7 +69,7 @@ module.exports = Object.assign(
       [$.type_qualifier, $.extension_expression],
     ],
 
-    externals: () => [sym('pragma_operator'), sym('preproc_arg'), sym('_preproc_newline')],
+    externals: () => [sym('pragma_operator'), sym('preproc_arg'), sym('_preproc_newline'), sym('_preproc_lparen')],
 
     extras: ($) => [$.pragma_operator, /\s|\\\r?\n/, $.comment],
 
@@ -185,7 +185,7 @@ module.exports = Object.assign(
           sym('_preproc_newline')
         ),
 
-      preproc_params: ($) => seq(token.immediate('('), commaSep(choice($.identifier, '...')), ')'),
+      preproc_params: ($) => seq(alias($._preproc_lparen, '('), commaSep(choice($.identifier, '...')), ')'),
 
       preproc_call: ($) =>
         seq(
@@ -201,13 +201,9 @@ module.exports = Object.assign(
 
       _preproc_newline: () => token.immediate(/\r?\n/),
 
-      preproc_arg: () =>
-        token(
-          prec(
-            -1,
-            /\S([^/\n]|\/[^*]|\\\r?\n|\/\*[^*]*\*+([^/*][^*]*\*+)*\/([ \t\f\v]|\/\*[^*]*\*+([^/*][^*]*\*+)*\/|\\\r?\n)*([^\s/\\]|\/[^*/\n]|\\([^\r\n\\]|\\+\r?\n)))*/
-          )
-        ),
+      _preproc_lparen: () => token.immediate(/\(/),
+
+      preproc_arg: () => token(prec(-1, /\S([^/\n]|\/[^*]|\\\r?\n)*/)),
       preproc_directive: () => /#[ \t]*[a-zA-Z0-9]\w*/,
 
       _preproc_expression: ($) =>

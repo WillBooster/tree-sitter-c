@@ -632,3 +632,171 @@ int preserved;
   (declaration
     (primitive_type)
     (identifier)))
+
+================================================================================
+Macro literals and comment boundaries
+================================================================================
+
+#define M0 a /* interior */ /
+int m_after0; /* separate */ int m_second0;
+#define M1 a /* interior */ b // see /* files
+int m_after1; /* separate */ int m_second1;
+#define M2 a /* interior */ "/*"
+int m_after2; /* separate */ int m_second2;
+#define M3 a /* interior */ '/'
+int m_after3; /* separate */ int m_second3;
+#define M4 a /* interior */ "escaped \\\" /* text"
+int m_after4; /* separate */ int m_second4;
+#define M5 a /* interior */ 1'000 /* trailing */
+int m_after5; /* separate */ int m_second5;
+#define P0 _Pragma("once") /* interior */ /
+int p_after0; /* separate */ int p_second0;
+#define P1 _Pragma("once") /* interior */ b // see /* files
+int p_after1; /* separate */ int p_second1;
+#define P2 _Pragma("once") /* interior */ "/*"
+int p_after2; /* separate */ int p_second2;
+#define P3 _Pragma("once") /* interior */ '/'
+int p_after3; /* separate */ int p_second3;
+#define P4 _Pragma("once") /* interior */ "escaped \\\" /* text"
+int p_after4; /* separate */ int p_second4;
+#define P5 _Pragma("once") /* interior */ 1'000 /* trailing */
+int p_after5; /* separate */ int p_second5;
+
+#define F(x)(x) /* interior */ + 1
+int final;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (declaration
+    (primitive_type)
+    (identifier))
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (declaration
+    (primitive_type)
+    (identifier)))

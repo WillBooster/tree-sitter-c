@@ -85,32 +85,29 @@ static bool scan_pragma_spacing(TSLexer *lexer) {
     }
 }
 
-static bool scan_pragma_preproc_arg(TSLexer *lexer) {
+static bool scan_preproc_arg(TSLexer *lexer) {
     while (pragma_space(lexer->lookahead) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         lexer->advance(lexer, true);
     }
-    if (!scan_pragma_word(lexer)) return false;
-    bool backslash = false;
+    bool has_content = false;
     bool after_comment = false;
-    lexer->mark_end(lexer);
-    while (!lexer->eof(lexer)) {
-        if (after_comment && lexer->lookahead == '\\') {
-            lexer->advance(lexer, false);
-            if (lexer->lookahead == '\r') lexer->advance(lexer, false);
-            if (lexer->lookahead == '\n') {
-                lexer->advance(lexer, false);
-                continue;
-            }
-            after_comment = false;
-            lexer->mark_end(lexer);
+    bool in_number = false;
+    bool in_identifier = false;
+    while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
+        int32_t c = lexer->lookahead;
+        bool word = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c >= 0x80;
+        bool digit = c >= '0' && c <= '9';
+        if (!word && !digit && c != '.' && c != '\'') {
+            in_number = false;
+            in_identifier = false;
         }
-        if (lexer->lookahead == '\n') {
-            if (!backslash) break;
+        if (digit && !in_identifier) in_number = true;
+        if (word && !in_number) in_identifier = true;
+        if (lexer->lookahead == '/') {
             lexer->advance(lexer, false);
-            backslash = false;
-        } else if (lexer->lookahead == '/') {
-            lexer->advance(lexer, false);
+            if (lexer->lookahead == '/') break;
             if (lexer->lookahead == '*') {
+                if (!has_content) return false;
                 lexer->advance(lexer, false);
                 bool star = false;
                 while (!lexer->eof(lexer)) {
@@ -121,21 +118,44 @@ static bool scan_pragma_preproc_arg(TSLexer *lexer) {
                 if (lexer->eof(lexer)) break;
                 lexer->advance(lexer, false);
                 after_comment = true;
-                backslash = false;
                 continue;
             }
-            if (lexer->eof(lexer) || (after_comment && lexer->lookahead == '/')) break;
-            backslash = lexer->lookahead == '\\';
+            has_content = true;
+            after_comment = false;
+        } else if (lexer->lookahead == '\\') {
             lexer->advance(lexer, false);
+            if (lexer->lookahead == '\r') lexer->advance(lexer, false);
+            if (lexer->lookahead == '\n') {
+                lexer->advance(lexer, false);
+                if (!after_comment && has_content) lexer->mark_end(lexer);
+                continue;
+            }
+            has_content = true;
+            after_comment = false;
+        } else if (lexer->lookahead == '"' || (lexer->lookahead == '\'' && !in_number)) {
+            int32_t quote = lexer->lookahead;
+            lexer->advance(lexer, false);
+            while (!lexer->eof(lexer) && lexer->lookahead != quote && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
+                if (lexer->lookahead == '\\') {
+                    lexer->advance(lexer, false);
+                    if (lexer->lookahead == '\r') lexer->advance(lexer, false);
+                    if (lexer->eof(lexer)) break;
+                }
+                lexer->advance(lexer, false);
+            }
+            if (lexer->lookahead == quote) lexer->advance(lexer, false);
+            has_content = true;
             after_comment = false;
         } else {
-            if (!pragma_space(lexer->lookahead)) after_comment = false;
-            if (lexer->lookahead != '\r') backslash = lexer->lookahead == '\\';
+            if (!pragma_space(lexer->lookahead)) {
+                has_content = true;
+                after_comment = false;
+            }
             lexer->advance(lexer, false);
         }
-        if (!after_comment) lexer->mark_end(lexer);
+        if (!after_comment && has_content) lexer->mark_end(lexer);
     }
-    return true;
+    return has_content;
 }
 
 static bool scan_pragma_word(TSLexer *lexer) {

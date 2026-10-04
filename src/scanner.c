@@ -1,6 +1,6 @@
 #include "pragma.h"
 
-enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE };
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN };
 
 void *tree_sitter_c_external_scanner_create(void) {
     return NULL;
@@ -24,6 +24,12 @@ void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffe
 
 bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     (void)payload;
+    if (valid_symbols[PREPROC_LPAREN] && lexer->lookahead == '(') {
+        lexer->advance(lexer, false);
+        lexer->mark_end(lexer);
+        lexer->result_symbol = PREPROC_LPAREN;
+        return true;
+    }
     if (valid_symbols[PREPROC_NEWLINE]) {
         for (;;) {
             while (pragma_space(lexer->lookahead) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
@@ -45,7 +51,7 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     }
     if (valid_symbols[PREPROC_ARG]) {
         lexer->result_symbol = PREPROC_ARG;
-        return scan_pragma_preproc_arg(lexer);
+        return scan_preproc_arg(lexer);
     }
     lexer->result_symbol = PRAGMA_OPERATOR;
     return valid_symbols[PRAGMA_OPERATOR] && scan_pragma(lexer);
