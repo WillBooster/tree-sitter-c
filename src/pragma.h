@@ -8,7 +8,7 @@ static bool pragma_space(int32_t c);
 static bool scan_pragma_word(TSLexer *lexer);
 static bool scan_preproc_newline(TSLexer *lexer, bool skip);
 static bool scan_preproc_splices(TSLexer *lexer);
-static bool scan_preproc_ucn(TSLexer *lexer);
+static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number);
 static bool preproc_word(int32_t c);
 
 static bool scan_pragma(TSLexer *lexer) {
@@ -96,7 +96,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash) {
     }
     bool after_comment = false;
     bool in_number = false;
-    bool in_identifier = consumed_backslash && scan_preproc_ucn(lexer);
+    bool in_identifier = consumed_backslash && scan_preproc_ucn(lexer, &in_number);
     if (in_identifier) lexer->mark_end(lexer);
     int32_t number_last = 0;
     while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
@@ -153,7 +153,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash) {
                 if (split_delimiter) lexer->mark_end(lexer);
                 continue;
             }
-            if (!delimiter) in_identifier = scan_preproc_ucn(lexer);
+            if (!delimiter) in_identifier = scan_preproc_ucn(lexer, &in_number);
             has_content = true;
             after_comment = false;
         } else if (lexer->lookahead == '\\') {
@@ -162,7 +162,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash) {
                 if (!after_comment && has_content) lexer->mark_end(lexer);
                 continue;
             }
-            if (scan_preproc_ucn(lexer)) {
+            if (scan_preproc_ucn(lexer, &in_number)) {
                 if (!in_number) in_identifier = true;
                 number_last = 0;
             } else {
@@ -216,8 +216,8 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash) {
     return has_content;
 }
 
-static bool scan_preproc_ucn(TSLexer *lexer) {
-    if (!scan_preproc_splices(lexer)) return false;
+static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number) {
+    while (!scan_preproc_splices(lexer)) *in_number = false;
     int32_t prefix = lexer->lookahead;
     if (prefix != 'u' && prefix != 'U' && prefix != 'N') return false;
     lexer->advance(lexer, false);

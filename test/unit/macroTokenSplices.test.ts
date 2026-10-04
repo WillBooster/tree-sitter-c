@@ -133,7 +133,18 @@ test('preserves leading and slash-adjacent escaped identifiers across every spli
     ]) {
       for (const newline of ['\n', '\r\n', '\r']) {
         for (let position = 0; position < token.length; position++) {
-          for (const prefix of ['', '/', '_Pragma("once") ', '_Pragma("once") /']) {
+          for (const prefix of [
+            '',
+            '/',
+            '\\',
+            '/\\',
+            String.raw`\\`,
+            String.raw`/\\`,
+            '1\\',
+            String.raw`1\\`,
+            '_Pragma("once") ',
+            '_Pragma("once") /',
+          ]) {
             const spliced = position === 0 ? token : `${token.slice(0, position)}\\${newline}${token.slice(position)}`;
             const value = prefix + spliced;
             const tree = parser.parse(
