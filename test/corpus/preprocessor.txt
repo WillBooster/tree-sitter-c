@@ -1275,3 +1275,98 @@ const char *unicode = S(U);
         (identifier)
         (argument_list
           (identifier))))))
+
+================================================================================
+Universal character names in preprocessing numbers
+================================================================================
+
+#define M 1\u{e9}'0 /*tail*/
+#define P _Pragma("once") 1\u{e9}'0 /*tail*/
+#define N 1\N{LATIN SMALL LETTER E WITH ACUTE}'0 /*tail*/
+#define F 1\u00\
+e9'0 /*tail*/
+#define D 1\u\
+{e\
+9}'0 /*tail*/
+#define S_(...) #__VA_ARGS__
+#define S(...) S_(__VA_ARGS__)
+const char *after = S(M);
+const char *named = S(N);
+const char *fixed = S(F);
+const char *delimited = S(D);
+int second;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_def
+    (identifier)
+    (preproc_arg)
+    (comment))
+  (preproc_function_def
+    (identifier)
+    (preproc_params)
+    (preproc_arg))
+  (preproc_function_def
+    (identifier)
+    (preproc_params)
+    (preproc_arg))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)))))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)))))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)))))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)))))
+  (declaration
+    (primitive_type)
+    (identifier)))

@@ -8,6 +8,7 @@ static bool pragma_space(int32_t c);
 static bool scan_pragma_word(TSLexer *lexer);
 static bool scan_preproc_newline(TSLexer *lexer, bool skip);
 static bool scan_preproc_splices(TSLexer *lexer);
+static bool scan_preproc_ucn(TSLexer *lexer);
 
 static bool scan_pragma(TSLexer *lexer) {
     while (pragma_space(lexer->lookahead)) {
@@ -153,15 +154,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
                 if (!after_comment && has_content) lexer->mark_end(lexer);
                 continue;
             }
-            if (lexer->lookahead == 'u' || lexer->lookahead == 'U') {
-                unsigned digits = lexer->lookahead == 'u' ? 4 : 8;
-                lexer->advance(lexer, false);
-                while (digits > 0 && ((lexer->lookahead >= '0' && lexer->lookahead <= '9') ||
-                       (lexer->lookahead >= 'a' && lexer->lookahead <= 'f') ||
-                       (lexer->lookahead >= 'A' && lexer->lookahead <= 'F'))) {
-                    lexer->advance(lexer, false);
-                    digits--;
-                }
+            if (scan_preproc_ucn(lexer)) {
                 if (!in_number) in_identifier = true;
                 number_last = 0;
             } else {
@@ -200,6 +193,32 @@ static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
         if (!after_comment && has_content) lexer->mark_end(lexer);
     }
     return has_content;
+}
+
+static bool scan_preproc_ucn(TSLexer *lexer) {
+    int32_t prefix = lexer->lookahead;
+    if (prefix != 'u' && prefix != 'U' && prefix != 'N') return false;
+    lexer->advance(lexer, false);
+    if (!scan_preproc_splices(lexer)) return false;
+    bool braced = prefix != 'U' && lexer->lookahead == '{';
+    if (prefix == 'N' && !braced) return false;
+    if (braced) lexer->advance(lexer, false);
+    unsigned remaining = prefix == 'U' ? 8 : 4;
+    bool content = false;
+    for (;;) {
+        if (!scan_preproc_splices(lexer)) return false;
+        if (braced && lexer->lookahead == '}') {
+            lexer->advance(lexer, false);
+            return content;
+        }
+        int32_t c = lexer->lookahead;
+        bool accepted = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+        if (prefix == 'N') accepted = (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == ' ' || c == '-';
+        if (!accepted) return false;
+        lexer->advance(lexer, false);
+        content = true;
+        if (!braced && --remaining == 0) return true;
+    }
 }
 
 static bool scan_pragma_word(TSLexer *lexer) {
