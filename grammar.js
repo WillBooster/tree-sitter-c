@@ -636,6 +636,7 @@ module.exports = Object.assign(
           $.enum_specifier,
           $.typeof_specifier,
           $.bit_int_specifier,
+          $.atomic_type_specifier,
           $.macro_type_specifier,
           $.sized_type_specifier,
           alias($._sized_bit_int_specifier, $.sized_type_specifier),
@@ -650,6 +651,8 @@ module.exports = Object.assign(
           choice($.type_descriptor, $.expression, $.comma_expression),
           ')'
         ),
+      atomic_type_specifier: ($) => seq('_Atomic', '(', field('type', $.type_descriptor), ')'),
+
       bit_int_specifier: ($) => seq('_BitInt', '(', $.expression, ')'),
 
       sized_type_specifier: ($) =>

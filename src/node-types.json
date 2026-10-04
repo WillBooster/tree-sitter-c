@@ -304,6 +304,10 @@
     "named": true,
     "subtypes": [
       {
+        "type": "atomic_type_specifier",
+        "named": true
+      },
+      {
         "type": "bit_int_specifier",
         "named": true
       },
@@ -660,6 +664,22 @@
         "types": [
           {
             "type": "expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "atomic_type_specifier",
+    "named": true,
+    "fields": {
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_descriptor",
             "named": true
           }
         ]

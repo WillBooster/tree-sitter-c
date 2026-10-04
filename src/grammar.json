@@ -5097,6 +5097,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "atomic_type_specifier"
+        },
+        {
+          "type": "SYMBOL",
           "name": "macro_type_specifier"
         },
         {
@@ -5174,6 +5178,31 @@
               "name": "comma_expression"
             }
           ]
+        },
+        {
+          "type": "STRING",
+          "value": ")"
+        }
+      ]
+    },
+    "atomic_type_specifier": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "_Atomic"
+        },
+        {
+          "type": "STRING",
+          "value": "("
+        },
+        {
+          "type": "FIELD",
+          "name": "type",
+          "content": {
+            "type": "SYMBOL",
+            "name": "type_descriptor"
+          }
         },
         {
           "type": "STRING",
