@@ -263,3 +263,34 @@ test('preserves macro token boundaries around Unicode punctuation and identifier
     parser.delete();
   }
 });
+
+test('preserves directive arguments and trailing comments across whitespace and line endings', async () => {
+  await Parser.init();
+  const parser = new Parser();
+  parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
+  try {
+    for (const directive of ['#define M', '#pragma', '#error', '#warning', '#line']) {
+      for (const value of ['mark /*inside*/ Section', '"/*literal*/" /*inside*/ tail']) {
+        for (const padding of ['  ', '\t', '\u00A0', '\u3000']) {
+          for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
+            const source = `${directive} ${value} /*tail*/${padding}${newline}int after;${newline}`;
+            const tree = parser.parse(source)!;
+            try {
+              expect(tree.rootNode.hasError, JSON.stringify(source)).toBe(false);
+              const [call, declaration] = tree.rootNode.namedChildren;
+              expect(call?.type).toBe(directive === '#define M' ? 'preproc_def' : 'preproc_call');
+              expect(call?.childForFieldName(directive === '#define M' ? 'value' : 'argument')?.text).toBe(`${value} `);
+              expect(call?.descendantsOfType('comment').map((node) => node.text)).toEqual(['/*tail*/']);
+              expect(declaration?.type).toBe('declaration');
+              expect(declaration?.text).toBe('int after;');
+            } finally {
+              tree.delete();
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
