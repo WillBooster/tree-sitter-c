@@ -89,13 +89,15 @@ static bool scan_pragma_spacing(TSLexer *lexer) {
     }
 }
 
-static bool scan_preproc_arg(TSLexer *lexer, bool has_content) {
+static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash) {
+    bool has_content = consumed_backslash;
     while (!has_content && pragma_space(lexer->lookahead) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         lexer->advance(lexer, true);
     }
     bool after_comment = false;
     bool in_number = false;
-    bool in_identifier = false;
+    bool in_identifier = consumed_backslash && scan_preproc_ucn(lexer);
+    if (in_identifier) lexer->mark_end(lexer);
     int32_t number_last = 0;
     while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         int32_t c = lexer->lookahead;
