@@ -331,4 +331,35 @@ static bool pragma_space(int32_t c) {
            c == 0x2028 || c == 0x2029 || c == 0x202F || c == 0x205F || c == 0x3000;
 }
 
+static bool scan_function_macro_name(TSLexer *lexer) {
+    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
+    bool has_name = false;
+    for (;;) {
+        int32_t c = lexer->lookahead;
+        if (c == '\\') {
+            lexer->advance(lexer, false);
+            if (scan_preproc_newline(lexer, false)) {
+                return has_name && scan_preproc_splices(lexer) && lexer->lookahead == '(';
+            }
+            unsigned digits = lexer->lookahead == 'u' ? 4 : lexer->lookahead == 'U' ? 8 : 0;
+            if (!digits) return false;
+            lexer->advance(lexer, false);
+            for (unsigned i = 0; i < digits; i++) {
+                c = lexer->lookahead;
+                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) return false;
+                lexer->advance(lexer, false);
+            }
+        } else {
+            bool identifier = has_name
+                ? set_contains(preproc_identifier_continue, sizeof(preproc_identifier_continue) / sizeof(TSCharacterRange), c)
+                : set_contains(preproc_identifier_start, sizeof(preproc_identifier_start) / sizeof(TSCharacterRange), c);
+            if (!identifier) break;
+            lexer->advance(lexer, false);
+        }
+        has_name = true;
+        lexer->mark_end(lexer);
+    }
+    return has_name && lexer->lookahead == '(';
+}
+
 #endif

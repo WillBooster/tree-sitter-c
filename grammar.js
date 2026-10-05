@@ -92,9 +92,10 @@ module.exports = Object.assign(
       sym('_preproc_newline'),
       sym('_preproc_lparen'),
       sym('_preproc_directive_arg'),
+      sym('_preproc_function_name'),
     ],
 
-    extras: ($) => [$.pragma_operator, /\s|\\\r?\n/, $.comment],
+    extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
 
     inline: ($) => [
       $._non_identifier_type_specifier,
@@ -203,7 +204,7 @@ module.exports = Object.assign(
       preproc_function_def: ($) =>
         seq(
           preprocessor('define'),
-          field('name', $.identifier),
+          field('name', alias(sym('_preproc_function_name'), $.identifier)),
           field('parameters', $.preproc_params),
           field('value', optional($.preproc_arg)),
           sym('_preproc_newline')
@@ -1430,7 +1431,6 @@ module.exports = Object.assign(
 
       identifier: () =>
         /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/u,
-
       _type_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('type_identifier')),
       _field_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('field_identifier')),
       _statement_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('statement_identifier')),
