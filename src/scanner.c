@@ -24,7 +24,7 @@ void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffe
 
 bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     (void)payload;
-    if (valid_symbols[PREPROC_FUNCTION_NAME] && !valid_symbols[PREPROC_ARG] && !valid_symbols[PREPROC_DIRECTIVE_ARG]) {
+    if (valid_symbols[PREPROC_FUNCTION_NAME] && !valid_symbols[PREPROC_LPAREN]) {
         lexer->result_symbol = PREPROC_FUNCTION_NAME;
         return scan_function_macro_name(lexer);
     }

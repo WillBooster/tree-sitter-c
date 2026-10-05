@@ -124,6 +124,33 @@ test('updates macro classification and query captures after adjacency edits', ()
   }
 });
 
+test('retains ordinary call expressions while recovering outside macro definitions', () => {
+  const parser = new Parser().setLanguage(language);
+  const query = new Query(language, fs.readFileSync('queries/highlights.scm', 'utf8'));
+  try {
+    for (const source of ['int x = @ foo(1) + 2;', 'void f(void) { if (@ foo(1)) return; }']) {
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.type).toBe('translation_unit');
+        expect(tree.rootNode.hasError).toBe(true);
+        const calls = tree.rootNode.descendantsOfType('call_expression');
+        expect(
+          calls.map((node) => node.childForFieldName('function')?.text),
+          source
+        ).toEqual(['foo']);
+        expect(
+          query.captures(tree.rootNode).filter(({ name, node }) => name === 'function' && node.text === 'foo')
+        ).toHaveLength(1);
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    query.delete();
+    parser.delete();
+  }
+});
+
 function point(text: string): { row: number; column: number } {
   const lines = text.split('\n');
   return { row: lines.length - 1, column: lines.at(-1)!.length };
