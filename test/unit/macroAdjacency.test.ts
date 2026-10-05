@@ -91,7 +91,18 @@ test('updates macro classification and query captures after adjacency edits', ()
       .captures(root)
       .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
   try {
-    for (const nextGap of ['/**/', '', '\\\n', '\\\n/**/', '\\\r/**/', '\\\r', ' ', '', '/**/\\\n', '']) {
+    for (const [nextGap, functionNames] of [
+      ['/**/', []],
+      ['', ['M']],
+      ['\\\n', ['M']],
+      ['\\\n/**/', []],
+      ['\\\r/**/', []],
+      ['\\\r', ['M']],
+      [' ', []],
+      ['', ['M']],
+      ['/**/\\\n', []],
+      ['', ['M']],
+    ] as const) {
       tree.edit(
         new Edit({
           startIndex: prefix.length,
@@ -111,7 +122,12 @@ test('updates macro classification and query captures after adjacency edits', ()
         expect(tree.rootNode.hasError, JSON.stringify(nextGap)).toBe(false);
         expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
         expect(captures(tree.rootNode)).toEqual(captures(fresh.rootNode));
-        expect(query.captures(tree.rootNode).some(({ node }) => node.text === 'M')).toBe(true);
+        expect(
+          query
+            .captures(tree.rootNode)
+            .filter(({ name }) => name === 'function.special')
+            .map(({ node }) => node.text)
+        ).toEqual(functionNames);
       } finally {
         fresh.delete();
       }
