@@ -332,14 +332,15 @@ static bool pragma_space(int32_t c) {
 }
 
 static bool scan_function_macro_name(TSLexer *lexer) {
-    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
     bool has_name = false;
     for (;;) {
+        while (!has_name && pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
         int32_t c = lexer->lookahead;
         if (c == '\\') {
             lexer->advance(lexer, false);
-            if (scan_preproc_newline(lexer, false)) {
-                return has_name && scan_preproc_splices(lexer) && lexer->lookahead == '(';
+            if (scan_preproc_newline(lexer, !has_name)) {
+                if (!has_name) continue;
+                return scan_preproc_splices(lexer) && lexer->lookahead == '(';
             }
             unsigned digits = lexer->lookahead == 'u' ? 4 : lexer->lookahead == 'U' ? 8 : 0;
             if (!digits) return false;

@@ -51,6 +51,34 @@ test('preserves macro name adjacency across comments and line splices', () => {
   }
 });
 
+test('retains function-like names after leading splices and comments', () => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
+      const splice = `\\${newline}`;
+      for (const prefix of [splice, `/**/${splice}`, `${splice} ${splice}\t`, `${splice}/**/`]) {
+        for (const name of ['M', String.raw`\u00e9`, String.raw`\U000000e9`]) {
+          const source = `#define ${prefix}${name}(x) x\nint after;\n`;
+          const tree = parser.parse(source)!;
+          try {
+            expect(tree.rootNode.hasError, JSON.stringify(source)).toBe(false);
+            const [macro, declaration] = tree.rootNode.namedChildren;
+            expect(macro?.type).toBe('preproc_function_def');
+            expect(macro?.childForFieldName('name')?.text).toBe(name);
+            expect(macro?.childForFieldName('parameters')?.text).toBe('(x)');
+            expect(macro?.childForFieldName('value')?.text).toBe('x');
+            expect(declaration?.text).toBe('int after;');
+          } finally {
+            tree.delete();
+          }
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
 test('updates macro classification and query captures after adjacency edits', () => {
   const parser = new Parser().setLanguage(language);
   const query = new Query(language, fs.readFileSync('queries/highlights.scm', 'utf8'));
