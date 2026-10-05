@@ -26,7 +26,7 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     (void)payload;
     if (valid_symbols[PREPROC_FUNCTION_NAME] && !valid_symbols[PREPROC_LPAREN]) {
         lexer->result_symbol = PREPROC_FUNCTION_NAME;
-        return scan_function_macro_name(lexer);
+        return scan_function_macro_name(lexer, valid_symbols[PRAGMA_OPERATOR], PRAGMA_OPERATOR);
     }
     bool directive_text = !valid_symbols[PREPROC_ARG] && valid_symbols[PREPROC_DIRECTIVE_ARG];
     TSSymbol argument_symbol = directive_text ? PREPROC_DIRECTIVE_ARG : PREPROC_ARG;

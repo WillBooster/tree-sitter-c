@@ -171,3 +171,38 @@ function point(text: string): { row: number; column: number } {
   const lines = text.split('\n');
   return { row: lines.length - 1, column: lines.at(-1)!.length };
 }
+
+test('preserves pragma extras before macro names without reserving identifier prefixes', () => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const pragma of ['_Pragma("once")', '_Pragma /* gap */ (L"once")', '_Pragma\\\n("once")']) {
+      for (const skipped of [false, true]) {
+        const definition = `#define ${pragma} M(x) x\n`;
+        const source = skipped ? `#if 0\n${definition}#endif\n` : definition;
+        const tree = parser.parse(source)!;
+        try {
+          expect(tree.rootNode.hasError, source).toBe(false);
+          const macro = tree.rootNode.descendantsOfType('preproc_function_def')[0]!;
+          expect(macro.childForFieldName('name')?.text).toBe('M');
+          expect(macro.childForFieldName('parameters')?.text).toBe('(x)');
+          expect(macro.descendantsOfType('pragma_operator').map((node) => node.text)).toEqual([pragma]);
+        } finally {
+          tree.delete();
+        }
+      }
+    }
+    for (const name of ['_Pragma', '_PragmaX', '_Pragm', String.raw`\u005fPragma`]) {
+      const tree = parser.parse(`#define ${name}(x) x\n`)!;
+      try {
+        expect(tree.rootNode.hasError, name).toBe(false);
+        expect(tree.rootNode.descendantsOfType('pragma_operator')).toHaveLength(0);
+        expect(tree.rootNode.firstNamedChild?.childForFieldName('name')?.text).toBe(name);
+        expect(tree.rootNode.firstNamedChild?.childForFieldName('parameters')?.text).toBe('(x)');
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
