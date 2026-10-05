@@ -60,9 +60,7 @@ static bool scan_pragma_spacing(TSLexer *lexer) {
             lexer->advance(lexer, false);
         } else if (lexer->lookahead == '\\') {
             lexer->advance(lexer, false);
-            if (lexer->lookahead == '\r') lexer->advance(lexer, false);
-            if (lexer->lookahead != '\n') return false;
-            lexer->advance(lexer, false);
+            if (!scan_preproc_newline(lexer, false)) return false;
         } else if (lexer->lookahead == '/') {
             lexer->advance(lexer, false);
             if (lexer->lookahead == '/') {

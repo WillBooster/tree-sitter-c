@@ -36,7 +36,7 @@ const PREC = {
 };
 
 const LINE_COMMENT = seq('//', /(\\+(.|\r?\n)|[^\\\n])*/);
-const PRAGMA_SPACING = repeat(choice(/\s/, /\\\r?\n/));
+const PRAGMA_SPACING = repeat(choice(/\s/, /\\(?:\r\n?|\n\r?)/));
 const PREPROC_ARGUMENT = /\S([^/\n]|\/[^*]|\\\r?\n)*/;
 const VA_ARG_KEYWORDS = choice('va_arg', '__builtin_va_arg');
 

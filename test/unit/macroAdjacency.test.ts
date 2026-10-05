@@ -175,7 +175,20 @@ function point(text: string): { row: number; column: number } {
 test('preserves pragma extras before macro names without reserving identifier prefixes', () => {
   const parser = new Parser().setLanguage(language);
   try {
-    for (const pragma of ['_Pragma("once")', '_Pragma /* gap */ (L"once")', '_Pragma\\\n("once")']) {
+    const pragmas = ['_Pragma("once")', '_Pragma /* gap */ (L"once")'];
+    for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
+      const splice = `\\${newline}`;
+      pragmas.push(`_Pragma${splice}("once")`, `_Pragma(${splice}"once")`, `_Pragma("once"${splice})`);
+    }
+    for (const pragma of pragmas) {
+      const code = parser.parse(`${pragma} int after;`)!;
+      try {
+        expect(code.rootNode.hasError, JSON.stringify(pragma)).toBe(false);
+        expect(code.rootNode.descendantsOfType('pragma_operator').map((node) => node.text)).toEqual([pragma]);
+        expect(code.rootNode.descendantsOfType('declaration').map((node) => node.text)).toEqual(['int after;']);
+      } finally {
+        code.delete();
+      }
       for (const skipped of [false, true]) {
         const definition = `#define ${pragma} M(x) x\n`;
         const source = skipped ? `#if 0\n${definition}#endif\n` : definition;
