@@ -16,6 +16,7 @@
 "enum" @keyword
 "extern" @keyword
 "for" @keyword
+"goto" @keyword
 "if" @keyword
 "inline" @keyword
 "return" @keyword
