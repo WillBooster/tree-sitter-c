@@ -23,7 +23,15 @@ try {
     source,
     `
 #include <stdio.h>
+#include <stdlib.h>
 #include ${JSON.stringify(path.join(root, 'src/parser.c'))}
+
+// Only character predicates are evaluated; a scanner call is a generator bug.
+void *tree_sitter_c_external_scanner_create(void) { abort(); }
+void tree_sitter_c_external_scanner_destroy(void *payload) { abort(); }
+bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid) { abort(); }
+unsigned tree_sitter_c_external_scanner_serialize(void *payload, char *buffer) { abort(); }
+void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffer, unsigned length) { abort(); }
 
 int main(void) {
   for (int table = 0; table < 2; table++) {
@@ -44,15 +52,7 @@ int main(void) {
 }
 `
   );
-  execFileSync('cc', [
-    '-std=c11',
-    '-I',
-    path.join(root, 'src'),
-    source,
-    path.join(root, 'src/scanner.c'),
-    '-o',
-    executable,
-  ]);
+  execFileSync('cc', ['-std=c11', '-I', path.join(root, 'src'), source, '-o', executable]);
   const tables = execFileSync(executable, { encoding: 'utf8' });
   await writeFile(
     path.join(root, 'src/identifier.h'),
