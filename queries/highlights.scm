@@ -56,6 +56,24 @@
 "==" @operator
 ">" @operator
 "||" @operator
+"*=" @operator
+"/=" @operator
+"%=" @operator
+"<<=" @operator
+">>=" @operator
+"&=" @operator
+"|=" @operator
+"^=" @operator
+"/" @operator
+"%" @operator
+"<=" @operator
+">=" @operator
+"<<" @operator
+">>" @operator
+"|" @operator
+"^" @operator
+"~" @operator
+"!" @operator
 
 "." @delimiter
 ";" @delimiter
