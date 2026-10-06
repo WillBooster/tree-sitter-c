@@ -40,10 +40,7 @@ static bool scan_pragma_suffix(TSLexer *lexer) {
         if (lexer->lookahead == '\\') {
             lexer->advance(lexer, false);
             if (lexer->eof(lexer)) return false;
-            if (lexer->lookahead == '\r') {
-                lexer->advance(lexer, false);
-                if (lexer->lookahead != '\n') return false;
-            }
+            if (scan_preproc_newline(lexer, false)) continue;
         }
         lexer->advance(lexer, false);
     }

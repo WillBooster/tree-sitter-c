@@ -178,7 +178,12 @@ test('preserves pragma extras before macro names without reserving identifier pr
     const pragmas = ['_Pragma("once")', '_Pragma /* gap */ (L"once")'];
     for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
       const splice = `\\${newline}`;
-      pragmas.push(`_Pragma${splice}("once")`, `_Pragma(${splice}"once")`, `_Pragma("once"${splice})`);
+      pragmas.push(
+        `_Pragma${splice}("once")`,
+        `_Pragma(${splice}"once")`,
+        `_Pragma("once"${splice})`,
+        `_Pragma("on${splice}ce")`
+      );
     }
     for (const pragma of pragmas) {
       const code = parser.parse(`${pragma} int after;`)!;
