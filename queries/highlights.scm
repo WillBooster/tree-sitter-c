@@ -5,6 +5,7 @@
 
 ((storage_class_specifier) @keyword
  (#eq? @keyword "auto"))
+"_Generic" @keyword
 "_Thread_local" @keyword
 "break" @keyword
 "case" @keyword
