@@ -75,6 +75,9 @@
 "~" @operator
 "!" @operator
 
+(conditional_expression
+  ["?" ":"] @operator)
+
 "." @delimiter
 ";" @delimiter
 
