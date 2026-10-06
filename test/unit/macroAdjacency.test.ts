@@ -209,6 +209,17 @@ test('preserves pragma extras before macro names without reserving identifier pr
         }
       }
     }
+    for (const newline of ['\n', '\r\n', '\r', '\n\r']) {
+      const pragma = `_Pragma("a${newline}b")`;
+      for (const source of [`${pragma} int after;`, `#define ${pragma} M(x) x\n`]) {
+        const tree = parser.parse(source)!;
+        try {
+          expect(tree.rootNode.descendantsOfType('pragma_operator'), JSON.stringify(source)).toHaveLength(0);
+        } finally {
+          tree.delete();
+        }
+      }
+    }
     for (const name of ['_Pragma', '_PragmaX', '_Pragm', String.raw`\u005fPragma`]) {
       const tree = parser.parse(`#define ${name}(x) x\n`)!;
       try {

@@ -227,7 +227,7 @@
               "members": [
                 {
                   "type": "PATTERN",
-                  "value": "[^\\\\\"\\n]"
+                  "value": "[^\\\\\"\\r\\n]"
                 },
                 {
                   "type": "SEQ",
@@ -241,11 +241,11 @@
                       "members": [
                         {
                           "type": "PATTERN",
-                          "value": "."
+                          "value": "[^\\r\\n]"
                         },
                         {
                           "type": "PATTERN",
-                          "value": "\\r?\\n"
+                          "value": "\\r\\n?|\\n\\r?"
                         }
                       ]
                     }

@@ -170,7 +170,7 @@ module.exports = Object.assign(
             PRAGMA_SPACING,
             optional(choice('L', 'u8', 'u', 'U')),
             '"',
-            repeat(choice(/[^\\"\n]/, seq('\\', choice(/./, /\r?\n/)))),
+            repeat(choice(/[^\\"\r\n]/, seq('\\', choice(/[^\r\n]/, /\r\n?|\n\r?/)))),
             '"',
             PRAGMA_SPACING,
             ')'
