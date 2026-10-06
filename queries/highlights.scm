@@ -30,6 +30,8 @@
 
 "#define" @keyword
 "#elif" @keyword
+"#elifdef" @keyword
+"#elifndef" @keyword
 "#else" @keyword
 "#endif" @keyword
 "#if" @keyword
