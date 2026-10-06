@@ -59,6 +59,10 @@ parser.setLanguage(await Language.load(c));
 
 The package also ships `grammar.js`, the scanner sources `src/scanner.c`, `src/pragma.h` and `src/identifier.h`, the queries in `queries/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
+Derived grammars must handle every inherited external token in their scanner, including `_preproc_function_name`.
+Port both the `_preproc_function_name` dispatch and the `_preproc_lparen` splice-skipping loop from `src/scanner.c`,
+using `scan_function_macro_name` from `src/pragma.h`. The macro-name token ends before the splices used to determine
+adjacency, so the parameter scanner must skip them again to reach `(`.
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
@@ -68,7 +72,7 @@ malformed input):
 ```toml
 [dependencies]
 tree-sitter = { package = "willbooster-tree-sitter", version = "1" }
-tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "1" }
+tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "2" }
 ```
 
 ```rust

@@ -162,7 +162,7 @@
                 },
                 {
                   "type": "PATTERN",
-                  "value": "\\\\\\r?\\n"
+                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
                 }
               ]
             }
@@ -182,7 +182,7 @@
                 },
                 {
                   "type": "PATTERN",
-                  "value": "\\\\\\r?\\n"
+                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
                 }
               ]
             }
@@ -227,7 +227,7 @@
               "members": [
                 {
                   "type": "PATTERN",
-                  "value": "[^\\\\\"\\n]"
+                  "value": "[^\\\\\"\\r\\n]"
                 },
                 {
                   "type": "SEQ",
@@ -241,11 +241,11 @@
                       "members": [
                         {
                           "type": "PATTERN",
-                          "value": "."
+                          "value": "[^\\r\\n]"
                         },
                         {
                           "type": "PATTERN",
-                          "value": "\\r?\\n"
+                          "value": "\\r\\n?|\\n\\r?"
                         }
                       ]
                     }
@@ -269,7 +269,7 @@
                 },
                 {
                   "type": "PATTERN",
-                  "value": "\\\\\\r?\\n"
+                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
                 }
               ]
             }
@@ -387,8 +387,13 @@
           "type": "FIELD",
           "name": "name",
           "content": {
-            "type": "SYMBOL",
-            "name": "identifier"
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_preproc_function_name"
+            },
+            "named": true,
+            "value": "identifier"
           }
         },
         {
@@ -12422,7 +12427,7 @@
     },
     {
       "type": "PATTERN",
-      "value": "\\s|\\\\\\r?\\n"
+      "value": "\\s|\\\\(?:\\r\\n?|\\n\\r?)"
     },
     {
       "type": "SYMBOL",
@@ -12605,6 +12610,10 @@
     {
       "type": "SYMBOL",
       "name": "_preproc_directive_arg"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_preproc_function_name"
     }
   ],
   "inline": [
