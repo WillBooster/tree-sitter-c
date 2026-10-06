@@ -110,6 +110,7 @@ module.exports = Object.assign(
     supertypes: ($) => [
       $.expression,
       $.statement,
+      $._single_noncompound_statement,
       $.type_specifier,
       $._declarator,
       $._field_declarator,
@@ -906,9 +907,10 @@ module.exports = Object.assign(
       switch_statement: ($) =>
         seq('switch', field('condition', $.parenthesized_expression), field('body', $._single_statement)),
 
-      _single_statement: ($) =>
+      _single_statement: ($) => choice($.compound_statement, alias($._single_noncompound_statement, $.statement)),
+
+      _single_noncompound_statement: ($) =>
         choice(
-          $.compound_statement,
           $.expression_statement,
           $.switch_statement,
           $.return_statement,
