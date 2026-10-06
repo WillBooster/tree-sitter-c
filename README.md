@@ -18,8 +18,7 @@ This fork fixes parsing bugs and raises conformance with the ISO C standard
 ## Usage
 
 The npm package ships `tree-sitter-c.wasm` for
-[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter), which runs in Node.js,
-Bun, browsers, and Cloudflare Workers. In Node.js and Bun, load the grammar from its path:
+[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 1.1.6 or later, which runs in Node.js, Bun, browsers, and Cloudflare Workers. In Node.js and Bun, load the grammar from its path:
 
 ```js
 import { fileURLToPath } from 'node:url';
@@ -71,7 +70,7 @@ malformed input):
 
 ```toml
 [dependencies]
-tree-sitter = { package = "willbooster-tree-sitter", version = "1" }
+tree-sitter = { package = "willbooster-tree-sitter", version = "1.1.6" }
 tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "2" }
 ```
 

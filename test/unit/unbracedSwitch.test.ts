@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Edit, Language, Parser, type Point, Query } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 await Parser.init();
@@ -97,3 +97,69 @@ test('keeps conditionally compiled case statements inside the switch', () => {
     parser.delete();
   }
 });
+
+test('keeps switch recovery and body captures consistent after directive edits', () => {
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const query = new Query(language, '(switch_statement body: (_) @body)');
+  const cases = [
+    ['{switch(x){f\ny+;}return;}', 'switch(x)'],
+    [
+      'int f(int x, int y){ switch (x) { case 0:\n#ifdef E\nx++;\n#else\nx--;\n#endif\ny++;\n}\nreturn x; }\n',
+      'switch (x) ',
+    ],
+  ];
+  try {
+    for (const [original, marker] of cases) {
+      let source = original!;
+      const offset = source.indexOf(marker!) + marker!.length;
+      let tree = parser.parse(source)!;
+      try {
+        for (const insert of [true, false, true, false]) {
+          const oldEnd = offset + (insert ? 0 : 6);
+          const replacement = insert ? '#else\n' : '';
+          const next = source.slice(0, offset) + replacement + source.slice(oldEnd);
+          tree.edit(
+            new Edit({
+              startIndex: offset,
+              oldEndIndex: oldEnd,
+              newEndIndex: offset + replacement.length,
+              startPosition: positionAt(source, offset),
+              oldEndPosition: positionAt(source, oldEnd),
+              newEndPosition: positionAt(next, offset + replacement.length),
+            })
+          );
+          const incremental = parser.parse(next, tree)!;
+          tree.delete();
+          tree = incremental;
+          const fresh = parser.parse(next)!;
+          try {
+            expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+            expect(tree.rootNode.hasError).toBe(fresh.rootNode.hasError);
+            const bodies = (parsed: typeof tree): { text: string; start: Point; end: Point }[] =>
+              query.captures(parsed.rootNode).map(({ node }) => ({
+                text: node.text,
+                start: node.startPosition,
+                end: node.endPosition,
+              }));
+            expect(bodies(tree)).toEqual(bodies(fresh));
+            if (insert) expect(bodies(tree).some(({ text }) => text.startsWith('{'))).toBe(true);
+          } finally {
+            fresh.delete();
+          }
+          source = next;
+        }
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    query.delete();
+    parser.delete();
+  }
+});
+
+function positionAt(source: string, offset: number): Point {
+  const lines = source.slice(0, offset).split('\n');
+  return { row: lines.length - 1, column: lines.at(-1)!.length };
+}
