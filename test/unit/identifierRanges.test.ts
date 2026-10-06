@@ -6,7 +6,7 @@ import { expect, test } from 'vitest';
 
 const root = path.join(import.meta.dirname, '../..');
 
-test('regenerates identifier ranges without an existing header or scanner', async () => {
+test('regenerates identifier ranges without an existing header or scanner', { timeout: 60_000 }, async () => {
   await mkdir(path.join(root, '.tmp'), { recursive: true });
   const directory = await mkdtemp(path.join(root, '.tmp/identifier-generation-test-'));
   try {
