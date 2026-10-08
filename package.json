@@ -26,7 +26,7 @@
     "src/scanner.c"
   ],
   "scripts": {
-    "build-wasm": "script/generate && script/tree-sitter build --wasm",
+    "build-wasm": "script/generate --build-wasm",
     "build/ci": "bun run build-wasm",
     "cleanup": "bun wb lint --fix --format",
     "format": "bun wb lint --format",
