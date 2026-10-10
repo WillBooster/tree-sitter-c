@@ -53,7 +53,7 @@
     "@willbooster/wb": "22.13.2",
     "@willbooster/web-tree-sitter": "1.4.4",
     "conventional-changelog-conventionalcommits": "10.4.0",
-    "lefthook": "2.1.14",
+    "lefthook": "2.1.16",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
     "oxlint-tsgolint": "7.0.2003",
