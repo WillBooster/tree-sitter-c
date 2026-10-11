@@ -18,7 +18,7 @@ This fork fixes parsing bugs and raises conformance with the ISO C standard
 ## Usage
 
 The npm package ships `tree-sitter-c.wasm` for
-[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 1.4.3 or later, which runs in Node.js, Bun, browsers, and Cloudflare Workers. In Node.js and Bun, load the grammar from its path:
+[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 2.0.0 or later, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x57420001`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
 
 ```js
 import { fileURLToPath } from 'node:url';
@@ -65,12 +65,12 @@ adjacency, so the parameter scanner must skip them again to reach `(`.
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
-fuzzed with. Restricted switch-body statement queries require this fork’s generator and runtime together:
+fuzzed with, at version 2.0.0 or later. No other runtime loads the parser:
 
 ```toml
 [dependencies]
-tree-sitter = { package = "willbooster-tree-sitter", version = "1.4.3" }
-tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "4" }
+tree-sitter = { package = "willbooster-tree-sitter", version = "2" }
+tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "5" }
 ```
 
 ```rust
@@ -96,7 +96,7 @@ not the ones this package ships with. Its first run downloads that CLI from the 
 with `cargo` (whose build runs the CMake that `mise.toml` pins) when the download fails or the release has no binary that runs here. Run other CLI commands through it as
 well (e.g. `script/tree-sitter parse file.c`).
 
-`bun run generate` records a fresh ABI 16 generation profile from the applicable `test/corpus` cases and Git-tracked
+`bun run generate` records a fresh generation profile from the applicable `test/corpus` cases and Git-tracked
 files in `examples/`, then generates compact parser tables. The parser also embeds metadata from `tree-sitter.json`. After changing a grammar,
 `tree-sitter.json`, a corpus case, or a tracked example,
 regenerate and commit `src/`. Stage added or removed examples with `git add -A examples` before generation so the profile uses the intended file list.
