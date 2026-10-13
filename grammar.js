@@ -726,6 +726,7 @@ module.exports = Object.assign(
       enum_specifier: ($) =>
         seq(
           'enum',
+          repeat(choice($.attribute_specifier, $.attribute_declaration)),
           choice(
             seq(
               field('name', $._type_identifier),
@@ -784,8 +785,7 @@ module.exports = Object.assign(
         prec.right(
           seq(
             'struct',
-            optional($.attribute_specifier),
-            optional($.ms_declspec_modifier),
+            repeat(choice($.attribute_specifier, $.attribute_declaration, $.ms_declspec_modifier)),
             choice(
               seq(field('name', $._type_identifier), field('body', optional($.field_declaration_list))),
               field('body', $.field_declaration_list)
@@ -798,7 +798,7 @@ module.exports = Object.assign(
         prec.right(
           seq(
             'union',
-            optional($.ms_declspec_modifier),
+            repeat(choice($.attribute_specifier, $.attribute_declaration, $.ms_declspec_modifier)),
             choice(
               seq(field('name', $._type_identifier), field('body', optional($.field_declaration_list))),
               field('body', $.field_declaration_list)
