@@ -1363,13 +1363,13 @@ module.exports = Object.assign(
         return token(
           seq(
             optional(/[-+]/),
-            optional(choice(/0[xX]/, /0[bB]/)),
             choice(
               seq(
                 choice(decimalDigits, seq(/0[bB]/, decimalDigits), seq(/0[xX]/, hexDigits)),
                 optional(seq('.', optional(hexDigits)))
               ),
-              seq('.', decimalDigits)
+              seq('.', decimalDigits),
+              seq(/0[xX]/, '.', hexDigits)
             ),
             optional(seq(/[eEpP]/, optional(seq(optional(/[-+]/), hexDigits)))),
             /[uUlLwWfFbBdD]*/
