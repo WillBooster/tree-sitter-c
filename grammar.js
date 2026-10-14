@@ -135,6 +135,7 @@ module.exports = Object.assign(
       $._single_noncompound_statement,
       $.type_specifier,
       $._declarator,
+      $._old_style_declarator,
       $._field_declarator,
       $._type_declarator,
       $._abstract_declarator,
@@ -319,7 +320,7 @@ module.exports = Object.assign(
         seq(
           optional($.ms_call_modifier),
           $._declaration_specifiers,
-          field('declarator', $._old_style_declarator),
+          field('declarator', alias($._old_style_declarator, $._declarator)),
           repeat1($.declaration),
           field('body', $.compound_statement)
         ),
@@ -343,22 +344,28 @@ module.exports = Object.assign(
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
               repeat(choice($.type_qualifier, $.attribute_specifier)),
-              field('declarator', $._old_style_declarator)
+              field('declarator', alias($._old_style_declarator, $._declarator))
             )
           )
         ),
 
       _old_style_parenthesized_declarator: ($) =>
-        prec.dynamic(PREC.PAREN_DECLARATOR, seq('(', optional($.ms_call_modifier), $._old_style_declarator, ')')),
+        prec.dynamic(
+          PREC.PAREN_DECLARATOR,
+          seq('(', optional($.ms_call_modifier), alias($._old_style_declarator, $._declarator), ')')
+        ),
 
       _old_style_return_function_declarator: ($) =>
-        prec.right(1, seq(field('declarator', $._old_style_declarator), field('parameters', $.parameter_list))),
+        prec.right(
+          1,
+          seq(field('declarator', alias($._old_style_declarator, $._declarator)), field('parameters', $.parameter_list))
+        ),
 
       _old_style_return_array_declarator: ($) =>
         prec(
           1,
           seq(
-            field('declarator', $._old_style_declarator),
+            field('declarator', alias($._old_style_declarator, $._declarator)),
             '[',
             repeat(choice($.type_qualifier, 'static')),
             field('size', optional(choice($.expression, '*'))),

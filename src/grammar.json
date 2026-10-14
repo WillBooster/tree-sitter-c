@@ -3475,8 +3475,13 @@
           "type": "FIELD",
           "name": "declarator",
           "content": {
-            "type": "SYMBOL",
-            "name": "_old_style_declarator"
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_old_style_declarator"
+            },
+            "named": true,
+            "value": "_declarator"
           }
         },
         {
@@ -3605,8 +3610,13 @@
               "type": "FIELD",
               "name": "declarator",
               "content": {
-                "type": "SYMBOL",
-                "name": "_old_style_declarator"
+                "type": "ALIAS",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "_old_style_declarator"
+                },
+                "named": true,
+                "value": "_declarator"
               }
             }
           ]
@@ -3636,8 +3646,13 @@
             ]
           },
           {
-            "type": "SYMBOL",
-            "name": "_old_style_declarator"
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_old_style_declarator"
+            },
+            "named": true,
+            "value": "_declarator"
           },
           {
             "type": "STRING",
@@ -3656,8 +3671,13 @@
             "type": "FIELD",
             "name": "declarator",
             "content": {
-              "type": "SYMBOL",
-              "name": "_old_style_declarator"
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_old_style_declarator"
+              },
+              "named": true,
+              "value": "_declarator"
             }
           },
           {
@@ -3681,8 +3701,13 @@
             "type": "FIELD",
             "name": "declarator",
             "content": {
-              "type": "SYMBOL",
-              "name": "_old_style_declarator"
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_old_style_declarator"
+              },
+              "named": true,
+              "value": "_declarator"
             }
           },
           {
@@ -12928,6 +12953,7 @@
     "_single_noncompound_statement",
     "type_specifier",
     "_declarator",
+    "_old_style_declarator",
     "_field_declarator",
     "_type_declarator",
     "_abstract_declarator"

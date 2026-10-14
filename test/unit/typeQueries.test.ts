@@ -25,6 +25,69 @@ test('preserves type query captures for sized declarations and enum bases', asyn
   }
 });
 
+test('preserves declarator supertype queries across old-style signature edits', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const prefixes = [
+    'int (*f(a))() int a; ',
+    'int (*f(int a))() ',
+    'int (*f(a))[3] int a; ',
+    'int (*f(int a))[3] ',
+    'int (*f(a))() int a; ',
+  ];
+  const kinds = ['pointer_declarator', 'parenthesized_declarator', 'function_declarator', 'array_declarator'];
+  const qualified = new Query(language, kinds.map((kind) => `(_declarator/${kind}) @${kind}`).join('\n'));
+  const plain = new Query(language, kinds.map((kind) => `(${kind}) @${kind}`).join('\n'));
+  let prefix = prefixes[0]!;
+  let tree = parser.parse(`${prefix}{ return 0; }`)!;
+  const captures = (
+    query: Query,
+    root: typeof tree.rootNode
+  ): { name: string; text: string; start: number; end: number }[] =>
+    query
+      .captures(root)
+      .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
+  try {
+    for (const nextPrefix of prefixes) {
+      tree.edit(
+        new Edit({
+          startIndex: 0,
+          oldEndIndex: prefix.length,
+          newEndIndex: nextPrefix.length,
+          startPosition: { row: 0, column: 0 },
+          oldEndPosition: { row: 0, column: prefix.length },
+          newEndPosition: { row: 0, column: nextPrefix.length },
+        })
+      );
+      const source = `${nextPrefix}{ return 0; }`;
+      const incremental = parser.parse(source, tree)!;
+      tree.delete();
+      tree = incremental;
+      const fresh = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError).toBe(false);
+        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+        const result = captures(qualified, tree.rootNode);
+        expect(result).toEqual(captures(plain, tree.rootNode));
+        expect(result).toEqual(captures(qualified, fresh.rootNode));
+        expect(result.filter(({ name }) => name === 'pointer_declarator').map(({ text }) => text)).toEqual([
+          nextPrefix.includes('f(int a)') ? '*f(int a)' : '*f(a)',
+        ]);
+      } finally {
+        fresh.delete();
+      }
+      prefix = nextPrefix;
+    }
+  } finally {
+    qualified.delete();
+    plain.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
 test('preserves compound literal fields and queries across storage-class edits', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
