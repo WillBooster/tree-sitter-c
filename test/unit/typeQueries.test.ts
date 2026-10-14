@@ -88,6 +88,38 @@ test('preserves declarator supertype queries across old-style signature edits', 
   }
 });
 
+test('keeps control flow after macros followed by ordinary declarations', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const source = `
+#include <stddef.h>
+#define BEGIN(...)
+#define END(...)
+void f(void) {
+  BEGIN(setup())
+  struct S *p;
+  size_t count;
+  if (count == 1) { p = 0; }
+  END(stop())
+}
+`;
+  const tree = parser.parse(source)!;
+  const query = new Query(language, '(function_definition) @function (if_statement) @condition');
+  try {
+    const captures = query.captures(tree.rootNode);
+    expect(captures.filter(({ name }) => name === 'function')).toHaveLength(1);
+    expect(captures.filter(({ name }) => name === 'condition').map(({ node }) => node.text)).toEqual([
+      'if (count == 1) { p = 0; }',
+    ]);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
 test('preserves compound literal fields and queries across storage-class edits', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');

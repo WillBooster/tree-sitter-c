@@ -882,7 +882,7 @@ module.exports = Object.assign(
       parameter_list: ($) =>
         seq('(', choice(commaSep(choice($.parameter_declaration, $.variadic_parameter)), $.compound_statement), ')'),
       _old_style_parameter_list: ($) =>
-        seq('(', commaSep(choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier), $.variadic_parameter)), ')'),
+        seq('(', commaSep1(choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier), $.variadic_parameter)), ')'),
 
       parameter_declaration: ($) =>
         seq(

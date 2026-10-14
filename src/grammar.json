@@ -7308,89 +7308,81 @@
           "value": "("
         },
         {
-          "type": "CHOICE",
+          "type": "SEQ",
           "members": [
             {
-              "type": "SEQ",
+              "type": "CHOICE",
               "members": [
                 {
-                  "type": "CHOICE",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "identifier"
-                    },
-                    {
-                      "type": "ALIAS",
-                      "content": {
-                        "type": "CHOICE",
-                        "members": [
-                          {
-                            "type": "STRING",
-                            "value": "va_arg"
-                          },
-                          {
-                            "type": "STRING",
-                            "value": "__builtin_va_arg"
-                          }
-                        ]
-                      },
-                      "named": true,
-                      "value": "identifier"
-                    },
-                    {
-                      "type": "SYMBOL",
-                      "name": "variadic_parameter"
-                    }
-                  ]
+                  "type": "SYMBOL",
+                  "name": "identifier"
                 },
                 {
-                  "type": "REPEAT",
+                  "type": "ALIAS",
                   "content": {
-                    "type": "SEQ",
+                    "type": "CHOICE",
                     "members": [
                       {
                         "type": "STRING",
-                        "value": ","
+                        "value": "va_arg"
                       },
                       {
-                        "type": "CHOICE",
-                        "members": [
-                          {
-                            "type": "SYMBOL",
-                            "name": "identifier"
-                          },
-                          {
-                            "type": "ALIAS",
-                            "content": {
-                              "type": "CHOICE",
-                              "members": [
-                                {
-                                  "type": "STRING",
-                                  "value": "va_arg"
-                                },
-                                {
-                                  "type": "STRING",
-                                  "value": "__builtin_va_arg"
-                                }
-                              ]
-                            },
-                            "named": true,
-                            "value": "identifier"
-                          },
-                          {
-                            "type": "SYMBOL",
-                            "name": "variadic_parameter"
-                          }
-                        ]
+                        "type": "STRING",
+                        "value": "__builtin_va_arg"
                       }
                     ]
-                  }
+                  },
+                  "named": true,
+                  "value": "identifier"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "variadic_parameter"
                 }
               ]
             },
             {
-              "type": "BLANK"
+              "type": "REPEAT",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": ","
+                  },
+                  {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "identifier"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "STRING",
+                              "value": "va_arg"
+                            },
+                            {
+                              "type": "STRING",
+                              "value": "__builtin_va_arg"
+                            }
+                          ]
+                        },
+                        "named": true,
+                        "value": "identifier"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "variadic_parameter"
+                      }
+                    ]
+                  }
+                ]
+              }
             }
           ]
         },
