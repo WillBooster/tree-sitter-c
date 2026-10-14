@@ -325,9 +325,9 @@ const char *text = "\o{8}\o{A}";
       (pointer_declarator
         (identifier))
       (string_literal
-        (escape_sequence)
+        (invalid_escape_sequence)
         (string_content)
-        (escape_sequence)
+        (invalid_escape_sequence)
         (string_content)))))
 
 ================================================================================

@@ -1356,7 +1356,9 @@ module.exports = Object.assign(
       char_literal: ($) =>
         seq(
           choice("L'", "u'", "U'", "u8'", "'"),
-          repeat1(choice($.escape_sequence, alias(token.immediate(/[^\n']/), sym('character')))),
+          repeat1(
+            choice($.escape_sequence, $.invalid_escape_sequence, alias(token.immediate(/[^\\\n']/), sym('character')))
+          ),
           "'"
         ),
 
@@ -1377,7 +1379,13 @@ module.exports = Object.assign(
       string_literal: ($) =>
         seq(
           choice('L"', 'u"', 'U"', 'u8"', '"'),
-          repeat(choice(alias(token.immediate(prec(1, /[^\\"\n]+/)), sym('string_content')), $.escape_sequence)),
+          repeat(
+            choice(
+              alias(token.immediate(prec(1, /[^\\"\n]+/)), sym('string_content')),
+              $.escape_sequence,
+              $.invalid_escape_sequence
+            )
+          ),
           '"'
         ),
 
@@ -1388,18 +1396,21 @@ module.exports = Object.assign(
             seq(
               '\\',
               choice(
-                /[^xuU]/,
+                /['"?\\abefnrtvE]/,
+                /\r\n?|\n\r?/,
                 /[xu]\{[0-9a-fA-F]+\}/,
                 /o\{[0-7]+\}/,
                 /N\{[^}\n]+\}/,
-                /\d{2,3}/,
-                /x[0-9a-fA-F]{1,4}/,
+                /[0-7]{1,3}/,
+                /x[0-9a-fA-F]+/,
                 /u[0-9a-fA-F]{4}/,
                 /U[0-9a-fA-F]{8}/
               )
             )
           )
         ),
+
+      invalid_escape_sequence: () => token(seq('\\', choice(/[^\r\n]/, /u[0-9a-fA-F]{1,3}/, /U[0-9a-fA-F]{1,7}/))),
 
       system_lib_string: () => token(seq('<', repeat(choice(/[^>\n]/, String.raw`\>`)), '>')),
 
