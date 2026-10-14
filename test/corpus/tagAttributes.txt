@@ -1,0 +1,66 @@
+================================================================================
+Attributes after struct, union, and enum keywords
+================================================================================
+
+typedef enum __attribute__((packed)) { IDLE, CONNECTED } State;
+enum __attribute__((packed)) Small : unsigned char { SMALL };
+enum [[deprecated]] Old { OLD };
+struct [[deprecated]] __attribute__((packed)) Packed { int field; };
+union __attribute__((aligned(8))) Aligned { int field; };
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (type_definition
+    (enum_specifier
+      (attribute_specifier
+        (argument_list
+          (identifier)))
+      (enumerator_list
+        (enumerator
+          (identifier))
+        (enumerator
+          (identifier))))
+    (type_identifier))
+  (enum_specifier
+    (attribute_specifier
+      (argument_list
+        (identifier)))
+    (type_identifier)
+    (sized_type_specifier
+      (primitive_type))
+    (enumerator_list
+      (enumerator
+        (identifier))))
+  (enum_specifier
+    (attribute_declaration
+      (attribute
+        (identifier)))
+    (type_identifier)
+    (enumerator_list
+      (enumerator
+        (identifier))))
+  (struct_specifier
+    (attribute_declaration
+      (attribute
+        (identifier)))
+    (attribute_specifier
+      (argument_list
+        (identifier)))
+    (type_identifier)
+    (field_declaration_list
+      (field_declaration
+        (primitive_type)
+        (field_identifier))))
+  (union_specifier
+    (attribute_specifier
+      (argument_list
+        (call_expression
+          (identifier)
+          (argument_list
+            (number_literal)))))
+    (type_identifier)
+    (field_declaration_list
+      (field_declaration
+        (primitive_type)
+        (field_identifier)))))
