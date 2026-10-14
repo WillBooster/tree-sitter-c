@@ -319,9 +319,51 @@ module.exports = Object.assign(
         seq(
           optional($.ms_call_modifier),
           $._declaration_specifiers,
-          field('declarator', alias($._old_style_function_declarator, $.function_declarator)),
+          field('declarator', $._old_style_declarator),
           repeat1($.declaration),
           field('body', $.compound_statement)
+        ),
+
+      _old_style_declarator: ($) =>
+        choice(
+          alias($._old_style_function_declarator, $.function_declarator),
+          alias($._old_style_pointer_declarator, $.pointer_declarator),
+          alias($._old_style_parenthesized_declarator, $.parenthesized_declarator),
+          alias($._old_style_return_function_declarator, $.function_declarator),
+          alias($._old_style_return_array_declarator, $.array_declarator)
+        ),
+
+      _old_style_pointer_declarator: ($) =>
+        prec.dynamic(
+          1,
+          prec.right(
+            seq(
+              optional($.ms_based_modifier),
+              '*',
+              repeat($.attribute_declaration),
+              repeat($.ms_pointer_modifier),
+              repeat(choice($.type_qualifier, $.attribute_specifier)),
+              field('declarator', $._old_style_declarator)
+            )
+          )
+        ),
+
+      _old_style_parenthesized_declarator: ($) =>
+        prec.dynamic(PREC.PAREN_DECLARATOR, seq('(', optional($.ms_call_modifier), $._old_style_declarator, ')')),
+
+      _old_style_return_function_declarator: ($) =>
+        prec.right(1, seq(field('declarator', $._old_style_declarator), field('parameters', $.parameter_list))),
+
+      _old_style_return_array_declarator: ($) =>
+        prec(
+          1,
+          seq(
+            field('declarator', $._old_style_declarator),
+            '[',
+            repeat(choice($.type_qualifier, 'static')),
+            field('size', optional(choice($.expression, '*'))),
+            ']'
+          )
         ),
 
       declaration: ($) =>
