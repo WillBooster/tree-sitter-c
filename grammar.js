@@ -35,6 +35,28 @@ const PREC = {
   SUBSCRIPT: 17,
 };
 
+/** @type {[string, number][]} */
+const BINARY_OPERATORS = [
+  ['+', PREC.ADD],
+  ['-', PREC.ADD],
+  ['*', PREC.MULTIPLY],
+  ['/', PREC.MULTIPLY],
+  ['%', PREC.MULTIPLY],
+  ['||', PREC.LOGICAL_OR],
+  ['&&', PREC.LOGICAL_AND],
+  ['|', PREC.INCLUSIVE_OR],
+  ['^', PREC.EXCLUSIVE_OR],
+  ['&', PREC.BITWISE_AND],
+  ['==', PREC.EQUAL],
+  ['!=', PREC.EQUAL],
+  ['>', PREC.RELATIONAL],
+  ['>=', PREC.RELATIONAL],
+  ['<=', PREC.RELATIONAL],
+  ['<', PREC.RELATIONAL],
+  ['<<', PREC.SHIFT],
+  ['>>', PREC.SHIFT],
+];
+
 const LINE_COMMENT = seq('//', /(\\+(.|\r?\n)|[^\\\n])*/);
 const PRAGMA_SPACING = repeat(choice(/\s/, /\\(?:\r\n?|\n\r?)/));
 const PREPROC_ARGUMENT = /\S([^/\n]|\/[^*]|\\\r?\n)*/;
@@ -268,30 +290,8 @@ module.exports = Object.assign(
         seq('(', commaSep(choice($._preproc_expression, $.system_lib_string, $.string_literal)), ')'),
 
       preproc_binary_expression: ($) => {
-        /** @type {[string, number][]} */
-        const table = [
-          ['+', PREC.ADD],
-          ['-', PREC.ADD],
-          ['*', PREC.MULTIPLY],
-          ['/', PREC.MULTIPLY],
-          ['%', PREC.MULTIPLY],
-          ['||', PREC.LOGICAL_OR],
-          ['&&', PREC.LOGICAL_AND],
-          ['|', PREC.INCLUSIVE_OR],
-          ['^', PREC.EXCLUSIVE_OR],
-          ['&', PREC.BITWISE_AND],
-          ['==', PREC.EQUAL],
-          ['!=', PREC.EQUAL],
-          ['>', PREC.RELATIONAL],
-          ['>=', PREC.RELATIONAL],
-          ['<=', PREC.RELATIONAL],
-          ['<', PREC.RELATIONAL],
-          ['<<', PREC.SHIFT],
-          ['>>', PREC.SHIFT],
-        ];
-
         return choice(
-          ...table.map(([operator, precedence]) => {
+          ...BINARY_OPERATORS.map(([operator, precedence]) => {
             return prec.left(
               precedence,
               seq(
@@ -1102,34 +1102,10 @@ module.exports = Object.assign(
         prec.left(PREC.UNARY, seq(field('operator', choice('!', '~', '-', '+')), field('argument', $.expression))),
 
       binary_expression: ($) => {
-        /** @type {[string, number][]} */
-        const table = [
-          ['+', PREC.ADD],
-          ['-', PREC.ADD],
-          ['*', PREC.MULTIPLY],
-          ['/', PREC.MULTIPLY],
-          ['%', PREC.MULTIPLY],
-          ['||', PREC.LOGICAL_OR],
-          ['&&', PREC.LOGICAL_AND],
-          ['|', PREC.INCLUSIVE_OR],
-          ['^', PREC.EXCLUSIVE_OR],
-          ['&', PREC.BITWISE_AND],
-          ['==', PREC.EQUAL],
-          ['!=', PREC.EQUAL],
-          ['>', PREC.RELATIONAL],
-          ['>=', PREC.RELATIONAL],
-          ['<=', PREC.RELATIONAL],
-          ['<', PREC.RELATIONAL],
-          ['<<', PREC.SHIFT],
-          ['>>', PREC.SHIFT],
-        ];
-
         return choice(
-          ...table.map(([operator, precedence]) => {
-            return prec.left(
-              precedence,
-              seq(field('left', $.expression), field('operator', operator), field('right', $.expression))
-            );
+          ...BINARY_OPERATORS.map(([operator, precedence]) => {
+            const body = seq(field('left', $.expression), field('operator', operator), field('right', $.expression));
+            return prec.left(precedence, operator === '&&' ? prec.dynamic(1, body) : body);
           })
         );
       },

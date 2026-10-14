@@ -1,0 +1,64 @@
+==================
+Logical AND after parenthesized identifiers
+==================
+void f(void) {
+  if ((p) && p->n > 0) {}
+  a > (b) && c < d;
+  return (a) && (b) && c;
+}
+---
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list (parameter_declaration (primitive_type))))
+    (compound_statement
+      (if_statement
+        (parenthesized_expression
+          (binary_expression
+            (parenthesized_expression (identifier))
+            (binary_expression
+              (field_expression (identifier) (field_identifier))
+              (number_literal))))
+        (compound_statement))
+      (expression_statement
+        (binary_expression
+          (binary_expression (identifier) (parenthesized_expression (identifier)))
+          (binary_expression (identifier) (identifier))))
+      (return_statement
+        (binary_expression
+          (binary_expression
+            (parenthesized_expression (identifier))
+            (parenthesized_expression (identifier)))
+          (identifier))))))
+
+==================
+Cast operands may begin with address-of
+==================
+void f(void) {
+  sink((int *)&x);
+  sink((int *) &*p);
+}
+---
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list (parameter_declaration (primitive_type))))
+    (compound_statement
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (cast_expression
+              (type_descriptor (primitive_type) (abstract_pointer_declarator))
+              (pointer_expression (identifier))))))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (cast_expression
+              (type_descriptor (primitive_type) (abstract_pointer_declarator))
+              (pointer_expression (pointer_expression (identifier))))))))))
