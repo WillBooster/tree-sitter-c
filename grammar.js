@@ -1104,13 +1104,8 @@ module.exports = Object.assign(
       binary_expression: ($) => {
         return choice(
           ...BINARY_OPERATORS.map(([operator, precedence]) => {
-            return prec.left(
-              precedence,
-              prec.dynamic(
-                operator === '&&' ? 1 : 0,
-                seq(field('left', $.expression), field('operator', operator), field('right', $.expression))
-              )
-            );
+            const body = seq(field('left', $.expression), field('operator', operator), field('right', $.expression));
+            return prec.left(precedence, operator === '&&' ? prec.dynamic(1, body) : body);
           })
         );
       },
