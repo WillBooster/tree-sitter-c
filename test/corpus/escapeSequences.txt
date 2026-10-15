@@ -50,9 +50,9 @@ int after;
   (declaration (primitive_type) (identifier)))
 
 ==================
-GNU ESC and continued strings
+GNU escapes and continued strings
 ==================
-const char *s = "\e\E\
+const char *s = "\e\E\(\[\{\%\
 continued";
 int c = '\e';
 ---
@@ -63,6 +63,10 @@ int c = '\e';
     (init_declarator
       (pointer_declarator (identifier))
       (string_literal
+        (escape_sequence)
+        (escape_sequence)
+        (escape_sequence)
+        (escape_sequence)
         (escape_sequence)
         (escape_sequence)
         (escape_sequence)

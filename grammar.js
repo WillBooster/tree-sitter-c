@@ -1397,6 +1397,10 @@ module.exports = Object.assign(
               '\\',
               choice(
                 /['"?\\abefnrtvE]/,
+                '(',
+                '[',
+                '{',
+                '%',
                 /\r\n?|\n\r?/,
                 /[xu]\{[0-9a-fA-F]+\}/,
                 /o\{[0-7]+\}/,

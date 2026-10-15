@@ -12178,6 +12178,22 @@
                   "value": "['\"?\\\\abefnrtvE]"
                 },
                 {
+                  "type": "STRING",
+                  "value": "("
+                },
+                {
+                  "type": "STRING",
+                  "value": "["
+                },
+                {
+                  "type": "STRING",
+                  "value": "{"
+                },
+                {
+                  "type": "STRING",
+                  "value": "%"
+                },
+                {
                   "type": "PATTERN",
                   "value": "\\r\\n?|\\n\\r?"
                 },

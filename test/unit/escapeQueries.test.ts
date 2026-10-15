@@ -6,7 +6,7 @@ test('preserves valid escape queries and separates invalid escapes across edits'
   const parser = new Parser();
   const language = await Language.load('tree-sitter-c.wasm');
   parser.setLanguage(language);
-  const source = String.raw`void f(void) { const char *valid = "\x00000000a\749\1234\0\07\377\n\e\E\u00e9\U0001F600\x{41}\o{101}\u{1F600}\N{LATIN SMALL LETTER A}"; int good = '\x00000000a'; const char *invalid = "\q\8\9\x\u12\U1234567"; int bad = '\q'; }`;
+  const source = String.raw`void f(void) { const char *valid = "\x00000000a\749\1234\0\07\377\n\e\E\(\[\{\%\u00e9\U0001F600\x{41}\o{101}\u{1F600}\N{LATIN SMALL LETTER A}"; int good = '\x00000000a'; const char *invalid = "\q\8\9\x\u12\U1234567"; int bad = '\q'; }`;
   const query = new Query(
     language,
     `
@@ -34,6 +34,10 @@ test('preserves valid escape queries and separates invalid escapes across edits'
       String.raw`\n`,
       String.raw`\e`,
       String.raw`\E`,
+      String.raw`\(`,
+      String.raw`\[`,
+      String.raw`\{`,
+      String.raw`\%`,
       String.raw`\u00e9`,
       String.raw`\U0001F600`,
       String.raw`\x{41}`,
