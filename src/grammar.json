@@ -3649,7 +3649,7 @@
             "type": "ALIAS",
             "content": {
               "type": "SYMBOL",
-              "name": "_old_style_declarator"
+              "name": "_old_style_parenthesized_child"
             },
             "named": true,
             "value": "_declarator"
@@ -3660,6 +3660,29 @@
           }
         ]
       }
+    },
+    "_old_style_parenthesized_child": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_old_style_pointer_declarator"
+          },
+          "named": true,
+          "value": "pointer_declarator"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_old_style_parenthesized_declarator"
+          },
+          "named": true,
+          "value": "parenthesized_declarator"
+        }
+      ]
     },
     "_old_style_return_function_declarator": {
       "type": "PREC_RIGHT",
@@ -12946,6 +12969,7 @@
     "type_specifier",
     "_declarator",
     "_old_style_declarator",
+    "_old_style_parenthesized_child",
     "_field_declarator",
     "_type_declarator",
     "_abstract_declarator"

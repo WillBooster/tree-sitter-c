@@ -136,6 +136,7 @@ module.exports = Object.assign(
       $.type_specifier,
       $._declarator,
       $._old_style_declarator,
+      $._old_style_parenthesized_child,
       $._field_declarator,
       $._type_declarator,
       $._abstract_declarator,
@@ -146,7 +147,6 @@ module.exports = Object.assign(
     rules: {
       translation_unit: ($) => repeat($._top_level_item),
 
-      // Top level items are block items with the exception of the expression statement
       _top_level_item: ($) =>
         choice(
           $.function_definition,
@@ -200,7 +200,6 @@ module.exports = Object.assign(
             ')'
           )
         ),
-      // Preprocesser
 
       preproc_include: ($) =>
         seq(
@@ -305,8 +304,6 @@ module.exports = Object.assign(
         );
       },
 
-      // Main Grammar
-
       function_definition: ($) =>
         seq(
           optional($.ms_call_modifier),
@@ -352,7 +349,13 @@ module.exports = Object.assign(
       _old_style_parenthesized_declarator: ($) =>
         prec.dynamic(
           PREC.PAREN_DECLARATOR,
-          seq('(', optional($.ms_call_modifier), alias($._old_style_declarator, $._declarator), ')')
+          seq('(', optional($.ms_call_modifier), alias($._old_style_parenthesized_child, $._declarator), ')')
+        ),
+
+      _old_style_parenthesized_child: ($) =>
+        choice(
+          alias($._old_style_pointer_declarator, $.pointer_declarator),
+          alias($._old_style_parenthesized_declarator, $.parenthesized_declarator)
         ),
 
       _old_style_return_function_declarator: ($) =>
@@ -891,8 +894,6 @@ module.exports = Object.assign(
           repeat($.attribute_specifier)
         ),
 
-      // Statements
-
       attributed_statement: ($) => seq(repeat1($.attribute_declaration), $.statement),
 
       statement: ($) => choice($.case_statement, $._non_case_statement),
@@ -1069,8 +1070,6 @@ module.exports = Object.assign(
       seh_finally_clause: ($) => seq('__finally', field('body', $.compound_statement)),
 
       seh_leave_statement: () => seq('__leave', ';'),
-
-      // Expressions
 
       expression: ($) => choice($._expression_not_binary, $.binary_expression),
 
@@ -1409,7 +1408,6 @@ module.exports = Object.assign(
           "'"
         ),
 
-      // Must concatenate at least 2 nodes, one of which must be a string_literal.
       // Identifier is added to parse macros that are strings, like PRIu64.
       concatenated_string: ($) =>
         prec.right(
@@ -1475,7 +1473,6 @@ module.exports = Object.assign(
           )
         ),
 
-      // http://stackoverflow.com/questions/13014947/regex-to-match-a-c-style-multiline-comment/36328890#36328890
       comment: () => token(choice(LINE_COMMENT, seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
     },
   }),

@@ -120,6 +120,33 @@ void f(void) {
   }
 });
 
+test('keeps assignments following malformed macro arguments', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const source = `void f(void) {
+  int test_res;
+  test_res = TEST(t_skip(), "test_skip()");
+  TEST(check_int(test_res, ==, 1), "skipped test returns 1");
+  test_res = TEST(t_skip_todo(), "test_skip() inside TEST_TODO()");
+}`;
+  const tree = parser.parse(source)!;
+  const query = new Query(language, '(assignment_expression) @assignment');
+  try {
+    expect(tree.rootNode.hasError).toBe(true);
+    expect(tree.rootNode.descendantsOfType('expression_statement')).toHaveLength(3);
+    expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([
+      'test_res = TEST(t_skip(), "test_skip()")',
+      'test_res = TEST(t_skip_todo(), "test_skip() inside TEST_TODO()")',
+    ]);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
 test('preserves compound literal fields and queries across storage-class edits', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
