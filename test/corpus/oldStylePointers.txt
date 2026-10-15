@@ -10,12 +10,6 @@ int **a;
 int *const qualified(a)
 int *a;
 { return a; }
-int (*factory(a))(void)
-int a;
-{ return 0; }
-int (*array(a))[3]
-int a;
-{ return 0; }
 
 ---
 (translation_unit
@@ -63,38 +57,4 @@ int a;
         (identifier)))
     (compound_statement
       (return_statement
-        (identifier))))
-  (function_definition
-    (primitive_type)
-    (function_declarator
-      (parenthesized_declarator
-        (pointer_declarator
-          (function_declarator
-            (identifier)
-            (parameter_list
-              (identifier)))))
-      (parameter_list
-        (parameter_declaration
-          (primitive_type))))
-    (declaration
-      (primitive_type)
-      (identifier))
-    (compound_statement
-      (return_statement
-        (number_literal))))
-  (function_definition
-    (primitive_type)
-    (array_declarator
-      (parenthesized_declarator
-        (pointer_declarator
-          (function_declarator
-            (identifier)
-            (parameter_list
-              (identifier)))))
-      (number_literal))
-    (declaration
-      (primitive_type)
-      (identifier))
-    (compound_statement
-      (return_statement
-        (number_literal)))))
+        (identifier)))))

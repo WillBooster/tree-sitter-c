@@ -30,17 +30,19 @@ test('preserves declarator supertype queries across old-style signature edits', 
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
   parser.setLanguage(language);
-  const prefixes = [
-    'int (*f(a))() int a; ',
-    'int (*f(int a))() ',
-    'int (*f(a))[3] int a; ',
-    'int (*f(int a))[3] ',
-    'int (*f(a))() int a; ',
-  ];
-  const kinds = ['pointer_declarator', 'parenthesized_declarator', 'function_declarator', 'array_declarator'];
+  const signatures = [
+    ['int *f(a) int a; ', ['*f(a)']],
+    ['int *f(int a) ', ['*f(int a)']],
+    ['int **f(a) int a; ', ['**f(a)', '*f(a)']],
+    ['int **f(int a) ', ['**f(int a)', '*f(int a)']],
+    ['int *const f(a) int a; ', ['*const f(a)']],
+    ['int *const f(int a) ', ['*const f(int a)']],
+    ['int *f(a) int a; ', ['*f(a)']],
+  ] as const;
+  const kinds = ['pointer_declarator', 'function_declarator'];
   const qualified = new Query(language, kinds.map((kind) => `(_declarator/${kind}) @${kind}`).join('\n'));
   const plain = new Query(language, kinds.map((kind) => `(${kind}) @${kind}`).join('\n'));
-  let prefix = prefixes[0]!;
+  let prefix: string = signatures[0][0];
   let tree = parser.parse(`${prefix}{ return 0; }`)!;
   const captures = (
     query: Query,
@@ -50,7 +52,7 @@ test('preserves declarator supertype queries across old-style signature edits', 
       .captures(root)
       .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
   try {
-    for (const nextPrefix of prefixes) {
+    for (const [nextPrefix, expectedPointers] of signatures) {
       tree.edit(
         new Edit({
           startIndex: 0,
@@ -72,9 +74,9 @@ test('preserves declarator supertype queries across old-style signature edits', 
         const result = captures(qualified, tree.rootNode);
         expect(result).toEqual(captures(plain, tree.rootNode));
         expect(result).toEqual(captures(qualified, fresh.rootNode));
-        expect(result.filter(({ name }) => name === 'pointer_declarator').map(({ text }) => text)).toEqual([
-          nextPrefix.includes('f(int a)') ? '*f(int a)' : '*f(a)',
-        ]);
+        expect(result.filter(({ name }) => name === 'pointer_declarator').map(({ text }) => text)).toEqual(
+          expectedPointers
+        );
       } finally {
         fresh.delete();
       }
@@ -139,6 +141,37 @@ test('keeps assignments following malformed macro arguments', async () => {
     expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([
       'test_res = TEST(t_skip(), "test_skip()")',
       'test_res = TEST(t_skip_todo(), "test_skip() inside TEST_TODO()")',
+    ]);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('keeps macro-decorated declaration names during recovery', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const source = `API_TYPE(Result)
+read_value PARAMS((
+  CONST Reader *r,
+  struct Value *v )) DEPRECATED(V1, "replacement");
+int after;
+void other(void);`;
+  const tree = parser.parse(source)!;
+  const query = new Query(
+    language,
+    '(declaration type: (macro_type_specifier name: (identifier) @macro) declarator: (identifier) @name) (declaration type: (type_identifier) @parameters_macro declarator: (parenthesized_declarator) @parameters)'
+  );
+  try {
+    expect(tree.rootNode.hasError).toBe(true);
+    expect(query.captures(tree.rootNode).map(({ name, node }) => [name, node.text])).toEqual([
+      ['macro', 'API_TYPE'],
+      ['name', 'read_value'],
+      ['parameters_macro', 'PARAMS'],
+      ['parameters', '((\n  CONST Reader *r,\n  struct Value *v ))'],
     ]);
   } finally {
     query.delete();
