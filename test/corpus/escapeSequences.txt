@@ -1,0 +1,78 @@
+==================
+Numeric escape boundaries
+==================
+const char *s = "\x00000000a\749\1234";
+int c = '\x00000000a';
+---
+(translation_unit
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator (identifier))
+      (string_literal
+        (escape_sequence)
+        (escape_sequence)
+        (string_content)
+        (escape_sequence)
+        (string_content))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (char_literal (escape_sequence)))))
+
+==================
+Invalid escapes stay inside literals
+==================
+const char *s = "\q\8\9\x\u12\U1234567";
+int c = '\q';
+int after;
+---
+(translation_unit
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator (identifier))
+      (string_literal
+        (invalid_escape_sequence)
+        (invalid_escape_sequence)
+        (invalid_escape_sequence)
+        (invalid_escape_sequence)
+        (invalid_escape_sequence)
+        (invalid_escape_sequence))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (char_literal (invalid_escape_sequence))))
+  (declaration (primitive_type) (identifier)))
+
+==================
+GNU escapes and continued strings
+==================
+const char *s = "\e\E\(\[\{\%\
+continued";
+int c = '\e';
+---
+(translation_unit
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator (identifier))
+      (string_literal
+        (escape_sequence)
+        (escape_sequence)
+        (escape_sequence)
+        (escape_sequence)
+        (escape_sequence)
+        (escape_sequence)
+        (escape_sequence)
+        (string_content))))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (char_literal (escape_sequence)))))

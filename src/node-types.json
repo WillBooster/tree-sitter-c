@@ -1087,6 +1087,10 @@
         {
           "type": "escape_sequence",
           "named": true
+        },
+        {
+          "type": "invalid_escape_sequence",
+          "named": true
         }
       ]
     }
@@ -3715,6 +3719,10 @@
           "named": true
         },
         {
+          "type": "invalid_escape_sequence",
+          "named": true
+        },
+        {
           "type": "string_content",
           "named": true
         }
@@ -4837,6 +4845,10 @@
   {
     "type": "inline",
     "named": false
+  },
+  {
+    "type": "invalid_escape_sequence",
+    "named": true
   },
   {
     "type": "long",
