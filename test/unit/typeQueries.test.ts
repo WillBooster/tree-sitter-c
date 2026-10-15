@@ -25,6 +25,161 @@ test('preserves type query captures for sized declarations and enum bases', asyn
   }
 });
 
+test('preserves declarator supertype queries across old-style signature edits', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const signatures = [
+    ['int *f(a) int a; ', ['*f(a)']],
+    ['int *f(int a) ', ['*f(int a)']],
+    ['int **f(a) int a; ', ['**f(a)', '*f(a)']],
+    ['int **f(int a) ', ['**f(int a)', '*f(int a)']],
+    ['int *const f(a) int a; ', ['*const f(a)']],
+    ['int *const f(int a) ', ['*const f(int a)']],
+    ['int *f(a) int a; ', ['*f(a)']],
+  ] as const;
+  const kinds = ['pointer_declarator', 'function_declarator'];
+  const qualified = new Query(language, kinds.map((kind) => `(_declarator/${kind}) @${kind}`).join('\n'));
+  const plain = new Query(language, kinds.map((kind) => `(${kind}) @${kind}`).join('\n'));
+  let prefix: string = signatures[0][0];
+  let tree = parser.parse(`${prefix}{ return 0; }`)!;
+  const captures = (
+    query: Query,
+    root: typeof tree.rootNode
+  ): { name: string; text: string; start: number; end: number }[] =>
+    query
+      .captures(root)
+      .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
+  try {
+    for (const [nextPrefix, expectedPointers] of signatures) {
+      tree.edit(
+        new Edit({
+          startIndex: 0,
+          oldEndIndex: prefix.length,
+          newEndIndex: nextPrefix.length,
+          startPosition: { row: 0, column: 0 },
+          oldEndPosition: { row: 0, column: prefix.length },
+          newEndPosition: { row: 0, column: nextPrefix.length },
+        })
+      );
+      const source = `${nextPrefix}{ return 0; }`;
+      const incremental = parser.parse(source, tree)!;
+      tree.delete();
+      tree = incremental;
+      const fresh = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError).toBe(false);
+        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+        const result = captures(qualified, tree.rootNode);
+        expect(result).toEqual(captures(plain, tree.rootNode));
+        expect(result).toEqual(captures(qualified, fresh.rootNode));
+        expect(result.filter(({ name }) => name === 'pointer_declarator').map(({ text }) => text)).toEqual(
+          expectedPointers
+        );
+      } finally {
+        fresh.delete();
+      }
+      prefix = nextPrefix;
+    }
+  } finally {
+    qualified.delete();
+    plain.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('keeps control flow after macros followed by ordinary declarations', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const source = `
+#include <stddef.h>
+#define BEGIN(...)
+#define END(...)
+void f(void) {
+  BEGIN(setup())
+  struct S *p;
+  size_t count;
+  if (count == 1) { p = 0; }
+  END(stop())
+}
+`;
+  const tree = parser.parse(source)!;
+  const query = new Query(language, '(function_definition) @function (if_statement) @condition');
+  try {
+    const captures = query.captures(tree.rootNode);
+    expect(captures.filter(({ name }) => name === 'function')).toHaveLength(1);
+    expect(captures.filter(({ name }) => name === 'condition').map(({ node }) => node.text)).toEqual([
+      'if (count == 1) { p = 0; }',
+    ]);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('keeps assignments following malformed macro arguments', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const source = `void f(void) {
+  int test_res;
+  test_res = TEST(t_skip(), "test_skip()");
+  TEST(check_int(test_res, ==, 1), "skipped test returns 1");
+  test_res = TEST(t_skip_todo(), "test_skip() inside TEST_TODO()");
+}`;
+  const tree = parser.parse(source)!;
+  const query = new Query(language, '(assignment_expression) @assignment');
+  try {
+    expect(tree.rootNode.hasError).toBe(true);
+    expect(tree.rootNode.descendantsOfType('expression_statement')).toHaveLength(3);
+    expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([
+      'test_res = TEST(t_skip(), "test_skip()")',
+      'test_res = TEST(t_skip_todo(), "test_skip() inside TEST_TODO()")',
+    ]);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('keeps macro-decorated declaration names during recovery', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  parser.setLanguage(language);
+  const source = `API_TYPE(Result)
+read_value PARAMS((
+  CONST Reader *r,
+  struct Value *v )) DEPRECATED(V1, "replacement");
+int after;
+void other(void);`;
+  const tree = parser.parse(source)!;
+  const query = new Query(
+    language,
+    '(declaration type: (macro_type_specifier name: (identifier) @macro) declarator: (identifier) @name) (declaration type: (type_identifier) @parameters_macro declarator: (parenthesized_declarator) @parameters)'
+  );
+  try {
+    expect(tree.rootNode.hasError).toBe(true);
+    expect(query.captures(tree.rootNode).map(({ name, node }) => [name, node.text])).toEqual([
+      ['macro', 'API_TYPE'],
+      ['name', 'read_value'],
+      ['parameters_macro', 'PARAMS'],
+      ['parameters', '((\n  CONST Reader *r,\n  struct Value *v ))'],
+    ]);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
 test('preserves compound literal fields and queries across storage-class edits', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');

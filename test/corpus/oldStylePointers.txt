@@ -1,0 +1,60 @@
+==================
+Old-style functions returning pointers
+==================
+int *single(a)
+int *a;
+{ return a; }
+int **nested(a)
+int **a;
+{ return a; }
+int *const qualified(a)
+int *a;
+{ return a; }
+
+---
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (pointer_declarator
+      (function_declarator
+        (identifier)
+        (parameter_list
+          (identifier))))
+    (declaration
+      (primitive_type)
+      (pointer_declarator
+        (identifier)))
+    (compound_statement
+      (return_statement
+        (identifier))))
+  (function_definition
+    (primitive_type)
+    (pointer_declarator
+      (pointer_declarator
+        (function_declarator
+          (identifier)
+          (parameter_list
+            (identifier)))))
+    (declaration
+      (primitive_type)
+      (pointer_declarator
+        (pointer_declarator
+          (identifier))))
+    (compound_statement
+      (return_statement
+        (identifier))))
+  (function_definition
+    (primitive_type)
+    (pointer_declarator
+      (type_qualifier)
+      (function_declarator
+        (identifier)
+        (parameter_list
+          (identifier))))
+    (declaration
+      (primitive_type)
+      (pointer_declarator
+        (identifier)))
+    (compound_statement
+      (return_statement
+        (identifier)))))

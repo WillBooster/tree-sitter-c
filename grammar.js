@@ -135,6 +135,7 @@ module.exports = Object.assign(
       $._single_noncompound_statement,
       $.type_specifier,
       $._declarator,
+      $._old_style_declarator,
       $._field_declarator,
       $._type_declarator,
       $._abstract_declarator,
@@ -145,7 +146,6 @@ module.exports = Object.assign(
     rules: {
       translation_unit: ($) => repeat($._top_level_item),
 
-      // Top level items are block items with the exception of the expression statement
       _top_level_item: ($) =>
         choice(
           $.function_definition,
@@ -199,7 +199,6 @@ module.exports = Object.assign(
             ')'
           )
         ),
-      // Preprocesser
 
       preproc_include: ($) =>
         seq(
@@ -304,8 +303,6 @@ module.exports = Object.assign(
         );
       },
 
-      // Main Grammar
-
       function_definition: ($) =>
         seq(
           optional($.ms_call_modifier),
@@ -319,9 +316,30 @@ module.exports = Object.assign(
         seq(
           optional($.ms_call_modifier),
           $._declaration_specifiers,
-          field('declarator', alias($._old_style_function_declarator, $.function_declarator)),
+          field('declarator', alias($._old_style_declarator, $._declarator)),
           repeat1($.declaration),
           field('body', $.compound_statement)
+        ),
+
+      _old_style_declarator: ($) =>
+        choice(
+          alias($._old_style_function_declarator, $.function_declarator),
+          alias($._old_style_pointer_declarator, $.pointer_declarator)
+        ),
+
+      _old_style_pointer_declarator: ($) =>
+        prec.dynamic(
+          1,
+          prec.right(
+            seq(
+              optional($.ms_based_modifier),
+              '*',
+              repeat($.attribute_declaration),
+              repeat($.ms_pointer_modifier),
+              repeat(choice($.type_qualifier, $.attribute_specifier)),
+              field('declarator', alias($._old_style_declarator, $._declarator))
+            )
+          )
         ),
 
       declaration: ($) =>
@@ -833,7 +851,7 @@ module.exports = Object.assign(
       parameter_list: ($) =>
         seq('(', choice(commaSep(choice($.parameter_declaration, $.variadic_parameter)), $.compound_statement), ')'),
       _old_style_parameter_list: ($) =>
-        seq('(', commaSep(choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier), $.variadic_parameter)), ')'),
+        seq('(', commaSep1(choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier), $.variadic_parameter)), ')'),
 
       parameter_declaration: ($) =>
         seq(
@@ -841,8 +859,6 @@ module.exports = Object.assign(
           optional(field('declarator', choice($._declarator, $._abstract_declarator))),
           repeat($.attribute_specifier)
         ),
-
-      // Statements
 
       attributed_statement: ($) => seq(repeat1($.attribute_declaration), $.statement),
 
@@ -1020,8 +1036,6 @@ module.exports = Object.assign(
       seh_finally_clause: ($) => seq('__finally', field('body', $.compound_statement)),
 
       seh_leave_statement: () => seq('__leave', ';'),
-
-      // Expressions
 
       expression: ($) => choice($._expression_not_binary, $.binary_expression),
 
@@ -1362,7 +1376,6 @@ module.exports = Object.assign(
           "'"
         ),
 
-      // Must concatenate at least 2 nodes, one of which must be a string_literal.
       // Identifier is added to parse macros that are strings, like PRIu64.
       concatenated_string: ($) =>
         prec.right(
@@ -1441,7 +1454,6 @@ module.exports = Object.assign(
           )
         ),
 
-      // http://stackoverflow.com/questions/13014947/regex-to-match-a-c-style-multiline-comment/36328890#36328890
       comment: () => token(choice(LINE_COMMENT, seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
     },
   }),
