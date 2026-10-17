@@ -1146,7 +1146,10 @@ module.exports = Object.assign(
           2,
           prec(
             PREC.SIZEOF,
-            seq('sizeof', choice(field('value', $.expression), seq('(', field('type', $.type_descriptor), ')')))
+            seq(
+              'sizeof',
+              choice(field('value', prec.dynamic(3, $.expression)), seq('(', field('type', $.type_descriptor), ')'))
+            )
           )
         ),
 
