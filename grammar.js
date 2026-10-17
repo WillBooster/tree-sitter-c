@@ -1048,6 +1048,7 @@ module.exports = Object.assign(
           $.cast_expression,
           $.pointer_expression,
           $.sizeof_expression,
+          $.countof_expression,
           $.alignof_expression,
           $.offsetof_expression,
           $.va_arg_expression,
@@ -1149,6 +1150,18 @@ module.exports = Object.assign(
             seq(
               'sizeof',
               choice(field('value', prec.dynamic(3, $.expression)), seq('(', field('type', $.type_descriptor), ')'))
+            )
+          )
+        ),
+
+      countof_expression: ($) =>
+        prec(
+          PREC.SIZEOF,
+          seq(
+            '_Countof',
+            choice(
+              field('value', prec.dynamic(3, $.expression)),
+              prec.dynamic(2, seq('(', field('type', $.type_descriptor), ')'))
             )
           )
         ),
