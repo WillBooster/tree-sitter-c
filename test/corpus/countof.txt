@@ -1,0 +1,96 @@
+================================================================================
+Array count operands and precedence
+================================================================================
+
+void counts(int n) {
+  _Countof array;
+  _Countof(array);
+  _Countof(int[7][3]);
+  _Countof(const int[n]);
+  _Countof *pointer++;
+  _Countof(matrix)[0];
+  _Countof(object).items;
+  _Countof((int[]){1, 2});
+  _Countof array + 1;
+  sizeof(int[_Countof array]);
+  _Countof_count(array);
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (expression_statement
+        (countof_expression
+          (identifier)))
+      (expression_statement
+        (countof_expression
+          (parenthesized_expression
+            (identifier))))
+      (expression_statement
+        (countof_expression
+          (type_descriptor
+            (primitive_type)
+            (abstract_array_declarator
+              (abstract_array_declarator
+                (number_literal))
+              (number_literal)))))
+      (expression_statement
+        (countof_expression
+          (type_descriptor
+            (type_qualifier)
+            (primitive_type)
+            (abstract_array_declarator
+              (identifier)))))
+      (expression_statement
+        (countof_expression
+          (pointer_expression
+            (update_expression
+              (identifier)))))
+      (expression_statement
+        (countof_expression
+          (subscript_expression
+            (parenthesized_expression
+              (identifier))
+            (number_literal))))
+      (expression_statement
+        (countof_expression
+          (field_expression
+            (parenthesized_expression
+              (identifier))
+            (field_identifier))))
+      (expression_statement
+        (countof_expression
+          (parenthesized_expression
+            (compound_literal_expression
+              (type_descriptor
+                (primitive_type)
+                (abstract_array_declarator))
+              (initializer_list
+                (number_literal)
+                (number_literal))))))
+      (expression_statement
+        (binary_expression
+          (countof_expression
+            (identifier))
+          (number_literal)))
+      (expression_statement
+        (sizeof_expression
+          (type_descriptor
+            (primitive_type)
+            (abstract_array_declarator
+              (countof_expression
+                (identifier))))))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (identifier)))))))
