@@ -1,0 +1,102 @@
+================================================================================
+Sizeof postfix operands
+================================================================================
+
+int foo(void);
+int array[4];
+struct S { int field; } object, *pointer;
+typedef int Scalar;
+void f(void) {
+  sizeof(foo)();
+  sizeof(array)[0];
+  sizeof(object).field;
+  sizeof(pointer)->field;
+  sizeof(array[0])++;
+  sizeof(foo)() + 1;
+  sizeof(Scalar);
+  sizeof(int);
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (declaration
+    (primitive_type)
+    (array_declarator
+      (identifier)
+      (number_literal)))
+  (declaration
+    (struct_specifier
+      (type_identifier)
+      (field_declaration_list
+        (field_declaration
+          (primitive_type)
+          (field_identifier))))
+    (identifier)
+    (pointer_declarator
+      (identifier)))
+  (type_definition
+    (primitive_type)
+    (type_identifier))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (expression_statement
+        (sizeof_expression
+          (call_expression
+            (parenthesized_expression
+              (identifier))
+            (argument_list))))
+      (expression_statement
+        (sizeof_expression
+          (subscript_expression
+            (parenthesized_expression
+              (identifier))
+            (number_literal))))
+      (expression_statement
+        (sizeof_expression
+          (field_expression
+            (parenthesized_expression
+              (identifier))
+            (field_identifier))))
+      (expression_statement
+        (sizeof_expression
+          (field_expression
+            (parenthesized_expression
+              (identifier))
+            (field_identifier))))
+      (expression_statement
+        (sizeof_expression
+          (update_expression
+            (parenthesized_expression
+              (subscript_expression
+                (identifier)
+                (number_literal))))))
+      (expression_statement
+        (binary_expression
+          (sizeof_expression
+            (call_expression
+              (parenthesized_expression
+                (identifier))
+              (argument_list)))
+          (number_literal)))
+      (expression_statement
+        (sizeof_expression
+          (parenthesized_expression
+            (identifier))))
+      (expression_statement
+        (sizeof_expression
+          (type_descriptor
+            (primitive_type)))))))
