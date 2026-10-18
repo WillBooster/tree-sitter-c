@@ -444,13 +444,12 @@ void f() {
           (parenthesized_expression
             (identifier))
           (compound_statement
-            (attributed_statement
+            (case_statement
               (attribute_declaration
                 (attribute
                   (identifier)))
-              (case_statement
-                (number_literal)
-                (compound_statement)))
+              (number_literal)
+              (compound_statement))
             (case_statement
               (number_literal)
               (attributed_statement

@@ -1,0 +1,134 @@
+================================================================================
+Attributed case labels remain siblings
+================================================================================
+
+void f(int x) {
+  switch (x) {
+    [[vendor::first]] case 1: {}
+    [[vendor::second]] [[vendor::extra]] case 2: break;
+    [[vendor::last]] default: break;
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (switch_statement
+        (parenthesized_expression
+          (identifier))
+        (compound_statement
+          (case_statement
+            (attribute_declaration
+              (attribute
+                (identifier)
+                (identifier)))
+            (number_literal)
+            (compound_statement))
+          (case_statement
+            (attribute_declaration
+              (attribute
+                (identifier)
+                (identifier)))
+            (attribute_declaration
+              (attribute
+                (identifier)
+                (identifier)))
+            (number_literal)
+            (break_statement))
+          (case_statement
+            (attribute_declaration
+              (attribute
+                (identifier)
+                (identifier)))
+            (break_statement)))))))
+
+================================================================================
+Attributes on statements inside cases do not move their scope
+================================================================================
+
+void f(int x) {
+  switch (x) {
+    case 1:
+      [[vendor::statement]] x++;
+      [[fallthrough]];
+    [[vendor::label]] case 2:
+      switch (x) { [[vendor::nested]] case 3: break; }
+      break;
+  }
+  switch (x) [[vendor::single]] case 4: x++;
+  x--;
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (switch_statement
+        (parenthesized_expression
+          (identifier))
+        (compound_statement
+          (case_statement
+            (number_literal)
+            (attributed_statement
+              (attribute_declaration
+                (attribute
+                  (identifier)
+                  (identifier)))
+              (expression_statement
+                (update_expression
+                  (identifier))))
+            (attributed_statement
+              (attribute_declaration
+                (attribute
+                  (identifier)))
+              (expression_statement)))
+          (case_statement
+            (attribute_declaration
+              (attribute
+                (identifier)
+                (identifier)))
+            (number_literal)
+            (switch_statement
+              (parenthesized_expression
+                (identifier))
+              (compound_statement
+                (case_statement
+                  (attribute_declaration
+                    (attribute
+                      (identifier)
+                      (identifier)))
+                  (number_literal)
+                  (break_statement))))
+            (break_statement))))
+      (switch_statement
+        (parenthesized_expression
+          (identifier))
+        (case_statement
+          (attribute_declaration
+            (attribute
+              (identifier)
+              (identifier)))
+          (number_literal)
+          (expression_statement
+            (update_expression
+              (identifier)))))
+      (expression_statement
+        (update_expression
+          (identifier))))))

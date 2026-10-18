@@ -93,8 +93,10 @@ module.exports = Object.assign(
       [$.type_definition, $.sized_type_specifier],
       [$.type_definition, $._sized_bit_int_specifier],
       [$.attributed_statement],
+      [$.case_statement],
       [$._single_attributed_statement],
-      [$._declaration_modifiers, $.attributed_statement],
+      [$._declaration_modifiers, $._case_body_attributed_statement, $._case_label_attributes],
+      [$._declaration_modifiers, $.attributed_statement, $.case_statement],
       [$.enum_specifier],
       [sym('preproc_if_in_enumerator_list'), sym('preproc_if_in_enumerator_list_no_comma')],
       [sym('preproc_ifdef_in_enumerator_list'), sym('preproc_ifdef_in_enumerator_list_no_comma')],
@@ -104,7 +106,6 @@ module.exports = Object.assign(
       [$.type_specifier, $._old_style_parameter_list],
       [$.parameter_list, $._old_style_parameter_list],
       [$.function_declarator, $._function_declaration_declarator],
-      [$._block_item, $.statement],
       [$._top_level_item, $._top_level_statement],
       [$.type_specifier, $._top_level_expression_statement],
       [$.type_qualifier, $.extension_expression],
@@ -129,7 +130,6 @@ module.exports = Object.assign(
       $._type_identifier,
       $._field_identifier,
       $._statement_identifier,
-      $._non_case_statement,
       $._assignment_left_expression,
       $._expression_not_binary,
     ],
@@ -138,6 +138,13 @@ module.exports = Object.assign(
       $.expression,
       $.statement,
       $._single_noncompound_statement,
+      $._non_case_statement,
+      $._single_non_case_statement,
+      $._case_body_statement,
+      $._case_body_unattributed_statement,
+      $._case_label_tail,
+      $._case_label_statement,
+      $._case_label_chain_statement,
       $.type_specifier,
       $._declarator,
       $._old_style_declarator,
@@ -176,7 +183,6 @@ module.exports = Object.assign(
           $.linkage_specification,
           $.declaration,
           $.statement,
-          $.attributed_statement,
           $.type_definition,
           $._empty_declaration,
           sym('preproc_if'),
@@ -217,6 +223,7 @@ module.exports = Object.assign(
               alias($.preproc_call_expression, $.call_expression)
             )
           ),
+          repeat(choice($.comment, $.pragma_operator)),
           sym('_preproc_newline')
         ),
 
@@ -224,7 +231,8 @@ module.exports = Object.assign(
         seq(
           preprocessor('define'),
           field('name', $.identifier),
-          field('value', optional($.preproc_arg)),
+          repeat(choice($.comment, $.pragma_operator)),
+          optional(seq(field('value', $.preproc_arg), repeat(choice($.comment, $.pragma_operator)))),
           sym('_preproc_newline')
         ),
 
@@ -233,7 +241,8 @@ module.exports = Object.assign(
           preprocessor('define'),
           field('name', alias(sym('_preproc_function_name'), $.identifier)),
           field('parameters', $.preproc_params),
-          field('value', optional($.preproc_arg)),
+          repeat(choice($.comment, $.pragma_operator)),
+          optional(seq(field('value', $.preproc_arg), repeat(choice($.comment, $.pragma_operator)))),
           sym('_preproc_newline')
         ),
 
@@ -242,7 +251,13 @@ module.exports = Object.assign(
       preproc_call: ($) =>
         seq(
           field('directive', $.preproc_directive),
-          field('argument', optional(alias($._preproc_directive_arg, $.preproc_arg))),
+          repeat(choice($.comment, $.pragma_operator)),
+          optional(
+            seq(
+              field('argument', alias($._preproc_directive_arg, $.preproc_arg)),
+              repeat(choice($.comment, $.pragma_operator))
+            )
+          ),
           sym('_preproc_newline')
         ),
 
@@ -877,14 +892,16 @@ module.exports = Object.assign(
           repeat($.attribute_specifier)
         ),
 
-      attributed_statement: ($) => seq(repeat1($.attribute_declaration), $.statement),
+      attributed_statement: ($) => seq(repeat1($.attribute_declaration), alias($._non_case_statement, $.statement)),
 
-      statement: ($) => choice($.case_statement, $._non_case_statement),
+      statement: ($) => choice($.case_statement, alias($._non_case_statement, $.statement)),
 
-      _non_case_statement: ($) =>
+      _non_case_statement: ($) => choice($.attributed_statement, $._unattributed_non_case_statement),
+
+      _unattributed_non_case_statement: ($) => choice($.labeled_statement, $._unlabeled_non_case_statement),
+
+      _unlabeled_non_case_statement: ($) =>
         choice(
-          $.attributed_statement,
-          $.labeled_statement,
           $.compound_statement,
           $.expression_statement,
           $.if_statement,
@@ -930,12 +947,12 @@ module.exports = Object.assign(
           seq(
             'if',
             field('condition', $.parenthesized_expression),
-            field('consequence', $.statement),
+            field('consequence', $._single_statement),
             optional(field('alternative', $.else_clause))
           )
         ),
 
-      else_clause: ($) => seq('else', $.statement),
+      else_clause: ($) => seq('else', $._single_statement),
 
       switch_statement: ($) =>
         seq('switch', field('condition', $.parenthesized_expression), field('body', $._single_statement)),
@@ -943,6 +960,9 @@ module.exports = Object.assign(
       _single_statement: ($) => choice($.compound_statement, alias($._single_noncompound_statement, $.statement)),
 
       _single_noncompound_statement: ($) =>
+        choice(alias($._single_case_statement, $.case_statement), alias($._single_non_case_statement, $.statement)),
+
+      _single_non_case_statement: ($) =>
         choice(
           $.expression_statement,
           $.switch_statement,
@@ -952,71 +972,103 @@ module.exports = Object.assign(
           $.goto_statement,
           $.seh_try_statement,
           $.seh_leave_statement,
-          alias($._single_case_statement, $.case_statement),
           alias($._single_labeled_statement, $.labeled_statement),
-          alias($._single_if_statement, $.if_statement),
-          alias($._single_while_statement, $.while_statement),
-          alias($._single_do_statement, $.do_statement),
-          alias($._single_for_statement, $.for_statement),
+          $.if_statement,
+          $.while_statement,
+          $.do_statement,
+          $.for_statement,
           alias($._single_attributed_statement, $.attributed_statement)
         ),
 
       _single_case_statement: ($) =>
-        prec.right(
-          seq(
-            choice(
-              seq('case', field('value', $.expression), optional(seq('...', field('end_value', $.expression)))),
-              'default'
-            ),
-            ':',
-            optional($._single_case_body)
+        prec.dynamic(
+          1,
+          prec.right(
+            seq(
+              repeat($.attribute_declaration),
+              choice(
+                seq('case', field('value', $.expression), optional(seq('...', field('end_value', $.expression)))),
+                'default'
+              ),
+              ':',
+              optional($._single_case_body)
+            )
           )
         ),
       _single_case_body: ($) =>
-        choice(
-          $._single_statement,
-          $.declaration,
-          $.type_definition,
-          alias(sym('preproc_if_in_single_case'), sym('preproc_if')),
-          alias(sym('preproc_ifdef_in_single_case'), sym('preproc_ifdef'))
+        prec.dynamic(
+          1,
+          choice(
+            $._single_statement,
+            $.declaration,
+            $.type_definition,
+            alias(sym('preproc_if_in_single_case'), sym('preproc_if')),
+            alias(sym('preproc_ifdef_in_single_case'), sym('preproc_ifdef'))
+          )
         ),
       _single_labeled_statement: ($) =>
         seq(field('label', $._statement_identifier), ':', choice($._single_statement, $.declaration)),
-      _single_if_statement: ($) =>
-        prec.right(
-          seq(
-            'if',
-            field('condition', $.parenthesized_expression),
-            field('consequence', $._single_statement),
-            optional(field('alternative', alias($._single_else_clause, $.else_clause)))
-          )
+      _single_attributed_statement: ($) =>
+        seq(
+          repeat1($.attribute_declaration),
+          choice($.compound_statement, alias($._single_non_case_statement, $.statement))
         ),
-      _single_else_clause: ($) => seq('else', $._single_statement),
-      _single_while_statement: ($) =>
-        seq('while', field('condition', $.parenthesized_expression), field('body', $._single_statement)),
-      _single_do_statement: ($) =>
-        seq('do', field('body', $._single_statement), 'while', field('condition', $.parenthesized_expression), ';'),
-      _single_for_statement: ($) => seq('for', '(', $._for_statement_body, ')', field('body', $._single_statement)),
-      _single_attributed_statement: ($) => seq(repeat1($.attribute_declaration), $._single_statement),
 
       case_statement: ($) =>
-        prec.right(
+        prec.dynamic(
+          1,
           seq(
+            repeat($.attribute_declaration),
             choice(
               seq('case', field('value', $.expression), optional(seq('...', field('end_value', $.expression)))),
               'default'
             ),
             ':',
-            repeat(choice($._non_case_statement, $.declaration, $.type_definition))
+            repeat($._case_statement_item),
+            optional(alias($._case_label_tail, $.statement))
           )
         ),
 
-      while_statement: ($) => seq('while', field('condition', $.parenthesized_expression), field('body', $.statement)),
+      _case_statement_item: ($) =>
+        prec.dynamic(1, choice(alias($._case_body_statement, $.statement), $.declaration, $.type_definition)),
+
+      _case_body_statement: ($) =>
+        choice(
+          alias($._case_body_unattributed_statement, $.statement),
+          alias($._case_body_attributed_statement, $.attributed_statement)
+        ),
+      _case_body_unattributed_statement: ($) =>
+        choice($._unlabeled_non_case_statement, alias($._case_body_labeled_statement, $.labeled_statement)),
+      _case_body_labeled_statement: ($) =>
+        seq(
+          field('label', $._statement_identifier),
+          ':',
+          choice($.declaration, alias($._case_body_statement, $.statement))
+        ),
+      _case_body_attributed_statement: ($) =>
+        prec(1, seq(repeat1($.attribute_declaration), alias($._case_body_unattributed_statement, $.statement))),
+      _case_label_tail: ($) =>
+        prec.dynamic(
+          1,
+          choice(
+            alias($._case_label_chain, $.labeled_statement),
+            alias($._case_label_attributes, $.attributed_statement)
+          )
+        ),
+      _case_label_attributes: ($) =>
+        seq(repeat1($.attribute_declaration), alias($._case_label_chain_statement, $.statement)),
+      _case_label_chain_statement: ($) => alias($._case_label_chain, $.labeled_statement),
+      _case_label_chain: ($) =>
+        seq(field('label', $._statement_identifier), ':', alias($._case_label_statement, $.statement)),
+      _case_label_statement: ($) => choice($.case_statement, alias($._case_label_tail, $.statement)),
+
+      while_statement: ($) =>
+        seq('while', field('condition', $.parenthesized_expression), field('body', $._single_statement)),
 
       do_statement: ($) =>
-        seq('do', field('body', $.statement), 'while', field('condition', $.parenthesized_expression), ';'),
+        seq('do', field('body', $._single_statement), 'while', field('condition', $.parenthesized_expression), ';'),
 
-      for_statement: ($) => seq('for', '(', $._for_statement_body, ')', field('body', $.statement)),
+      for_statement: ($) => seq('for', '(', $._for_statement_body, ')', field('body', $._single_statement)),
       _for_statement_body: ($) =>
         seq(
           choice(
@@ -1352,7 +1404,13 @@ module.exports = Object.assign(
             'directive',
             alias(token(/#[ \t]*(embed|include|undef|error|warning|line|pragma)/), $.preproc_directive)
           ),
-          field('argument', optional(alias($._preproc_directive_arg, $.preproc_arg))),
+          repeat(choice($.comment, $.pragma_operator)),
+          optional(
+            seq(
+              field('argument', alias($._preproc_directive_arg, $.preproc_arg)),
+              repeat(choice($.comment, $.pragma_operator))
+            )
+          ),
           alias(sym('_preproc_newline'), '\n')
         ),
 
@@ -1518,9 +1576,9 @@ function sizedTypeSpecifier(type) {
 function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
   function alternativeBlock() {
     return choice(
-      suffix ? alias(sym('preproc_else' + suffix), sym('preproc_else')) : sym('preproc_else'),
-      suffix ? alias(sym('preproc_elif' + suffix), sym('preproc_elif')) : sym('preproc_elif'),
-      suffix ? alias(sym('preproc_elifdef' + suffix), sym('preproc_elifdef')) : sym('preproc_elifdef')
+      ...['preproc_else', 'preproc_elif', 'preproc_elifdef'].map((name) =>
+        suffix ? alias(sym(name + suffix), sym(name)) : sym(name)
+      )
     );
   }
 
@@ -1531,7 +1589,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('if'),
           field('condition', sym('_preproc_expression')),
-          alias(sym('_preproc_newline'), '\n'),
+          alias(token(/\r\n?|\n\r?/), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock())),
           preprocessor('endif')
@@ -1559,7 +1617,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('elif'),
           field('condition', sym('_preproc_expression')),
-          alias(sym('_preproc_newline'), '\n'),
+          alias(token(/\r\n?|\n\r?/), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock()))
         )

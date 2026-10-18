@@ -50,13 +50,30 @@ test('recovers from an error on each line in linear time', { timeout: 60_000 }, 
   expect(largeFastest / smallFastest).toBeLessThan(18);
 });
 
-function parseCpuTime(source: string): number {
+test('keeps attributed switch statement parsing approximately linear', { timeout: 60_000 }, () => {
+  const small = attributedSwitchSource(200);
+  const large = attributedSwitchSource(1000);
+  parseCpuTime(large, false);
+  let smallFastest = Infinity;
+  let largeFastest = Infinity;
+  for (let run = 0; run < 5; run++) {
+    smallFastest = Math.min(smallFastest, parseCpuTime(small, false));
+    largeFastest = Math.min(largeFastest, parseCpuTime(large, false));
+  }
+  expect(largeFastest / smallFastest).toBeLessThan(10);
+});
+
+function attributedSwitchSource(count: number): string {
+  return `void f(int x){switch(x){${Array.from({ length: count }, (_, index) => `case ${index}: [[a]] x++; break;`).join('')}}}`;
+}
+
+function parseCpuTime(source: string, expectedError = true): number {
   const start = process.threadCpuUsage();
   const tree = parser.parse(source);
   const { system, user } = process.threadCpuUsage(start);
   if (!tree) throw new Error('The parser returned no tree');
   const { hasError } = tree.rootNode;
   tree.delete();
-  expect(hasError).toBe(true);
+  expect(hasError).toBe(expectedError);
   return system + user;
 }

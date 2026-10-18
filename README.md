@@ -18,7 +18,7 @@ This fork fixes parsing bugs and raises conformance with the ISO C standard
 ## Usage
 
 The npm package ships `tree-sitter-c.wasm` for
-[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 2.0.0 or later, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x57420001`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
+[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 4.0.2 or later, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x57420003`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
 
 ```js
 import { fileURLToPath } from 'node:url';
@@ -65,12 +65,12 @@ adjacency, so the parameter scanner must skip them again to reach `(`.
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
-fuzzed with, at version 2.0.0 or later. No other runtime loads the parser:
+fuzzed with, at version 4.0.2 or later. No other runtime loads the parser:
 
 ```toml
 [dependencies]
-tree-sitter = { package = "willbooster-tree-sitter", version = "2" }
-tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "5" }
+tree-sitter = { package = "willbooster-tree-sitter", version = "4.0.2" }
+tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "6" }
 ```
 
 ```rust
