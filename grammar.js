@@ -237,8 +237,8 @@ module.exports = Object.assign(
           preprocessor('define'),
           field('name', alias(sym('_preproc_function_name'), $.identifier)),
           field('parameters', $.preproc_params),
-          field('value', optional($.preproc_arg)),
           repeat($.comment),
+          optional(seq(field('value', $.preproc_arg), repeat($.comment))),
           sym('_preproc_newline')
         ),
 
@@ -247,8 +247,8 @@ module.exports = Object.assign(
       preproc_call: ($) =>
         seq(
           field('directive', $.preproc_directive),
-          field('argument', optional(alias($._preproc_directive_arg, $.preproc_arg))),
           repeat($.comment),
+          optional(seq(field('argument', alias($._preproc_directive_arg, $.preproc_arg)), repeat($.comment))),
           sym('_preproc_newline')
         ),
 
@@ -924,7 +924,8 @@ module.exports = Object.assign(
           $.goto_statement
         ),
 
-      labeled_statement: ($) => seq(field('label', $._statement_identifier), ':', choice($.declaration, $.statement)),
+      labeled_statement: ($) =>
+        seq(field('label', $._statement_identifier), ':', choice($.declaration, $._single_statement)),
 
       // This is missing binary expressions, others were kept so that macro code can be parsed better and code examples
       _top_level_expression_statement: ($) => seq(optional($._expression_not_binary), ';'),
@@ -936,12 +937,12 @@ module.exports = Object.assign(
           seq(
             'if',
             field('condition', $.parenthesized_expression),
-            field('consequence', $.statement),
+            field('consequence', $._single_statement),
             optional(field('alternative', $.else_clause))
           )
         ),
 
-      else_clause: ($) => seq('else', $.statement),
+      else_clause: ($) => seq('else', $._single_statement),
 
       switch_statement: ($) =>
         seq('switch', field('condition', $.parenthesized_expression), field('body', $._single_statement)),
@@ -949,6 +950,9 @@ module.exports = Object.assign(
       _single_statement: ($) => choice($.compound_statement, alias($._single_noncompound_statement, $.statement)),
 
       _single_noncompound_statement: ($) =>
+        choice(alias($._single_case_statement, $.case_statement), $._single_non_case_statement),
+
+      _single_non_case_statement: ($) =>
         choice(
           $.expression_statement,
           $.switch_statement,
@@ -958,7 +962,6 @@ module.exports = Object.assign(
           $.goto_statement,
           $.seh_try_statement,
           $.seh_leave_statement,
-          alias($._single_case_statement, $.case_statement),
           alias($._single_labeled_statement, $.labeled_statement),
           alias($._single_if_statement, $.if_statement),
           alias($._single_while_statement, $.while_statement),
@@ -970,6 +973,7 @@ module.exports = Object.assign(
       _single_case_statement: ($) =>
         prec.right(
           seq(
+            repeat($.attribute_declaration),
             choice(
               seq('case', field('value', $.expression), optional(seq('...', field('end_value', $.expression)))),
               'default'
@@ -1003,7 +1007,8 @@ module.exports = Object.assign(
       _single_do_statement: ($) =>
         seq('do', field('body', $._single_statement), 'while', field('condition', $.parenthesized_expression), ';'),
       _single_for_statement: ($) => seq('for', '(', $._for_statement_body, ')', field('body', $._single_statement)),
-      _single_attributed_statement: ($) => seq(repeat1($.attribute_declaration), $._single_statement),
+      _single_attributed_statement: ($) =>
+        seq(repeat1($.attribute_declaration), choice($.compound_statement, $._single_non_case_statement)),
 
       case_statement: ($) =>
         prec.dynamic(
@@ -1021,12 +1026,13 @@ module.exports = Object.assign(
 
       _case_statement_item: ($) => prec.dynamic(1, choice($._non_case_statement, $.declaration, $.type_definition)),
 
-      while_statement: ($) => seq('while', field('condition', $.parenthesized_expression), field('body', $.statement)),
+      while_statement: ($) =>
+        seq('while', field('condition', $.parenthesized_expression), field('body', $._single_statement)),
 
       do_statement: ($) =>
-        seq('do', field('body', $.statement), 'while', field('condition', $.parenthesized_expression), ';'),
+        seq('do', field('body', $._single_statement), 'while', field('condition', $.parenthesized_expression), ';'),
 
-      for_statement: ($) => seq('for', '(', $._for_statement_body, ')', field('body', $.statement)),
+      for_statement: ($) => seq('for', '(', $._for_statement_body, ')', field('body', $._single_statement)),
       _for_statement_body: ($) =>
         seq(
           choice(
@@ -1362,8 +1368,8 @@ module.exports = Object.assign(
             'directive',
             alias(token(/#[ \t]*(embed|include|undef|error|warning|line|pragma)/), $.preproc_directive)
           ),
-          field('argument', optional(alias($._preproc_directive_arg, $.preproc_arg))),
           repeat($.comment),
+          optional(seq(field('argument', alias($._preproc_directive_arg, $.preproc_arg)), repeat($.comment))),
           alias(sym('_preproc_newline'), '\n')
         ),
 

@@ -120,16 +120,15 @@ void f(int x) {
       (switch_statement
         (parenthesized_expression
           (identifier))
-        (attributed_statement
+        (case_statement
           (attribute_declaration
             (attribute
               (identifier)
               (identifier)))
-          (case_statement
-            (number_literal)
-            (expression_statement
-              (update_expression
-                (identifier))))))
+          (number_literal)
+          (expression_statement
+            (update_expression
+              (identifier)))))
       (expression_statement
         (update_expression
           (identifier))))))
