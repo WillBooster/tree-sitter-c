@@ -66,7 +66,13 @@ test('groups cases beneath block labels without extending unbraced control bodie
   const parser = new Parser().setLanguage(language);
   try {
     for (const preceding of ['', 'before(); ', 'case 0: a(); break; ', 'case 0:', 'case 0: break; case 2:']) {
-      for (const labels of ['first:', 'first: second:', '[[a]] first: [[b]] second:']) {
+      for (const labels of [
+        'first:',
+        'first: second:',
+        '[[a]] first: [[b]] second:',
+        '[[a]] [[b]] first:',
+        '[[a]] [[b]] first: [[c]] [[d]] second:',
+      ]) {
         for (const attribute of ['', '[[vendor::label]] ']) {
           for (const label of ['case 1:', 'default:']) {
             const body = `${attribute}${label} x++; break;`;
@@ -224,6 +230,44 @@ test('bounds spliced preprocessing conditions in declaration and initializer con
           expect(tree.rootNode.descendantsOfType('preproc_if')).toHaveLength(1);
         } finally {
           tree.delete();
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test('keeps consecutive statement attributes in one node across case and control contexts', () => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const attributes of ['[[a]] [[b]]', '[[a]] [[b]] [[c]]']) {
+      for (const prefix of ['', 'first:', 'while (x)', 'if (x)', 'first: while (x)']) {
+        for (const context of ['', 'switch (x) { case 1:', 'switch (x) case 1:']) {
+          const statement = `${attributes} x++;`;
+          const source = `void f() { ${context} ${prefix} ${statement} ${context.includes('{') ? '}' : ''} }`;
+          const tree = parser.parse(source)!;
+          try {
+            expect(tree.rootNode.hasError, source).toBe(false);
+            const attributed = tree.rootNode.descendantsOfType('attributed_statement');
+            expect(attributed, source).toHaveLength(1);
+            expect(attributed[0]!.text, source).toBe(statement);
+            expect(
+              attributed[0]!.namedChildren.filter((node) => node.type === 'attribute_declaration'),
+              source
+            ).toHaveLength(attributes.split(' ').length);
+            const query = new Query(language, '(statement) @statement');
+            try {
+              expect(
+                query.captures(tree.rootNode).some(({ node }) => node.text === 'x++;'),
+                source
+              ).toBe(true);
+            } finally {
+              query.delete();
+            }
+          } finally {
+            tree.delete();
+          }
         }
       }
     }

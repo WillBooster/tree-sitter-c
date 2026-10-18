@@ -141,6 +141,7 @@ module.exports = Object.assign(
       $._non_case_statement,
       $._single_non_case_statement,
       $._case_body_statement,
+      $._case_body_unattributed_statement,
       $._case_label_tail,
       $._case_label_statement,
       $._case_label_chain_statement,
@@ -1033,10 +1034,11 @@ module.exports = Object.assign(
 
       _case_body_statement: ($) =>
         choice(
-          $._unlabeled_non_case_statement,
-          alias($._case_body_labeled_statement, $.labeled_statement),
+          alias($._case_body_unattributed_statement, $.statement),
           alias($._case_body_attributed_statement, $.attributed_statement)
         ),
+      _case_body_unattributed_statement: ($) =>
+        choice($._unlabeled_non_case_statement, alias($._case_body_labeled_statement, $.labeled_statement)),
       _case_body_labeled_statement: ($) =>
         seq(
           field('label', $._statement_identifier),
@@ -1044,7 +1046,7 @@ module.exports = Object.assign(
           choice($.declaration, alias($._case_body_statement, $.statement))
         ),
       _case_body_attributed_statement: ($) =>
-        prec(1, seq(repeat1($.attribute_declaration), alias($._case_body_statement, $.statement))),
+        prec(1, seq(repeat1($.attribute_declaration), alias($._case_body_unattributed_statement, $.statement))),
       _case_label_tail: ($) =>
         prec.dynamic(
           1,

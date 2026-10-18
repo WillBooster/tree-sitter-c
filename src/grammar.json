@@ -8477,6 +8477,29 @@
       "type": "CHOICE",
       "members": [
         {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_case_body_unattributed_statement"
+          },
+          "named": true,
+          "value": "statement"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_case_body_attributed_statement"
+          },
+          "named": true,
+          "value": "attributed_statement"
+        }
+      ]
+    },
+    "_case_body_unattributed_statement": {
+      "type": "CHOICE",
+      "members": [
+        {
           "type": "SYMBOL",
           "name": "_unlabeled_non_case_statement"
         },
@@ -8488,15 +8511,6 @@
           },
           "named": true,
           "value": "labeled_statement"
-        },
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_case_body_attributed_statement"
-          },
-          "named": true,
-          "value": "attributed_statement"
         }
       ]
     },
@@ -8552,7 +8566,7 @@
             "type": "ALIAS",
             "content": {
               "type": "SYMBOL",
-              "name": "_case_body_statement"
+              "name": "_case_body_unattributed_statement"
             },
             "named": true,
             "value": "statement"
@@ -13528,6 +13542,7 @@
     "_non_case_statement",
     "_single_non_case_statement",
     "_case_body_statement",
+    "_case_body_unattributed_statement",
     "_case_label_tail",
     "_case_label_statement",
     "_case_label_chain_statement",
