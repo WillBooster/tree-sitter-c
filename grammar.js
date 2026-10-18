@@ -783,7 +783,8 @@ module.exports = Object.assign(
               seq($.enumerator, ','),
               alias(sym('preproc_if_in_enumerator_list'), sym('preproc_if')),
               alias(sym('preproc_ifdef_in_enumerator_list'), sym('preproc_ifdef')),
-              seq($.preproc_call, ',')
+              seq($.preproc_call, ','),
+              prec(1, $.preproc_call)
             )
           ),
           optional(

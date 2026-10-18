@@ -1,0 +1,57 @@
+================================================================================
+Directives between enumerators
+================================================================================
+
+enum State {
+#line 10 "states.h"
+  IDLE,
+#line 20 "states.h"
+#line 21 "states.h"
+  RUNNING = 2,
+#pragma region done
+  DONE,
+#line 30 "states.h"
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (preproc_call (preproc_directive) (preproc_arg))
+      (enumerator (identifier))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (enumerator (identifier) (number_literal))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (enumerator (identifier))
+      (preproc_call (preproc_directive) (preproc_arg)))))
+
+================================================================================
+Directives around conditional enumerators
+================================================================================
+
+enum State {
+  IDLE,
+#line 10 "states.h"
+#if ENABLED
+  RUNNING,
+#endif
+#line 20 "states.h"
+  DONE
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (enumerator (identifier))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (preproc_if
+        (identifier)
+        (enumerator (identifier)))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (enumerator (identifier)))))

@@ -6615,6 +6615,14 @@
                     "value": ","
                   }
                 ]
+              },
+              {
+                "type": "PREC",
+                "value": 1,
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "preproc_call"
+                }
               }
             ]
           }
