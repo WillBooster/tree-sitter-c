@@ -324,6 +324,13 @@
           }
         },
         {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "comment"
+          }
+        },
+        {
           "type": "SYMBOL",
           "name": "_preproc_newline"
         }
@@ -350,20 +357,39 @@
           }
         },
         {
-          "type": "FIELD",
-          "name": "value",
+          "type": "REPEAT",
           "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "preproc_arg"
-              },
-              {
-                "type": "BLANK"
-              }
-            ]
+            "type": "SYMBOL",
+            "name": "comment"
           }
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "FIELD",
+                  "name": "value",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "preproc_arg"
+                  }
+                },
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "comment"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         },
         {
           "type": "SYMBOL",
@@ -418,6 +444,13 @@
                 "type": "BLANK"
               }
             ]
+          }
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "comment"
           }
         },
         {
@@ -528,6 +561,13 @@
           }
         },
         {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "comment"
+          }
+        },
+        {
           "type": "SYMBOL",
           "name": "_preproc_newline"
         }
@@ -554,6 +594,13 @@
             "content": {
               "type": "SYMBOL",
               "name": "_preproc_expression"
+            }
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
             }
           },
           {
@@ -747,6 +794,13 @@
             }
           },
           {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
+            }
+          },
+          {
             "type": "ALIAS",
             "content": {
               "type": "SYMBOL",
@@ -891,6 +945,13 @@
             "content": {
               "type": "SYMBOL",
               "name": "_preproc_expression"
+            }
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
             }
           },
           {
@@ -1114,6 +1175,13 @@
             }
           },
           {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
+            }
+          },
+          {
             "type": "ALIAS",
             "content": {
               "type": "SYMBOL",
@@ -1288,6 +1356,13 @@
             "content": {
               "type": "SYMBOL",
               "name": "_preproc_expression"
+            }
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
             }
           },
           {
@@ -1511,6 +1586,13 @@
             }
           },
           {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
+            }
+          },
+          {
             "type": "ALIAS",
             "content": {
               "type": "SYMBOL",
@@ -1685,6 +1767,13 @@
             "content": {
               "type": "SYMBOL",
               "name": "_preproc_expression"
+            }
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
             }
           },
           {
@@ -1962,6 +2051,13 @@
             }
           },
           {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
+            }
+          },
+          {
             "type": "ALIAS",
             "content": {
               "type": "SYMBOL",
@@ -2172,6 +2268,13 @@
             "content": {
               "type": "SYMBOL",
               "name": "_preproc_expression"
+            }
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
             }
           },
           {
@@ -2521,6 +2624,13 @@
             "content": {
               "type": "SYMBOL",
               "name": "_preproc_expression"
+            }
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
             }
           },
           {
@@ -7561,7 +7671,7 @@
         },
         {
           "type": "SYMBOL",
-          "name": "statement"
+          "name": "_non_case_statement"
         }
       ]
     },
@@ -8299,11 +8409,18 @@
       ]
     },
     "case_statement": {
-      "type": "PREC_RIGHT",
-      "value": 0,
+      "type": "PREC_DYNAMIC",
+      "value": 1,
       "content": {
         "type": "SEQ",
         "members": [
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "attribute_declaration"
+            }
+          },
           {
             "type": "CHOICE",
             "members": [
@@ -8362,22 +8479,30 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "_non_case_statement"
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "declaration"
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "type_definition"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_case_statement_item"
             }
+          }
+        ]
+      }
+    },
+    "_case_statement_item": {
+      "type": "PREC_DYNAMIC",
+      "value": 1,
+      "content": {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "_non_case_statement"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "declaration"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "type_definition"
           }
         ]
       }
@@ -11446,6 +11571,13 @@
           }
         },
         {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "comment"
+          }
+        },
+        {
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
@@ -11477,6 +11609,13 @@
             "content": {
               "type": "SYMBOL",
               "name": "_preproc_expression"
+            }
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
             }
           },
           {
@@ -11712,6 +11851,13 @@
             "content": {
               "type": "SYMBOL",
               "name": "_preproc_expression"
+            }
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
             }
           },
           {
@@ -13089,11 +13235,19 @@
       "attributed_statement"
     ],
     [
+      "case_statement"
+    ],
+    [
       "_single_attributed_statement"
     ],
     [
       "_declaration_modifiers",
       "attributed_statement"
+    ],
+    [
+      "_declaration_modifiers",
+      "attributed_statement",
+      "case_statement"
     ],
     [
       "enum_specifier"

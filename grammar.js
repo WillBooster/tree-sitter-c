@@ -93,8 +93,10 @@ module.exports = Object.assign(
       [$.type_definition, $.sized_type_specifier],
       [$.type_definition, $._sized_bit_int_specifier],
       [$.attributed_statement],
+      [$.case_statement],
       [$._single_attributed_statement],
       [$._declaration_modifiers, $.attributed_statement],
+      [$._declaration_modifiers, $.attributed_statement, $.case_statement],
       [$.enum_specifier],
       [sym('preproc_if_in_enumerator_list'), sym('preproc_if_in_enumerator_list_no_comma')],
       [sym('preproc_ifdef_in_enumerator_list'), sym('preproc_ifdef_in_enumerator_list_no_comma')],
@@ -217,6 +219,7 @@ module.exports = Object.assign(
               alias($.preproc_call_expression, $.call_expression)
             )
           ),
+          repeat($.comment),
           sym('_preproc_newline')
         ),
 
@@ -224,7 +227,8 @@ module.exports = Object.assign(
         seq(
           preprocessor('define'),
           field('name', $.identifier),
-          field('value', optional($.preproc_arg)),
+          repeat($.comment),
+          optional(seq(field('value', $.preproc_arg), repeat($.comment))),
           sym('_preproc_newline')
         ),
 
@@ -234,6 +238,7 @@ module.exports = Object.assign(
           field('name', alias(sym('_preproc_function_name'), $.identifier)),
           field('parameters', $.preproc_params),
           field('value', optional($.preproc_arg)),
+          repeat($.comment),
           sym('_preproc_newline')
         ),
 
@@ -243,6 +248,7 @@ module.exports = Object.assign(
         seq(
           field('directive', $.preproc_directive),
           field('argument', optional(alias($._preproc_directive_arg, $.preproc_arg))),
+          repeat($.comment),
           sym('_preproc_newline')
         ),
 
@@ -877,7 +883,7 @@ module.exports = Object.assign(
           repeat($.attribute_specifier)
         ),
 
-      attributed_statement: ($) => seq(repeat1($.attribute_declaration), $.statement),
+      attributed_statement: ($) => seq(repeat1($.attribute_declaration), $._non_case_statement),
 
       statement: ($) => choice($.case_statement, $._non_case_statement),
 
@@ -1000,16 +1006,20 @@ module.exports = Object.assign(
       _single_attributed_statement: ($) => seq(repeat1($.attribute_declaration), $._single_statement),
 
       case_statement: ($) =>
-        prec.right(
+        prec.dynamic(
+          1,
           seq(
+            repeat($.attribute_declaration),
             choice(
               seq('case', field('value', $.expression), optional(seq('...', field('end_value', $.expression)))),
               'default'
             ),
             ':',
-            repeat(choice($._non_case_statement, $.declaration, $.type_definition))
+            repeat($._case_statement_item)
           )
         ),
+
+      _case_statement_item: ($) => prec.dynamic(1, choice($._non_case_statement, $.declaration, $.type_definition)),
 
       while_statement: ($) => seq('while', field('condition', $.parenthesized_expression), field('body', $.statement)),
 
@@ -1353,6 +1363,7 @@ module.exports = Object.assign(
             alias(token(/#[ \t]*(embed|include|undef|error|warning|line|pragma)/), $.preproc_directive)
           ),
           field('argument', optional(alias($._preproc_directive_arg, $.preproc_arg))),
+          repeat($.comment),
           alias(sym('_preproc_newline'), '\n')
         ),
 
@@ -1518,9 +1529,9 @@ function sizedTypeSpecifier(type) {
 function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
   function alternativeBlock() {
     return choice(
-      suffix ? alias(sym('preproc_else' + suffix), sym('preproc_else')) : sym('preproc_else'),
-      suffix ? alias(sym('preproc_elif' + suffix), sym('preproc_elif')) : sym('preproc_elif'),
-      suffix ? alias(sym('preproc_elifdef' + suffix), sym('preproc_elifdef')) : sym('preproc_elifdef')
+      ...['preproc_else', 'preproc_elif', 'preproc_elifdef'].map((name) =>
+        suffix ? alias(sym(name + suffix), sym(name)) : sym(name)
+      )
     );
   }
 
@@ -1531,6 +1542,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('if'),
           field('condition', sym('_preproc_expression')),
+          repeat(sym('comment')),
           alias(sym('_preproc_newline'), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock())),
@@ -1559,6 +1571,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('elif'),
           field('condition', sym('_preproc_expression')),
+          repeat(sym('comment')),
           alias(sym('_preproc_newline'), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock()))
