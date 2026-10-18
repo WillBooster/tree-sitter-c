@@ -95,8 +95,8 @@ module.exports = Object.assign(
       [$.attributed_statement],
       [$.case_statement],
       [$._single_attributed_statement],
-      [$._declaration_modifiers, $.attributed_statement],
-      [$._declaration_modifiers, $._single_attributed_statement],
+      [$._declaration_modifiers, $._case_body_attributed_statement, $._case_label_attributes],
+      [$._case_body_attributed_statement],
       [$._declaration_modifiers, $.attributed_statement, $.case_statement],
       [$.enum_specifier],
       [sym('preproc_if_in_enumerator_list'), sym('preproc_if_in_enumerator_list_no_comma')],
@@ -220,7 +220,7 @@ module.exports = Object.assign(
               alias($.preproc_call_expression, $.call_expression)
             )
           ),
-          repeat($.comment),
+          repeat(choice($.comment, $.pragma_operator)),
           sym('_preproc_newline')
         ),
 
@@ -228,8 +228,8 @@ module.exports = Object.assign(
         seq(
           preprocessor('define'),
           field('name', $.identifier),
-          repeat($.comment),
-          optional(seq(field('value', $.preproc_arg), repeat($.comment))),
+          repeat(choice($.comment, $.pragma_operator)),
+          optional(seq(field('value', $.preproc_arg), repeat(choice($.comment, $.pragma_operator)))),
           sym('_preproc_newline')
         ),
 
@@ -238,8 +238,8 @@ module.exports = Object.assign(
           preprocessor('define'),
           field('name', alias(sym('_preproc_function_name'), $.identifier)),
           field('parameters', $.preproc_params),
-          repeat($.comment),
-          optional(seq(field('value', $.preproc_arg), repeat($.comment))),
+          repeat(choice($.comment, $.pragma_operator)),
+          optional(seq(field('value', $.preproc_arg), repeat(choice($.comment, $.pragma_operator)))),
           sym('_preproc_newline')
         ),
 
@@ -248,8 +248,13 @@ module.exports = Object.assign(
       preproc_call: ($) =>
         seq(
           field('directive', $.preproc_directive),
-          repeat($.comment),
-          optional(seq(field('argument', alias($._preproc_directive_arg, $.preproc_arg)), repeat($.comment))),
+          repeat(choice($.comment, $.pragma_operator)),
+          optional(
+            seq(
+              field('argument', alias($._preproc_directive_arg, $.preproc_arg)),
+              repeat(choice($.comment, $.pragma_operator))
+            )
+          ),
           sym('_preproc_newline')
         ),
 
@@ -888,10 +893,12 @@ module.exports = Object.assign(
 
       statement: ($) => choice($.case_statement, $._non_case_statement),
 
-      _non_case_statement: ($) =>
+      _non_case_statement: ($) => choice($.attributed_statement, $._unattributed_non_case_statement),
+
+      _unattributed_non_case_statement: ($) => choice($.labeled_statement, $._unlabeled_non_case_statement),
+
+      _unlabeled_non_case_statement: ($) =>
         choice(
-          $.attributed_statement,
-          $.labeled_statement,
           $.compound_statement,
           $.expression_statement,
           $.if_statement,
@@ -1011,12 +1018,31 @@ module.exports = Object.assign(
               'default'
             ),
             ':',
-            repeat($._case_statement_item)
+            repeat($._case_statement_item),
+            optional($._case_label_tail)
           )
         ),
 
-      _case_statement_item: ($) =>
-        prec.dynamic(1, choice($.compound_statement, $._single_non_case_statement, $.declaration, $.type_definition)),
+      _case_statement_item: ($) => prec.dynamic(1, choice($._case_body_statement, $.declaration, $.type_definition)),
+
+      _case_body_statement: ($) =>
+        choice(
+          $._unlabeled_non_case_statement,
+          alias($._case_body_labeled_statement, $.labeled_statement),
+          alias($._case_body_attributed_statement, $.attributed_statement)
+        ),
+      _case_body_labeled_statement: ($) =>
+        seq(field('label', $._statement_identifier), ':', choice($.declaration, $._case_body_statement)),
+      _case_body_attributed_statement: ($) => seq(repeat1($.attribute_declaration), $._case_body_statement),
+      _case_label_tail: ($) =>
+        choice(
+          alias($._case_label_chain, $.labeled_statement),
+          alias($._case_label_attributes, $.attributed_statement)
+        ),
+      _case_label_attributes: ($) =>
+        seq(repeat1($.attribute_declaration), alias($._case_label_chain, $.labeled_statement)),
+      _case_label_chain: ($) =>
+        seq(field('label', $._statement_identifier), ':', choice($.case_statement, $._case_label_tail)),
 
       while_statement: ($) =>
         seq('while', field('condition', $.parenthesized_expression), field('body', $._single_statement)),
@@ -1360,8 +1386,13 @@ module.exports = Object.assign(
             'directive',
             alias(token(/#[ \t]*(embed|include|undef|error|warning|line|pragma)/), $.preproc_directive)
           ),
-          repeat($.comment),
-          optional(seq(field('argument', alias($._preproc_directive_arg, $.preproc_arg)), repeat($.comment))),
+          repeat(choice($.comment, $.pragma_operator)),
+          optional(
+            seq(
+              field('argument', alias($._preproc_directive_arg, $.preproc_arg)),
+              repeat(choice($.comment, $.pragma_operator))
+            )
+          ),
           alias(sym('_preproc_newline'), '\n')
         ),
 
@@ -1540,7 +1571,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('if'),
           field('condition', sym('_preproc_expression')),
-          repeat(sym('comment')),
+          repeat(choice(sym('comment'), sym('pragma_operator'))),
           alias(sym('_preproc_newline'), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock())),
@@ -1569,7 +1600,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('elif'),
           field('condition', sym('_preproc_expression')),
-          repeat(sym('comment')),
+          repeat(choice(sym('comment'), sym('pragma_operator'))),
           alias(sym('_preproc_newline'), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock()))

@@ -326,8 +326,17 @@
         {
           "type": "REPEAT",
           "content": {
-            "type": "SYMBOL",
-            "name": "comment"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "comment"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "pragma_operator"
+              }
+            ]
           }
         },
         {
@@ -359,8 +368,17 @@
         {
           "type": "REPEAT",
           "content": {
-            "type": "SYMBOL",
-            "name": "comment"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "comment"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "pragma_operator"
+              }
+            ]
           }
         },
         {
@@ -380,8 +398,17 @@
                 {
                   "type": "REPEAT",
                   "content": {
-                    "type": "SYMBOL",
-                    "name": "comment"
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "comment"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "pragma_operator"
+                      }
+                    ]
                   }
                 }
               ]
@@ -433,8 +460,17 @@
         {
           "type": "REPEAT",
           "content": {
-            "type": "SYMBOL",
-            "name": "comment"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "comment"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "pragma_operator"
+              }
+            ]
           }
         },
         {
@@ -454,8 +490,17 @@
                 {
                   "type": "REPEAT",
                   "content": {
-                    "type": "SYMBOL",
-                    "name": "comment"
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "comment"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "pragma_operator"
+                      }
+                    ]
                   }
                 }
               ]
@@ -554,8 +599,17 @@
         {
           "type": "REPEAT",
           "content": {
-            "type": "SYMBOL",
-            "name": "comment"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "comment"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "pragma_operator"
+              }
+            ]
           }
         },
         {
@@ -580,8 +634,17 @@
                 {
                   "type": "REPEAT",
                   "content": {
-                    "type": "SYMBOL",
-                    "name": "comment"
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "comment"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "pragma_operator"
+                      }
+                    ]
                   }
                 }
               ]
@@ -623,8 +686,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -820,8 +892,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -974,8 +1055,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -1201,8 +1291,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -1385,8 +1484,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -1612,8 +1720,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -1796,8 +1913,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -2077,8 +2203,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -2297,8 +2432,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -2653,8 +2797,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -7721,8 +7874,26 @@
         },
         {
           "type": "SYMBOL",
+          "name": "_unattributed_non_case_statement"
+        }
+      ]
+    },
+    "_unattributed_non_case_statement": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
           "name": "labeled_statement"
         },
+        {
+          "type": "SYMBOL",
+          "name": "_unlabeled_non_case_statement"
+        }
+      ]
+    },
+    "_unlabeled_non_case_statement": {
+      "type": "CHOICE",
+      "members": [
         {
           "type": "SYMBOL",
           "name": "compound_statement"
@@ -8369,6 +8540,18 @@
               "type": "SYMBOL",
               "name": "_case_statement_item"
             }
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "_case_label_tail"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
           }
         ]
       }
@@ -8381,11 +8564,7 @@
         "members": [
           {
             "type": "SYMBOL",
-            "name": "compound_statement"
-          },
-          {
-            "type": "SYMBOL",
-            "name": "_single_non_case_statement"
+            "name": "_case_body_statement"
           },
           {
             "type": "SYMBOL",
@@ -8397,6 +8576,153 @@
           }
         ]
       }
+    },
+    "_case_body_statement": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_unlabeled_non_case_statement"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_case_body_labeled_statement"
+          },
+          "named": true,
+          "value": "labeled_statement"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_case_body_attributed_statement"
+          },
+          "named": true,
+          "value": "attributed_statement"
+        }
+      ]
+    },
+    "_case_body_labeled_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "label",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_statement_identifier"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "declaration"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "_case_body_statement"
+            }
+          ]
+        }
+      ]
+    },
+    "_case_body_attributed_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "REPEAT1",
+          "content": {
+            "type": "SYMBOL",
+            "name": "attribute_declaration"
+          }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_case_body_statement"
+        }
+      ]
+    },
+    "_case_label_tail": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_case_label_chain"
+          },
+          "named": true,
+          "value": "labeled_statement"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_case_label_attributes"
+          },
+          "named": true,
+          "value": "attributed_statement"
+        }
+      ]
+    },
+    "_case_label_attributes": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "REPEAT1",
+          "content": {
+            "type": "SYMBOL",
+            "name": "attribute_declaration"
+          }
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_case_label_chain"
+          },
+          "named": true,
+          "value": "labeled_statement"
+        }
+      ]
+    },
+    "_case_label_chain": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "label",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_statement_identifier"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "case_statement"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "_case_label_tail"
+            }
+          ]
+        }
+      ]
     },
     "while_statement": {
       "type": "SEQ",
@@ -11443,8 +11769,17 @@
         {
           "type": "REPEAT",
           "content": {
-            "type": "SYMBOL",
-            "name": "comment"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "comment"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "pragma_operator"
+              }
+            ]
           }
         },
         {
@@ -11469,8 +11804,17 @@
                 {
                   "type": "REPEAT",
                   "content": {
-                    "type": "SYMBOL",
-                    "name": "comment"
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "comment"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "pragma_operator"
+                      }
+                    ]
                   }
                 }
               ]
@@ -11517,8 +11861,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -11759,8 +12112,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -13145,11 +13507,11 @@
     ],
     [
       "_declaration_modifiers",
-      "attributed_statement"
+      "_case_body_attributed_statement",
+      "_case_label_attributes"
     ],
     [
-      "_declaration_modifiers",
-      "_single_attributed_statement"
+      "_case_body_attributed_statement"
     ],
     [
       "_declaration_modifiers",

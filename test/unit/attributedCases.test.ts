@@ -8,12 +8,12 @@ const language = await Language.load(path.join(import.meta.dirname, '../../tree-
 test('keeps labeled statements within every single-statement body inside a case', () => {
   const parser = new Parser().setLanguage(language);
   try {
-    for (const prefix of ['label:', 'while (x)', 'for (;;)', 'if (x)', 'switch (x)', 'do']) {
+    for (const prefix of ['while (x)', 'for (;;)', 'if (x)', 'switch (x)', 'do']) {
       for (const attribute of ['', '[[vendor::label]] ']) {
         for (const label of ['case 2:', 'default:']) {
           for (const body of [';', '{}', 'x++;']) {
             const inner = `${attribute}${label} ${body}`;
-            const control = `${prefix} ${inner}${prefix === 'do' ? ' while (x);' : ''}`;
+            const control = `${prefix} first: second: ${inner}${prefix === 'do' ? ' while (x);' : ''}`;
             const source = `void f() { switch (x) { case 1: ${control} after(); } }`;
             const tree = parser.parse(source)!;
             try {
@@ -65,17 +65,54 @@ test('preserves preprocessor arguments around leading and trailing comments', ()
 test('groups cases beneath block labels without extending unbraced control bodies', () => {
   const parser = new Parser().setLanguage(language);
   try {
-    for (const attribute of ['', '[[vendor::label]] ']) {
-      for (const label of ['case 1:', 'default:']) {
-        const body = `${attribute}${label} x++; break;`;
-        const source = `void f() { switch (x) { first: second: ${body} } }`;
+    for (const preceding of ['', 'before(); ', 'case 0: a(); break; ']) {
+      for (const labels of ['first:', 'first: second:', '[[a]] first: [[b]] second:']) {
+        for (const attribute of ['', '[[vendor::label]] ']) {
+          for (const label of ['case 1:', 'default:']) {
+            const body = `${attribute}${label} x++; break;`;
+            const source = `void f() { switch (x) { ${preceding}${labels} ${body} } }`;
+            const tree = parser.parse(source)!;
+            try {
+              expect(tree.rootNode.hasError, source).toBe(false);
+              const caseNode = tree.rootNode.descendantsOfType('case_statement').find((node) => node.text === body)!;
+              expect(caseNode.text, source).toBe(body);
+              expect(caseNode.lastNamedChild!.type, source).toBe('break_statement');
+              expect(caseNode.parent!.type, source).toBe('labeled_statement');
+            } finally {
+              tree.delete();
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test('accepts pragma extras before immediate preprocessing newlines', () => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    const pragma = '_Pragma("clang diagnostic push")';
+    for (const extra of [pragma, `/**/ ${pragma} /**/`, `${pragma} ${pragma}`]) {
+      for (const source of [
+        `#if 1 ${extra}\nint x;\n#endif\n`,
+        `#if 0\n#elif 1 ${extra}\nint x;\n#endif\n`,
+        `#include "a.h" ${extra}\n`,
+        `#define X /**/ ${extra}\n`,
+        `#define F(x) /**/ ${extra}\n`,
+        `#pragma /**/ ${extra}\n`,
+        `int a[] = {\n#pragma /**/ ${extra}\n1};`,
+      ]) {
         const tree = parser.parse(source)!;
         try {
           expect(tree.rootNode.hasError, source).toBe(false);
-          const caseNode = tree.rootNode.descendantsOfType('case_statement')[0]!;
-          expect(caseNode.text, source).toBe(body);
-          expect(caseNode.lastNamedChild!.type, source).toBe('break_statement');
-          expect(caseNode.parent!.type, source).toBe('labeled_statement');
+          expect(
+            tree.rootNode
+              .descendantsOfType(['pragma_operator', 'preproc_arg'])
+              .some((node) => node.text.includes(pragma)),
+            source
+          ).toBe(true);
         } finally {
           tree.delete();
         }

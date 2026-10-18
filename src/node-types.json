@@ -2934,6 +2934,10 @@
         {
           "type": "comment",
           "named": true
+        },
+        {
+          "type": "pragma_operator",
+          "named": true
         }
       ]
     }
@@ -2969,6 +2973,10 @@
       "types": [
         {
           "type": "comment",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         }
       ]
@@ -3092,6 +3100,10 @@
         },
         {
           "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         },
         {
@@ -3370,6 +3382,10 @@
         {
           "type": "comment",
           "named": true
+        },
+        {
+          "type": "pragma_operator",
+          "named": true
         }
       ]
     }
@@ -3477,6 +3493,10 @@
         },
         {
           "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         },
         {
@@ -3663,6 +3683,10 @@
       "types": [
         {
           "type": "comment",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         }
       ]
