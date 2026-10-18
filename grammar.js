@@ -96,7 +96,6 @@ module.exports = Object.assign(
       [$.case_statement],
       [$._single_attributed_statement],
       [$._declaration_modifiers, $._case_body_attributed_statement, $._case_label_attributes],
-      [$._case_body_attributed_statement],
       [$._declaration_modifiers, $.attributed_statement, $.case_statement],
       [$.enum_specifier],
       [sym('preproc_if_in_enumerator_list'), sym('preproc_if_in_enumerator_list_no_comma')],
@@ -107,7 +106,6 @@ module.exports = Object.assign(
       [$.type_specifier, $._old_style_parameter_list],
       [$.parameter_list, $._old_style_parameter_list],
       [$.function_declarator, $._function_declaration_declarator],
-      [$._block_item, $.statement],
       [$._top_level_item, $._top_level_statement],
       [$.type_specifier, $._top_level_expression_statement],
       [$.type_qualifier, $.extension_expression],
@@ -132,7 +130,6 @@ module.exports = Object.assign(
       $._type_identifier,
       $._field_identifier,
       $._statement_identifier,
-      $._non_case_statement,
       $._assignment_left_expression,
       $._expression_not_binary,
     ],
@@ -141,6 +138,12 @@ module.exports = Object.assign(
       $.expression,
       $.statement,
       $._single_noncompound_statement,
+      $._non_case_statement,
+      $._single_non_case_statement,
+      $._case_body_statement,
+      $._case_label_tail,
+      $._case_label_statement,
+      $._case_label_chain_statement,
       $.type_specifier,
       $._declarator,
       $._old_style_declarator,
@@ -179,7 +182,6 @@ module.exports = Object.assign(
           $.linkage_specification,
           $.declaration,
           $.statement,
-          $.attributed_statement,
           $.type_definition,
           $._empty_declaration,
           sym('preproc_if'),
@@ -889,9 +891,9 @@ module.exports = Object.assign(
           repeat($.attribute_specifier)
         ),
 
-      attributed_statement: ($) => seq(repeat1($.attribute_declaration), $._non_case_statement),
+      attributed_statement: ($) => seq(repeat1($.attribute_declaration), alias($._non_case_statement, $.statement)),
 
-      statement: ($) => choice($.case_statement, $._non_case_statement),
+      statement: ($) => choice($.case_statement, alias($._non_case_statement, $.statement)),
 
       _non_case_statement: ($) => choice($.attributed_statement, $._unattributed_non_case_statement),
 
@@ -957,7 +959,7 @@ module.exports = Object.assign(
       _single_statement: ($) => choice($.compound_statement, alias($._single_noncompound_statement, $.statement)),
 
       _single_noncompound_statement: ($) =>
-        choice(alias($._single_case_statement, $.case_statement), $._single_non_case_statement),
+        choice(alias($._single_case_statement, $.case_statement), alias($._single_non_case_statement, $.statement)),
 
       _single_non_case_statement: ($) =>
         choice(
@@ -1006,7 +1008,10 @@ module.exports = Object.assign(
       _single_labeled_statement: ($) =>
         seq(field('label', $._statement_identifier), ':', choice($._single_statement, $.declaration)),
       _single_attributed_statement: ($) =>
-        seq(repeat1($.attribute_declaration), choice($.compound_statement, $._single_non_case_statement)),
+        seq(
+          repeat1($.attribute_declaration),
+          choice($.compound_statement, alias($._single_non_case_statement, $.statement))
+        ),
 
       case_statement: ($) =>
         prec.dynamic(
@@ -1019,11 +1024,12 @@ module.exports = Object.assign(
             ),
             ':',
             repeat($._case_statement_item),
-            optional($._case_label_tail)
+            optional(alias($._case_label_tail, $.statement))
           )
         ),
 
-      _case_statement_item: ($) => prec.dynamic(1, choice($._case_body_statement, $.declaration, $.type_definition)),
+      _case_statement_item: ($) =>
+        prec.dynamic(1, choice(alias($._case_body_statement, $.statement), $.declaration, $.type_definition)),
 
       _case_body_statement: ($) =>
         choice(
@@ -1032,17 +1038,27 @@ module.exports = Object.assign(
           alias($._case_body_attributed_statement, $.attributed_statement)
         ),
       _case_body_labeled_statement: ($) =>
-        seq(field('label', $._statement_identifier), ':', choice($.declaration, $._case_body_statement)),
-      _case_body_attributed_statement: ($) => seq(repeat1($.attribute_declaration), $._case_body_statement),
+        seq(
+          field('label', $._statement_identifier),
+          ':',
+          choice($.declaration, alias($._case_body_statement, $.statement))
+        ),
+      _case_body_attributed_statement: ($) =>
+        prec(1, seq(repeat1($.attribute_declaration), alias($._case_body_statement, $.statement))),
       _case_label_tail: ($) =>
-        choice(
-          alias($._case_label_chain, $.labeled_statement),
-          alias($._case_label_attributes, $.attributed_statement)
+        prec.dynamic(
+          1,
+          choice(
+            alias($._case_label_chain, $.labeled_statement),
+            alias($._case_label_attributes, $.attributed_statement)
+          )
         ),
       _case_label_attributes: ($) =>
-        seq(repeat1($.attribute_declaration), alias($._case_label_chain, $.labeled_statement)),
+        seq(repeat1($.attribute_declaration), alias($._case_label_chain_statement, $.statement)),
+      _case_label_chain_statement: ($) => alias($._case_label_chain, $.labeled_statement),
       _case_label_chain: ($) =>
-        seq(field('label', $._statement_identifier), ':', choice($.case_statement, $._case_label_tail)),
+        seq(field('label', $._statement_identifier), ':', alias($._case_label_statement, $.statement)),
+      _case_label_statement: ($) => choice($.case_statement, alias($._case_label_tail, $.statement)),
 
       while_statement: ($) =>
         seq('while', field('condition', $.parenthesized_expression), field('body', $._single_statement)),
@@ -1571,8 +1587,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('if'),
           field('condition', sym('_preproc_expression')),
-          repeat(choice(sym('comment'), sym('pragma_operator'))),
-          alias(sym('_preproc_newline'), '\n'),
+          alias(token(/\r\n?|\n\r?/), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock())),
           preprocessor('endif')
@@ -1600,8 +1615,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('elif'),
           field('condition', sym('_preproc_expression')),
-          repeat(choice(sym('comment'), sym('pragma_operator'))),
-          alias(sym('_preproc_newline'), '\n'),
+          alias(token(/\r\n?|\n\r?/), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock()))
         )
