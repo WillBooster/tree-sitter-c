@@ -96,6 +96,7 @@ module.exports = Object.assign(
       [$.case_statement],
       [$._single_attributed_statement],
       [$._declaration_modifiers, $.attributed_statement],
+      [$._declaration_modifiers, $._single_attributed_statement],
       [$._declaration_modifiers, $.attributed_statement, $.case_statement],
       [$.enum_specifier],
       [sym('preproc_if_in_enumerator_list'), sym('preproc_if_in_enumerator_list_no_comma')],
@@ -924,8 +925,7 @@ module.exports = Object.assign(
           $.goto_statement
         ),
 
-      labeled_statement: ($) =>
-        seq(field('label', $._statement_identifier), ':', choice($.declaration, $._single_statement)),
+      labeled_statement: ($) => seq(field('label', $._statement_identifier), ':', choice($.declaration, $.statement)),
 
       // This is missing binary expressions, others were kept so that macro code can be parsed better and code examples
       _top_level_expression_statement: ($) => seq(optional($._expression_not_binary), ';'),
@@ -963,50 +963,41 @@ module.exports = Object.assign(
           $.seh_try_statement,
           $.seh_leave_statement,
           alias($._single_labeled_statement, $.labeled_statement),
-          alias($._single_if_statement, $.if_statement),
-          alias($._single_while_statement, $.while_statement),
-          alias($._single_do_statement, $.do_statement),
-          alias($._single_for_statement, $.for_statement),
+          $.if_statement,
+          $.while_statement,
+          $.do_statement,
+          $.for_statement,
           alias($._single_attributed_statement, $.attributed_statement)
         ),
 
       _single_case_statement: ($) =>
-        prec.right(
-          seq(
-            repeat($.attribute_declaration),
-            choice(
-              seq('case', field('value', $.expression), optional(seq('...', field('end_value', $.expression)))),
-              'default'
-            ),
-            ':',
-            optional($._single_case_body)
+        prec.dynamic(
+          1,
+          prec.right(
+            seq(
+              repeat($.attribute_declaration),
+              choice(
+                seq('case', field('value', $.expression), optional(seq('...', field('end_value', $.expression)))),
+                'default'
+              ),
+              ':',
+              optional($._single_case_body)
+            )
           )
         ),
       _single_case_body: ($) =>
-        choice(
-          $._single_statement,
-          $.declaration,
-          $.type_definition,
-          alias(sym('preproc_if_in_single_case'), sym('preproc_if')),
-          alias(sym('preproc_ifdef_in_single_case'), sym('preproc_ifdef'))
+        prec.dynamic(
+          1,
+          choice(
+            $._single_statement,
+            $.declaration,
+            $.type_definition,
+            alias(sym('preproc_if_in_single_case'), sym('preproc_if')),
+            alias(sym('preproc_ifdef_in_single_case'), sym('preproc_ifdef'))
+          )
         ),
       _single_labeled_statement: ($) =>
         seq(field('label', $._statement_identifier), ':', choice($._single_statement, $.declaration)),
-      _single_if_statement: ($) =>
-        prec.right(
-          seq(
-            'if',
-            field('condition', $.parenthesized_expression),
-            field('consequence', $._single_statement),
-            optional(field('alternative', alias($._single_else_clause, $.else_clause)))
-          )
-        ),
-      _single_else_clause: ($) => seq('else', $._single_statement),
-      _single_while_statement: ($) =>
-        seq('while', field('condition', $.parenthesized_expression), field('body', $._single_statement)),
-      _single_do_statement: ($) =>
-        seq('do', field('body', $._single_statement), 'while', field('condition', $.parenthesized_expression), ';'),
-      _single_for_statement: ($) => seq('for', '(', $._for_statement_body, ')', field('body', $._single_statement)),
       _single_attributed_statement: ($) =>
         seq(repeat1($.attribute_declaration), choice($.compound_statement, $._single_non_case_statement)),
 
@@ -1024,7 +1015,8 @@ module.exports = Object.assign(
           )
         ),
 
-      _case_statement_item: ($) => prec.dynamic(1, choice($._non_case_statement, $.declaration, $.type_definition)),
+      _case_statement_item: ($) =>
+        prec.dynamic(1, choice($.compound_statement, $._single_non_case_statement, $.declaration, $.type_definition)),
 
       while_statement: ($) =>
         seq('while', field('condition', $.parenthesized_expression), field('body', $._single_statement)),

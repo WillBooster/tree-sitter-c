@@ -61,3 +61,27 @@ test('preserves preprocessor arguments around leading and trailing comments', ()
     parser.delete();
   }
 });
+
+test('groups cases beneath block labels without extending unbraced control bodies', () => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const attribute of ['', '[[vendor::label]] ']) {
+      for (const label of ['case 1:', 'default:']) {
+        const body = `${attribute}${label} x++; break;`;
+        const source = `void f() { switch (x) { first: second: ${body} } }`;
+        const tree = parser.parse(source)!;
+        try {
+          expect(tree.rootNode.hasError, source).toBe(false);
+          const caseNode = tree.rootNode.descendantsOfType('case_statement')[0]!;
+          expect(caseNode.text, source).toBe(body);
+          expect(caseNode.lastNamedChild!.type, source).toBe('break_statement');
+          expect(caseNode.parent!.type, source).toBe('labeled_statement');
+        } finally {
+          tree.delete();
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
