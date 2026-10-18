@@ -808,11 +808,11 @@ module.exports = Object.assign(
               choice(
                 $.enumerator,
                 alias(sym('preproc_if_in_enumerator_list_no_comma'), sym('preproc_if')),
-                alias(sym('preproc_ifdef_in_enumerator_list_no_comma'), sym('preproc_ifdef')),
-                $.preproc_call
+                alias(sym('preproc_ifdef_in_enumerator_list_no_comma'), sym('preproc_ifdef'))
               )
             )
           ),
+          repeat($.preproc_call),
           '}'
         ),
 

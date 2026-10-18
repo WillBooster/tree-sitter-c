@@ -9,7 +9,7 @@ enum State {
 #line 21 "states.h"
   RUNNING = 2,
 #pragma region done
-  DONE,
+  DONE
 #line 30 "states.h"
 };
 
@@ -128,6 +128,7 @@ enum Second {
 #else
 #pragma region empty
 #endif
+#line 40 "states.h"
 };
 
 --------------------------------------------------------------------------------
@@ -152,7 +153,8 @@ enum Second {
         (enumerator (identifier))
         (preproc_call (preproc_directive) (preproc_arg))
         (preproc_else
-          (preproc_call (preproc_directive) (preproc_arg)))))))
+          (preproc_call (preproc_directive) (preproc_arg))))
+      (preproc_call (preproc_directive) (preproc_arg)))))
 
 ================================================================================
 Directives do not replace commas between conditional enumerators
@@ -183,3 +185,23 @@ enum State {
 };
 
 --------------------------------------------------------------------------------
+
+================================================================================
+Directives after a single enumerator
+================================================================================
+
+enum State {
+  DONE
+#line 30 "states.h"
+#pragma region end
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (enumerator (identifier))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (preproc_call (preproc_directive) (preproc_arg)))))

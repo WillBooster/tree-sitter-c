@@ -6928,10 +6928,6 @@
                       },
                       "named": true,
                       "value": "preproc_ifdef"
-                    },
-                    {
-                      "type": "SYMBOL",
-                      "name": "preproc_call"
                     }
                   ]
                 }
@@ -6941,6 +6937,13 @@
               "type": "BLANK"
             }
           ]
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "preproc_call"
+          }
         },
         {
           "type": "STRING",
