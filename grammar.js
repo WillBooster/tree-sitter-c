@@ -96,6 +96,11 @@ module.exports = Object.assign(
       [$._single_attributed_statement],
       [$._declaration_modifiers, $.attributed_statement],
       [$.enum_specifier],
+      [sym('preproc_if_in_enumerator_list'), sym('preproc_if_in_enumerator_list_no_comma')],
+      [sym('preproc_ifdef_in_enumerator_list'), sym('preproc_ifdef_in_enumerator_list_no_comma')],
+      [sym('preproc_else_in_enumerator_list'), sym('preproc_else_in_enumerator_list_no_comma')],
+      [sym('preproc_elif_in_enumerator_list'), sym('preproc_elif_in_enumerator_list_no_comma')],
+      [sym('preproc_elifdef_in_enumerator_list'), sym('preproc_elifdef_in_enumerator_list_no_comma')],
       [$.type_specifier, $._old_style_parameter_list],
       [$.parameter_list, $._old_style_parameter_list],
       [$.function_declarator, $._function_declaration_declarator],
@@ -244,8 +249,19 @@ module.exports = Object.assign(
       ...preprocIf('', () => sym('_block_item')),
       ...preprocIf('_in_single_case', () => sym('_single_case_body'), 0, true),
       ...preprocIf('_in_field_declaration_list', () => sym('_field_declaration_list_item')),
-      ...preprocIf('_in_enumerator_list', () => seq(sym('enumerator'), ',')),
-      ...preprocIf('_in_enumerator_list_no_comma', () => sym('enumerator'), -1),
+      ...preprocIf('_in_enumerator_list', () => choice(seq(sym('enumerator'), ','), sym('_enumerator_directives'))),
+      ...preprocIf(
+        '_in_enumerator_list_no_comma',
+        () =>
+          choice(
+            seq(optional(sym('_enumerator_directives')), sym('enumerator'), optional(sym('_enumerator_directives'))),
+            sym('_enumerator_directives')
+          ),
+        0,
+        false
+      ),
+
+      _enumerator_directives: ($) => prec.right(repeat1($.preproc_call)),
 
       _preproc_newline: () => token.immediate(/\r?\n/),
 
@@ -783,7 +799,8 @@ module.exports = Object.assign(
               seq($.enumerator, ','),
               alias(sym('preproc_if_in_enumerator_list'), sym('preproc_if')),
               alias(sym('preproc_ifdef_in_enumerator_list'), sym('preproc_ifdef')),
-              seq($.preproc_call, ',')
+              seq($.preproc_call, ','),
+              prec(1, $.preproc_call)
             )
           ),
           optional(
@@ -791,11 +808,11 @@ module.exports = Object.assign(
               choice(
                 $.enumerator,
                 alias(sym('preproc_if_in_enumerator_list_no_comma'), sym('preproc_if')),
-                alias(sym('preproc_ifdef_in_enumerator_list_no_comma'), sym('preproc_ifdef')),
-                $.preproc_call
+                alias(sym('preproc_ifdef_in_enumerator_list_no_comma'), sym('preproc_ifdef'))
               )
             )
           ),
+          repeat($.preproc_call),
           '}'
         ),
 

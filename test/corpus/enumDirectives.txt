@@ -1,0 +1,207 @@
+================================================================================
+Directives between enumerators
+================================================================================
+
+enum State {
+#line 10 "states.h"
+  IDLE,
+#line 20 "states.h"
+#line 21 "states.h"
+  RUNNING = 2,
+#pragma region done
+  DONE
+#line 30 "states.h"
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (preproc_call (preproc_directive) (preproc_arg))
+      (enumerator (identifier))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (enumerator (identifier) (number_literal))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (enumerator (identifier))
+      (preproc_call (preproc_directive) (preproc_arg)))))
+
+================================================================================
+Directives around conditional enumerators
+================================================================================
+
+enum State {
+  IDLE,
+#line 10 "states.h"
+#if ENABLED
+  RUNNING,
+#endif
+#line 20 "states.h"
+  DONE
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (enumerator (identifier))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (preproc_if
+        (identifier)
+        (enumerator (identifier)))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (enumerator (identifier)))))
+
+================================================================================
+Directives inside conditional enumerator branches
+================================================================================
+
+enum State {
+  IDLE,
+#if FIRST
+#line 10 "states.h"
+  FIRST_STATE,
+#pragma region end
+#elif SECOND
+#line 20 "states.h"
+  SECOND_STATE,
+#else
+#pragma region empty
+#endif
+#ifdef LAST
+#line 30 "states.h"
+  LAST_STATE,
+#else
+#line 40 "states.h"
+#endif
+  DONE
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (enumerator (identifier))
+      (preproc_if
+        (identifier)
+        (preproc_call (preproc_directive) (preproc_arg))
+        (enumerator (identifier))
+        (preproc_call (preproc_directive) (preproc_arg))
+        (preproc_elif
+          (identifier)
+          (preproc_call (preproc_directive) (preproc_arg))
+          (enumerator (identifier))
+          (preproc_else
+            (preproc_call (preproc_directive) (preproc_arg)))))
+      (preproc_ifdef
+        (identifier)
+        (preproc_call (preproc_directive) (preproc_arg))
+        (enumerator (identifier))
+        (preproc_else
+          (preproc_call (preproc_directive) (preproc_arg))))
+      (enumerator (identifier)))))
+
+================================================================================
+Directives around final conditional enumerators without trailing commas
+================================================================================
+
+enum First {
+#if ENABLED
+#line 1 "states.h"
+  VALUE
+#pragma region end
+#else
+#line 2 "states.h"
+#endif
+};
+enum Second {
+#ifdef ENABLED
+#pragma region begin
+  VALUE
+#line 3 "states.h"
+#else
+#pragma region empty
+#endif
+#line 40 "states.h"
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (preproc_if
+        (identifier)
+        (preproc_call (preproc_directive) (preproc_arg))
+        (enumerator (identifier))
+        (preproc_call (preproc_directive) (preproc_arg))
+        (preproc_else
+          (preproc_call (preproc_directive) (preproc_arg))))))
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (preproc_ifdef
+        (identifier)
+        (preproc_call (preproc_directive) (preproc_arg))
+        (enumerator (identifier))
+        (preproc_call (preproc_directive) (preproc_arg))
+        (preproc_else
+          (preproc_call (preproc_directive) (preproc_arg))))
+      (preproc_call (preproc_directive) (preproc_arg)))))
+
+================================================================================
+Directives do not replace commas between conditional enumerators
+:error
+================================================================================
+
+enum State {
+#if ENABLED
+  FIRST
+#line 10 "states.h"
+  SECOND
+#endif
+};
+
+--------------------------------------------------------------------------------
+
+================================================================================
+Directives do not replace commas before a following enumerator
+:error
+================================================================================
+
+enum State {
+#ifdef ENABLED
+  FIRST
+#pragma region end
+#endif
+  SECOND
+};
+
+--------------------------------------------------------------------------------
+
+================================================================================
+Directives after a single enumerator
+================================================================================
+
+enum State {
+  DONE
+#line 30 "states.h"
+#pragma region end
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (enumerator (identifier))
+      (preproc_call (preproc_directive) (preproc_arg))
+      (preproc_call (preproc_directive) (preproc_arg)))))
