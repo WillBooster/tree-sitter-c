@@ -3970,6 +3970,22 @@
               ]
             },
             {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "PREC_DYNAMIC",
+                  "value": 2,
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "ms_call_modifier"
+                  }
+                },
+                {
+                  "type": "BLANK"
+                }
+              ]
+            },
+            {
               "type": "STRING",
               "value": "*"
             },
@@ -5197,6 +5213,22 @@
               ]
             },
             {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "PREC_DYNAMIC",
+                  "value": 2,
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "ms_call_modifier"
+                  }
+                },
+                {
+                  "type": "BLANK"
+                }
+              ]
+            },
+            {
               "type": "STRING",
               "value": "*"
             },
@@ -5257,6 +5289,22 @@
                 {
                   "type": "SYMBOL",
                   "name": "ms_based_modifier"
+                },
+                {
+                  "type": "BLANK"
+                }
+              ]
+            },
+            {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "PREC_DYNAMIC",
+                  "value": 2,
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "ms_call_modifier"
+                  }
                 },
                 {
                   "type": "BLANK"
@@ -5331,6 +5379,22 @@
               ]
             },
             {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "PREC_DYNAMIC",
+                  "value": 2,
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "ms_call_modifier"
+                  }
+                },
+                {
+                  "type": "BLANK"
+                }
+              ]
+            },
+            {
               "type": "STRING",
               "value": "*"
             },
@@ -5385,6 +5449,22 @@
         "content": {
           "type": "SEQ",
           "members": [
+            {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "PREC_DYNAMIC",
+                  "value": 2,
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "ms_call_modifier"
+                  }
+                },
+                {
+                  "type": "BLANK"
+                }
+              ]
+            },
             {
               "type": "STRING",
               "value": "*"
@@ -13499,6 +13579,18 @@
     [
       "function_declarator",
       "_function_declaration_declarator"
+    ],
+    [
+      "pointer_declarator"
+    ],
+    [
+      "pointer_field_declarator"
+    ],
+    [
+      "pointer_type_declarator"
+    ],
+    [
+      "abstract_pointer_declarator"
     ],
     [
       "_top_level_item",
