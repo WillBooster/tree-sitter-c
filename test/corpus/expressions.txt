@@ -1634,3 +1634,44 @@ int f(void) {
             left: (identifier)
             right: (identifier))
           right: (identifier))))))
+
+================================================================================
+Macro arguments with designated initializers and a trailing comma
+================================================================================
+
+void f(void) {
+    M(.a = {1, 1}, [0] = x,);
+    g(a, b);
+}
+
+---
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (initializer_pair
+              (field_designator
+                (field_identifier))
+              (initializer_list
+                (number_literal)
+                (number_literal)))
+            (initializer_pair
+              (subscript_designator
+                (number_literal))
+              (identifier)))))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (identifier)
+            (identifier)))))))

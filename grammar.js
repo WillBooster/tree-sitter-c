@@ -1336,8 +1336,14 @@ module.exports = Object.assign(
 
       extension_expression: ($) => seq('__extension__', $.expression),
 
-      // The compound_statement is added to parse macros taking statements as arguments, e.g. MYFORLOOP(1, 10, i, { foo(i); bar(i); })
-      argument_list: ($) => seq('(', commaSep(choice($.expression, $.compound_statement)), ')'),
+      // Compound statements, designated initializers, and a trailing comma parse macro arguments, e.g.
+      // MYFORLOOP(1, 10, i, { foo(i); bar(i); }) and PARAMS(.foo = foo, .bar = { bar, 1 },)
+      argument_list: ($) =>
+        seq(
+          '(',
+          optional(seq(commaSep1(choice($.expression, $.compound_statement, $.initializer_pair)), optional(','))),
+          ')'
+        ),
 
       field_expression: ($) =>
         seq(
