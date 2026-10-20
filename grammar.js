@@ -68,6 +68,16 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$.compound_statement, $.initializer_list],
+      [$.comma_expression, $._initializer_element],
+      [$.comma_expression, $.initializer_pair],
+      [$._block_item, $._initializer_directive],
+      [sym('preproc_if'), sym('preproc_if_in_initializer_list')],
+      [sym('preproc_ifdef'), sym('preproc_ifdef_in_initializer_list')],
+      [sym('preproc_else'), sym('preproc_else_in_initializer_list')],
+      [sym('preproc_elif'), sym('preproc_elif_in_initializer_list')],
+      [sym('preproc_elifdef'), sym('preproc_elifdef_in_initializer_list')],
+
       [$.type_specifier, $.expression, $.va_arg_expression, $.macro_type_specifier],
       [$.va_arg_expression, $.expression],
       [$.type_definition, $._declaration_modifiers],
@@ -1336,12 +1346,17 @@ module.exports = Object.assign(
 
       extension_expression: ($) => seq('__extension__', $.expression),
 
-      // Compound statements, designated initializers, and a trailing comma parse macro arguments, e.g.
-      // MYFORLOOP(1, 10, i, { foo(i); bar(i); }) and PARAMS(.foo = foo, .bar = { bar, 1 },)
       argument_list: ($) =>
         seq(
           '(',
-          optional(seq(commaSep1(choice($.expression, $.compound_statement, $.initializer_pair)), optional(','))),
+          optional(
+            seq(
+              commaSep1(
+                choice($.expression, $.compound_statement, $.initializer_pair, prec.dynamic(-1, $.initializer_list))
+              ),
+              optional(',')
+            )
+          ),
           ')'
         ),
 
