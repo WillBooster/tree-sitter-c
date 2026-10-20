@@ -106,6 +106,10 @@ module.exports = Object.assign(
       [$.type_specifier, $._old_style_parameter_list],
       [$.parameter_list, $._old_style_parameter_list],
       [$.function_declarator, $._function_declaration_declarator],
+      [$.pointer_declarator],
+      [$.pointer_field_declarator],
+      [$.pointer_type_declarator],
+      [$.abstract_pointer_declarator],
       [$._top_level_item, $._top_level_statement],
       [$.type_specifier, $._top_level_expression_statement],
       [$.type_qualifier, $.extension_expression],
@@ -364,6 +368,7 @@ module.exports = Object.assign(
           prec.right(
             seq(
               optional($.ms_based_modifier),
+              optional($.ms_call_modifier),
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
@@ -545,6 +550,7 @@ module.exports = Object.assign(
           prec.right(
             seq(
               optional($.ms_based_modifier),
+              optional($.ms_call_modifier),
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
@@ -559,6 +565,7 @@ module.exports = Object.assign(
           prec.right(
             seq(
               optional($.ms_based_modifier),
+              optional($.ms_call_modifier),
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
@@ -573,6 +580,7 @@ module.exports = Object.assign(
           prec.right(
             seq(
               optional($.ms_based_modifier),
+              optional($.ms_call_modifier),
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
@@ -586,6 +594,7 @@ module.exports = Object.assign(
           1,
           prec.right(
             seq(
+              optional($.ms_call_modifier),
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
