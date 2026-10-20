@@ -1,0 +1,97 @@
+================================
+Attribute bracket tokens allow intervening trivia
+================================
+
+[ [maybe_unused] ] int spaced;
+[[maybe_unused]] int compact;
+[ /* open */ [ maybe_unused ] /* close */ ] int commented;
+int read_value(int values[2][2]) { return values[0][values[0][1]]; }
+
+---
+
+(translation_unit
+  (declaration
+    (attribute_declaration
+      (attribute
+        name: (identifier)))
+    type: (primitive_type)
+    declarator: (identifier))
+  (declaration
+    (attribute_declaration
+      (attribute
+        name: (identifier)))
+    type: (primitive_type)
+    declarator: (identifier))
+  (declaration
+    (attribute_declaration
+      (comment)
+      (attribute
+        name: (identifier))
+      (comment))
+    type: (primitive_type)
+    declarator: (identifier))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (array_declarator
+            declarator: (array_declarator
+              declarator: (identifier)
+              size: (number_literal))
+            size: (number_literal)))))
+    body: (compound_statement
+      (return_statement
+        (subscript_expression
+          argument: (subscript_expression
+            argument: (identifier)
+            index: (number_literal))
+          index: (subscript_expression
+            argument: (subscript_expression
+              argument: (identifier)
+              index: (number_literal))
+            index: (number_literal)))))))
+
+================================
+C11 thread_local identifiers retain subscript syntax
+================================
+
+int read_local(int values[2]) {
+  thread_local[0] = 1;
+  __extension__ thread_local[1] = 2;
+  return thread_local[0];
+}
+
+---
+
+(translation_unit
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (array_declarator
+            declarator: (identifier)
+            size: (number_literal)))))
+    body: (compound_statement
+      (expression_statement
+        (assignment_expression
+          left: (subscript_expression
+            argument: (identifier)
+            index: (number_literal))
+          right: (number_literal)))
+      (expression_statement
+        (extension_expression
+          (assignment_expression
+            left: (subscript_expression
+              argument: (identifier)
+              index: (number_literal))
+            right: (number_literal))))
+      (return_statement
+        (subscript_expression
+          argument: (identifier)
+          index: (number_literal))))))

@@ -114,6 +114,8 @@ module.exports = Object.assign(
       [$.type_specifier, $._top_level_expression_statement],
       [$.type_qualifier, $.extension_expression],
       [$.storage_class_specifier, $.type_specifier],
+      [$.storage_class_specifier, $.type_specifier, $.expression],
+      [$.storage_class_specifier, $.expression],
       [$._compound_literal_storage_class_specifier, $.type_specifier],
       [$._compound_literal_constexpr_specifier, $.type_qualifier],
     ],
@@ -450,7 +452,7 @@ module.exports = Object.assign(
       attribute: ($) =>
         seq(optional(seq(field('prefix', $.identifier), '::')), field('name', $.identifier), optional($.argument_list)),
 
-      attribute_declaration: ($) => seq('[[', commaSep1($.attribute), ']]'),
+      attribute_declaration: ($) => seq('[', '[', commaSep1($.attribute), ']', ']'),
 
       ms_declspec_modifier: ($) => seq('__declspec', '(', repeat(seq($.identifier, optional($.argument_list))), ')'),
 

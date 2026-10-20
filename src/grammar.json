@@ -4542,7 +4542,11 @@
       "members": [
         {
           "type": "STRING",
-          "value": "[["
+          "value": "["
+        },
+        {
+          "type": "STRING",
+          "value": "["
         },
         {
           "type": "SEQ",
@@ -4571,7 +4575,11 @@
         },
         {
           "type": "STRING",
-          "value": "]]"
+          "value": "]"
+        },
+        {
+          "type": "STRING",
+          "value": "]"
         }
       ]
     },
@@ -13583,6 +13591,15 @@
     [
       "storage_class_specifier",
       "type_specifier"
+    ],
+    [
+      "storage_class_specifier",
+      "type_specifier",
+      "expression"
+    ],
+    [
+      "storage_class_specifier",
+      "expression"
     ],
     [
       "_compound_literal_storage_class_specifier",
