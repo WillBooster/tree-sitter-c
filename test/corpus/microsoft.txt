@@ -227,8 +227,8 @@ typedef void(__stdcall *fp)();
     type: (primitive_type)
     declarator: (function_declarator
       declarator: (parenthesized_declarator
-        (ms_call_modifier)
         (pointer_declarator
+          (ms_call_modifier)
           declarator: (type_identifier)))
       parameters: (parameter_list))))
 
@@ -467,6 +467,7 @@ struct Holder {
   int __fastcall *(*factory)(void);
 };
 int __stdcall *ordinary(void);
+int __stdcall *ordinary(void) { return 0; }
 int consume(int __stdcall *value) { return *value; }
 unsigned pointer_size(void) { return sizeof(int __stdcall *); }
 int __stdcall *legacy(value)
@@ -511,13 +512,25 @@ int *value;
                 type: (primitive_type))))))))
   (declaration
     type: (primitive_type)
-    declarator: (ms_call_modifier)
     declarator: (pointer_declarator
+      (ms_call_modifier)
       declarator: (function_declarator
         declarator: (identifier)
         parameters: (parameter_list
           (parameter_declaration
             type: (primitive_type))))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (pointer_declarator
+      (ms_call_modifier)
+      declarator: (function_declarator
+        declarator: (identifier)
+        parameters: (parameter_list
+          (parameter_declaration
+            type: (primitive_type)))))
+    body: (compound_statement
+      (return_statement
+        (number_literal))))
   (function_definition
     type: (primitive_type)
     declarator: (function_declarator

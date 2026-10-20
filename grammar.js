@@ -368,7 +368,7 @@ module.exports = Object.assign(
           prec.right(
             seq(
               optional($.ms_based_modifier),
-              optional($.ms_call_modifier),
+              optional(prec.dynamic(2, $.ms_call_modifier)),
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
@@ -550,7 +550,7 @@ module.exports = Object.assign(
           prec.right(
             seq(
               optional($.ms_based_modifier),
-              optional($.ms_call_modifier),
+              optional(prec.dynamic(2, $.ms_call_modifier)),
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
@@ -565,7 +565,7 @@ module.exports = Object.assign(
           prec.right(
             seq(
               optional($.ms_based_modifier),
-              optional($.ms_call_modifier),
+              optional(prec.dynamic(2, $.ms_call_modifier)),
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
@@ -580,7 +580,7 @@ module.exports = Object.assign(
           prec.right(
             seq(
               optional($.ms_based_modifier),
-              optional($.ms_call_modifier),
+              optional(prec.dynamic(2, $.ms_call_modifier)),
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
@@ -594,7 +594,7 @@ module.exports = Object.assign(
           1,
           prec.right(
             seq(
-              optional($.ms_call_modifier),
+              optional(prec.dynamic(2, $.ms_call_modifier)),
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
