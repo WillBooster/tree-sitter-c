@@ -1843,3 +1843,85 @@ void f(void) {
       (declaration
         (primitive_type)
         (identifier)))))
+
+================================================================================
+Leading directives in macro initializer arguments
+================================================================================
+
+void f(void) {
+  values({
+#pragma mark items
+    1, 2
+  });
+  named({
+#include "items.h"
+    .value = 3,
+  });
+  values({
+#undef VALUE
+    4, 5
+  });
+  BODY({
+#include "items.h"
+    int local;
+  });
+  int after;
+}
+
+---
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (initializer_list
+              (preproc_call
+                (preproc_directive)
+                (preproc_arg))
+              (number_literal)
+              (number_literal)))))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (initializer_list
+              (preproc_include
+                (string_literal
+                  (string_content)))
+              (initializer_pair
+                (field_designator
+                  (field_identifier))
+                (number_literal))))))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (initializer_list
+              (preproc_call
+                (preproc_directive)
+                (preproc_arg))
+              (number_literal)
+              (number_literal)))))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (compound_statement
+              (preproc_include
+                (string_literal
+                  (string_content)))
+              (declaration
+                (primitive_type)
+                (identifier))))))
+      (declaration
+        (primitive_type)
+        (identifier)))))

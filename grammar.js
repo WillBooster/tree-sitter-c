@@ -1412,28 +1412,13 @@ module.exports = Object.assign(
           alias(sym('preproc_ifdef_in_initializer_list'), sym('preproc_ifdef')),
           $.preproc_def,
           $.preproc_function_def,
-          alias($._initializer_preproc_call, $.preproc_call)
+          $.preproc_include,
+          $.preproc_call
         ),
 
       _initializer_element: ($) => choice($.initializer_pair, $.expression, $.initializer_list),
 
       _initializer_branch: ($) => choice(seq(',', optional($._initializer_sequence)), $._initializer_sequence),
-
-      _initializer_preproc_call: ($) =>
-        seq(
-          field(
-            'directive',
-            alias(token(/#[ \t]*(embed|include|undef|error|warning|line|pragma)/), $.preproc_directive)
-          ),
-          repeat(choice($.comment, $.pragma_operator)),
-          optional(
-            seq(
-              field('argument', alias($._preproc_directive_arg, $.preproc_arg)),
-              repeat(choice($.comment, $.pragma_operator))
-            )
-          ),
-          alias(sym('_preproc_newline'), '\n')
-        ),
 
       ...preprocIf('_in_initializer_list', () => sym('_initializer_branch'), 0, false),
 
