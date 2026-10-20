@@ -31,8 +31,9 @@ test('highlights canonical operators while preserving literals and edited query 
       'assignment_expression',
       'binary_expression',
       'unary_expression',
+      'field_expression',
     ]);
-    expect(operations).toHaveLength(29);
+    expect(operations).toHaveLength(32);
     for (const operation of operations) {
       const operator = operation.childForFieldName('operator')!;
       expect(operator).toBeDefined();
@@ -51,11 +52,18 @@ test('highlights canonical operators while preserving literals and edited query 
       expect(Source.slice(operator.startIndex, operator.endIndex)).toBe(operator.text);
     }
     expect(captures.filter(({ name }) => name === 'string').map(({ node }) => node.text)).toEqual([
-      '"/= %= *= <<= >>= &= |= ^= / % <= >= << >> | ^ ~ !"',
+      '"/= %= *= <<= >>= &= |= ^= / % <= >= << >> | ^ ~ ! . ->"',
     ]);
     expect(captures.filter(({ name }) => name === 'comment').map(({ node }) => node.text)).toEqual([
-      '// /= %= *= <<= >>= &= |= ^= / % <= >= << >> | ^ ~ ! remain comment text.',
+      '// /= %= *= <<= >>= &= |= ^= / % <= >= << >> | ^ ~ ! . -> remain comment text.',
     ]);
+    const designators = tree.rootNode.descendantsOfType('field_designator');
+    expect(designators).toHaveLength(2);
+    for (const designator of designators) {
+      const dot = designator.firstChild!;
+      expect(captures.filter(({ name, node }) => name === 'delimiter' && node.id === dot.id)).toHaveLength(1);
+      expect(captures.filter(({ name, node }) => name === 'operator' && node.id === dot.id)).toHaveLength(0);
+    }
     const operatorCaptures = captures.filter(({ name }) => name === 'operator');
     expect(operatorCaptures.every(({ node }) => !node.isNamed)).toBe(true);
     for (const { node: literal } of captures.filter(({ name }) => ['string', 'comment'].includes(name))) {
@@ -70,7 +78,7 @@ test('highlights canonical operators while preserving literals and edited query 
         .captures(tree.rootNode)
         .filter(({ name }) => name === 'name')
         .map(({ node }) => node.text)
-    ).toEqual(['calculate', 'main']);
+    ).toEqual(['Value', 'calculate', 'main']);
 
     let source = Source;
     for (const [before, after] of [
