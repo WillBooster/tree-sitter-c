@@ -4754,6 +4754,15 @@
         },
         {
           "type": "SYMBOL",
+          "name": "_unattributed_declarator"
+        }
+      ]
+    },
+    "_unattributed_declarator": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
           "name": "pointer_declarator"
         },
         {
@@ -4857,6 +4866,15 @@
           "value": "attributed_declarator"
         },
         {
+          "type": "SYMBOL",
+          "name": "_unattributed_field_declarator"
+        }
+      ]
+    },
+    "_unattributed_field_declarator": {
+      "type": "CHOICE",
+      "members": [
+        {
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
@@ -4910,6 +4928,15 @@
           "named": true,
           "value": "attributed_declarator"
         },
+        {
+          "type": "SYMBOL",
+          "name": "_unattributed_type_declarator"
+        }
+      ]
+    },
+    "_unattributed_type_declarator": {
+      "type": "CHOICE",
+      "members": [
         {
           "type": "ALIAS",
           "content": {
@@ -5140,7 +5167,7 @@
       "members": [
         {
           "type": "SYMBOL",
-          "name": "_declarator"
+          "name": "_unattributed_declarator"
         },
         {
           "type": "REPEAT1",
@@ -5156,7 +5183,7 @@
       "members": [
         {
           "type": "SYMBOL",
-          "name": "_field_declarator"
+          "name": "_unattributed_field_declarator"
         },
         {
           "type": "REPEAT1",
@@ -5172,7 +5199,7 @@
       "members": [
         {
           "type": "SYMBOL",
-          "name": "_type_declarator"
+          "name": "_unattributed_type_declarator"
         },
         {
           "type": "REPEAT1",
@@ -13589,10 +13616,27 @@
       "attributed_declarator"
     ],
     [
+      "attributed_declarator",
+      "_declarator"
+    ],
+    [
+      "attributed_declarator",
+      "_declarator",
+      "type_specifier"
+    ],
+    [
       "attributed_field_declarator"
     ],
     [
+      "attributed_field_declarator",
+      "_field_declarator"
+    ],
+    [
       "attributed_type_declarator"
+    ],
+    [
+      "attributed_type_declarator",
+      "_type_declarator"
     ],
     [
       "_declaration_specifiers"
@@ -13635,6 +13679,9 @@
   ],
   "inline": [
     "_non_identifier_type_specifier",
+    "_unattributed_declarator",
+    "_unattributed_field_declarator",
+    "_unattributed_type_declarator",
     "_type_identifier",
     "_field_identifier",
     "_statement_identifier",

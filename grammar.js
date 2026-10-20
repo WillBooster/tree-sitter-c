@@ -117,8 +117,12 @@ module.exports = Object.assign(
       [$.storage_class_specifier, $.type_specifier, $.expression],
       [$.storage_class_specifier, $.expression],
       [$.attributed_declarator],
+      [$.attributed_declarator, $._declarator],
+      [$.attributed_declarator, $._declarator, $.type_specifier],
       [$.attributed_field_declarator],
+      [$.attributed_field_declarator, $._field_declarator],
       [$.attributed_type_declarator],
+      [$.attributed_type_declarator, $._type_declarator],
       [$._declaration_specifiers],
       [$._compound_literal_storage_class_specifier, $.type_specifier],
       [$._compound_literal_constexpr_specifier, $.type_qualifier],
@@ -137,6 +141,9 @@ module.exports = Object.assign(
 
     inline: ($) => [
       $._non_identifier_type_specifier,
+      $._unattributed_declarator,
+      $._unattributed_field_declarator,
+      $._unattributed_type_declarator,
       $._type_identifier,
       $._field_identifier,
       $._statement_identifier,
@@ -483,9 +490,10 @@ module.exports = Object.assign(
 
       declaration_list: ($) => seq('{', repeat($._block_item), '}'),
 
-      _declarator: ($) =>
+      _declarator: ($) => choice($.attributed_declarator, $._unattributed_declarator),
+
+      _unattributed_declarator: ($) =>
         choice(
-          $.attributed_declarator,
           $.pointer_declarator,
           $.function_declarator,
           $.array_declarator,
@@ -506,8 +514,10 @@ module.exports = Object.assign(
         ),
 
       _field_declarator: ($) =>
+        choice(alias($.attributed_field_declarator, $.attributed_declarator), $._unattributed_field_declarator),
+
+      _unattributed_field_declarator: ($) =>
         choice(
-          alias($.attributed_field_declarator, $.attributed_declarator),
           alias($.pointer_field_declarator, $.pointer_declarator),
           alias($.function_field_declarator, $.function_declarator),
           alias($.array_field_declarator, $.array_declarator),
@@ -516,8 +526,10 @@ module.exports = Object.assign(
         ),
 
       _type_declarator: ($) =>
+        choice(alias($.attributed_type_declarator, $.attributed_declarator), $._unattributed_type_declarator),
+
+      _unattributed_type_declarator: ($) =>
         choice(
-          alias($.attributed_type_declarator, $.attributed_declarator),
           alias($.pointer_type_declarator, $.pointer_declarator),
           alias($.function_type_declarator, $.function_declarator),
           alias($.array_type_declarator, $.array_declarator),
@@ -544,9 +556,9 @@ module.exports = Object.assign(
       abstract_parenthesized_declarator: ($) =>
         prec(1, seq('(', optional($.ms_call_modifier), $._abstract_declarator, ')')),
 
-      attributed_declarator: ($) => seq($._declarator, repeat1($.attribute_declaration)),
-      attributed_field_declarator: ($) => seq($._field_declarator, repeat1($.attribute_declaration)),
-      attributed_type_declarator: ($) => seq($._type_declarator, repeat1($.attribute_declaration)),
+      attributed_declarator: ($) => seq($._unattributed_declarator, repeat1($.attribute_declaration)),
+      attributed_field_declarator: ($) => seq($._unattributed_field_declarator, repeat1($.attribute_declaration)),
+      attributed_type_declarator: ($) => seq($._unattributed_type_declarator, repeat1($.attribute_declaration)),
 
       pointer_declarator: ($) =>
         prec.dynamic(

@@ -179,3 +179,81 @@ void consume(unsigned char [20], int [3]);
           type: (primitive_type)
           declarator: (abstract_array_declarator
             size: (number_literal)))))))
+
+================================
+Arrays separate consecutive attribute groups
+================================
+
+int matrix [[a]] [[b]] [2] [[c]] [[d]] [3];
+struct Matrix { int cells [[a]] [[b]] [2] [[c]] [[d]] [3]; };
+typedef int Grid [[a]] [[b]] [2] [[c]] [[d]] [3];
+
+---
+
+(translation_unit
+  (declaration
+    type: (primitive_type)
+    declarator: (array_declarator
+      declarator: (attributed_declarator
+        (array_declarator
+          declarator: (attributed_declarator
+            (identifier)
+            (attribute_declaration
+              (attribute
+                name: (identifier)))
+            (attribute_declaration
+              (attribute
+                name: (identifier))))
+          size: (number_literal))
+        (attribute_declaration
+          (attribute
+            name: (identifier)))
+        (attribute_declaration
+          (attribute
+            name: (identifier))))
+      size: (number_literal)))
+  (struct_specifier
+    name: (type_identifier)
+    body: (field_declaration_list
+      (field_declaration
+        type: (primitive_type)
+        declarator: (array_declarator
+          declarator: (attributed_declarator
+            (array_declarator
+              declarator: (attributed_declarator
+                (field_identifier)
+                (attribute_declaration
+                  (attribute
+                    name: (identifier)))
+                (attribute_declaration
+                  (attribute
+                    name: (identifier))))
+              size: (number_literal))
+            (attribute_declaration
+              (attribute
+                name: (identifier)))
+            (attribute_declaration
+              (attribute
+                name: (identifier))))
+          size: (number_literal)))))
+  (type_definition
+    type: (primitive_type)
+    declarator: (array_declarator
+      declarator: (attributed_declarator
+        (array_declarator
+          declarator: (attributed_declarator
+            (type_identifier)
+            (attribute_declaration
+              (attribute
+                name: (identifier)))
+            (attribute_declaration
+              (attribute
+                name: (identifier))))
+          size: (number_literal))
+        (attribute_declaration
+          (attribute
+            name: (identifier)))
+        (attribute_declaration
+          (attribute
+            name: (identifier))))
+      size: (number_literal))))

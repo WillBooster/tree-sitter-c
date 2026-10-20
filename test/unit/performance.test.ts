@@ -29,13 +29,9 @@ test('uses a Wasm build built from the current parser', () => {
   ).toBe(false);
 });
 
-// Consumers parse files being edited, so recovering from many errors must stay linear: ten times the lines take about
-// ten times as long, against a hundred times for quadratic recovery. The ratio catches a cost that grows faster than
-// the input even on a slow CI runner. The parses are timed in the CPU time of the thread that runs them: wall-clock
-// time is inflated unevenly by the test files running alongside, and the process's CPU time also counts the engine's
-// background threads, which compile the Wasm build and collect garbage during the parses. 2,000 and 20,000 lines are
-// measured after warm-up parses and in alternation, each keeping its fastest run; their ratio is about 10 locally, and
-// 18 leaves a margin over that while failing for growth faster than about n^1.25.
+// Use thread CPU time: wall time includes competing tests, while process CPU time includes the engine's background
+// Wasm compilation and garbage collection. A tenfold input takes about 10x locally; 18 leaves a margin while excluding
+// growth faster than roughly n^1.25, without depending on a machine's absolute speed.
 test('recovers from an error on each line in linear time', { timeout: 60_000 }, () => {
   const small = '$ a\n'.repeat(2000);
   const large = '$ a\n'.repeat(20_000);
@@ -62,6 +58,27 @@ test('keeps attributed switch statement parsing approximately linear', { timeout
   }
   expect(largeFastest / smallFastest).toBeLessThan(10);
 });
+
+test.each([
+  ['ordinary declarations', 'int x[2] ', ';'],
+  ['field declarations', 'struct T { int x[2] ', '; };'],
+  ['typedef declarations', 'typedef int X[2] ', ';'],
+])(
+  'keeps consecutive declarator attributes approximately linear in %s',
+  { timeout: 60_000 },
+  (_name, prefix, suffix) => {
+    const small = `${prefix}${'[[a]] '.repeat(200)}${suffix}`;
+    const large = `${prefix}${'[[a]] '.repeat(1000)}${suffix}`;
+    parseCpuTime(large, false);
+    let smallFastest = Infinity;
+    let largeFastest = Infinity;
+    for (let run = 0; run < 5; run++) {
+      smallFastest = Math.min(smallFastest, parseCpuTime(small, false));
+      largeFastest = Math.min(largeFastest, parseCpuTime(large, false));
+    }
+    expect(largeFastest / smallFastest).toBeLessThan(10);
+  }
+);
 
 function attributedSwitchSource(count: number): string {
   return `void f(int x){switch(x){${Array.from({ length: count }, (_, index) => `case ${index}: [[a]] x++; break;`).join('')}}}`;
