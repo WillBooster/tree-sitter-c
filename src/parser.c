@@ -7,7 +7,7 @@
 #endif
 
 #define TS_GENERATION_PROFILED 1
-#define LANGUAGE_VERSION 0x57420003
+#define LANGUAGE_VERSION 0x57420006
 #define STATE_COUNT 5466
 #define LARGE_STATE_COUNT 128
 #define LEX_STATE_COUNT 556
@@ -16046,7 +16046,9 @@ static uint32_t ts_keyword_lookup(const char *text, uint32_t length) {
   uint16_t state = first & TS_KEYWORD_STATE_MASK;
   for (uint32_t i = 1; i < length; i++) {
     if (ts_keyword_states[state].accept) prefix = TS_KEYWORD_PREFIX;
-    uint16_t next = ts_keyword_next(state, (uint8_t)text[i]);
+    uint8_t byte = (uint8_t)text[i];
+    if (byte >= 128) return prefix;
+    uint16_t next = ts_keyword_next(state, byte);
     if (next == UINT16_MAX) return prefix;
     state = next & TS_KEYWORD_STATE_MASK;
   }
