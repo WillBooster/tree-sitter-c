@@ -69,12 +69,12 @@ test.each([
   (_name, prefix, suffix) => {
     const small = `${prefix}${'[[a]] '.repeat(200)}${suffix}`;
     const large = `${prefix}${'[[a]] '.repeat(1000)}${suffix}`;
-    parseCpuTime(large, false);
+    parseAverageCpuTime(large);
     let smallFastest = Infinity;
     let largeFastest = Infinity;
     for (let run = 0; run < 5; run++) {
-      smallFastest = Math.min(smallFastest, parseCpuTime(small, false));
-      largeFastest = Math.min(largeFastest, parseCpuTime(large, false));
+      smallFastest = Math.min(smallFastest, parseAverageCpuTime(small));
+      largeFastest = Math.min(largeFastest, parseAverageCpuTime(large));
     }
     expect(largeFastest / smallFastest).toBeLessThan(10);
   }
@@ -93,4 +93,22 @@ function parseCpuTime(source: string, expectedError = true): number {
   tree.delete();
   expect(hasError).toBe(expectedError);
   return system + user;
+}
+
+// Linux CPU accounting can report zero for a short parse. Accumulate enough CPU time before normalizing per parse.
+function parseAverageCpuTime(source: string): number {
+  const start = process.threadCpuUsage();
+  let parses = 0;
+  let elapsed = 0;
+  do {
+    const tree = parser.parse(source);
+    if (!tree) throw new Error('The parser returned no tree');
+    const { hasError } = tree.rootNode;
+    tree.delete();
+    expect(hasError).toBe(false);
+    parses++;
+    const { system, user } = process.threadCpuUsage(start);
+    elapsed = system + user;
+  } while (elapsed < 20_000);
+  return elapsed / parses;
 }
