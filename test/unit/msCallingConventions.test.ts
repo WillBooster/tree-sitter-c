@@ -22,15 +22,15 @@ test('keeps pointer calling-convention captures independent of surrounding decla
       const tree = parser.parse(source)!;
       try {
         expect(tree.rootNode.hasError, source).toBe(false);
-        const modifiers = tree.rootNode.descendantsOfType('ms_call_modifier');
-        expect(modifiers.length).toBeGreaterThan(0);
+        const expectedModifiers = [...source.matchAll(/__stdcall/g)].map((match) => [
+          match[0],
+          match.index,
+          match.index + match[0].length,
+        ]);
         expect(
           query.captures(tree.rootNode).map(({ node }) => [node.text, node.startIndex, node.endIndex]),
           source
-        ).toEqual(modifiers.map((node) => [node.text, node.startIndex, node.endIndex]));
-        for (const modifier of modifiers) {
-          expect(modifier.text).toBe(source.slice(modifier.startIndex, modifier.endIndex));
-        }
+        ).toEqual(expectedModifiers);
       } finally {
         tree.delete();
       }
