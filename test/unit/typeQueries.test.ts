@@ -385,3 +385,79 @@ test('preserves thread_local typedef queries across compound literal role edits'
     parser.delete();
   }
 });
+
+test('keeps multiplication expressions distinct from macro-decorated pointers', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const depth of [0, 1, 2, 24]) {
+      const source = `void f(int a, int b, int ${'*'.repeat(depth)}c) { a * b ${'*'.repeat(depth + 1)}c; }`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError).toBe(false);
+        const statement = tree.rootNode.descendantsOfType('compound_statement')[0]!.namedChildren[0]!;
+        expect(statement.type).toBe('expression_statement');
+        expect(statement.descendantsOfType('binary_expression')).toHaveLength(2);
+        expect(statement.descendantsOfType('pointer_expression')).toHaveLength(depth);
+        expect(statement.descendantsOfType('macro_specifier')).toHaveLength(0);
+      } finally {
+        tree.delete();
+      }
+    }
+    const tree = parser.parse(`typedef int T;
+T *global;
+T **deep_global;
+void typed(T *parameter) { T *local; T **other; parameter = local; }`)!;
+    try {
+      expect(tree.rootNode.hasError).toBe(false);
+      expect(tree.rootNode.descendantsOfType('declaration').map((node) => node.text)).toEqual([
+        'T *global;',
+        'T **deep_global;',
+        'T *local;',
+        'T **other;',
+      ]);
+      expect(tree.rootNode.descendantsOfType('parameter_declaration')[0]!.childForFieldName('declarator')!.text).toBe(
+        '*parameter'
+      );
+      expect(tree.rootNode.descendantsOfType('assignment_expression').map((node) => node.text)).toEqual([
+        'parameter = local',
+      ]);
+    } finally {
+      tree.delete();
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test('keeps prefix markers separate from sized declaration types', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser().setLanguage(language);
+  const tree = parser.parse(`#define API
+API unsigned long counter;
+API long function(void);
+API unsigned flag(void);
+API signed char byte;`)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const declarations = tree.rootNode.descendantsOfType('declaration');
+    expect(declarations.map((node) => node.childForFieldName('type')!.text)).toEqual([
+      'unsigned long',
+      'long',
+      'unsigned',
+      'signed char',
+    ]);
+    expect(declarations.map((node) => node.descendantsOfType('macro_specifier').map((marker) => marker.text))).toEqual([
+      ['API'],
+      ['API'],
+      ['API'],
+      ['API'],
+    ]);
+    expect(tree.rootNode.descendantsOfType('type_identifier')).toHaveLength(0);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});

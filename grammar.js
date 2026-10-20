@@ -405,28 +405,31 @@ module.exports = Object.assign(
         ),
 
       declaration: ($) =>
-        seq(
-          choice(
-            $._declaration_specifiers,
-            prec.dynamic(
-              PREC.PAREN_DECLARATOR - 1,
-              seq(
-                repeat($._declaration_modifiers),
-                alias('auto', $.storage_class_specifier),
-                repeat($._declaration_modifiers)
+        prec.dynamic(
+          1,
+          seq(
+            choice(
+              $._declaration_specifiers,
+              prec.dynamic(
+                PREC.PAREN_DECLARATOR - 1,
+                seq(
+                  repeat($._declaration_modifiers),
+                  alias('auto', $.storage_class_specifier),
+                  repeat($._declaration_modifiers)
+                )
               )
-            )
-          ),
-          commaSep1(
-            field(
-              'declarator',
-              choice(
-                seq(optional($.ms_call_modifier), $._declaration_declarator, optional($.gnu_asm_expression)),
-                $.init_declarator
+            ),
+            commaSep1(
+              field(
+                'declarator',
+                choice(
+                  seq(optional($.ms_call_modifier), $._declaration_declarator, optional($.gnu_asm_expression)),
+                  $.init_declarator
+                )
               )
-            )
-          ),
-          ';'
+            ),
+            ';'
+          )
         ),
 
       type_definition: ($) =>
@@ -585,18 +588,15 @@ module.exports = Object.assign(
       attributed_type_declarator: ($) => seq($._unattributed_type_declarator, repeat1($.attribute_declaration)),
 
       pointer_declarator: ($) =>
-        prec.dynamic(
-          1,
-          prec.right(
-            seq(
-              optional($.ms_based_modifier),
-              optional(prec.dynamic(2, $.ms_call_modifier)),
-              '*',
-              repeat($.attribute_declaration),
-              repeat($.ms_pointer_modifier),
-              repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier)),
-              field('declarator', $._declarator)
-            )
+        prec.right(
+          seq(
+            optional($.ms_based_modifier),
+            optional(prec.dynamic(2, $.ms_call_modifier)),
+            '*',
+            repeat($.attribute_declaration),
+            repeat($.ms_pointer_modifier),
+            repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier)),
+            field('declarator', $._declarator)
           )
         ),
       pointer_field_declarator: ($) =>
@@ -794,7 +794,7 @@ module.exports = Object.assign(
       bit_int_specifier: ($) => seq('_BitInt', '(', $.expression, ')'),
 
       sized_type_specifier: ($) =>
-        sizedTypeSpecifier(optional(choice(prec.dynamic(-1, $._type_identifier), $.primitive_type))),
+        sizedTypeSpecifier(optional(choice(prec.dynamic(-3, $._type_identifier), $.primitive_type))),
 
       _sized_bit_int_specifier: ($) => sizedTypeSpecifier($.bit_int_specifier),
 
@@ -1589,7 +1589,7 @@ module.exports = Object.assign(
 
       _empty_declaration: ($) => seq(repeat(choice($.ms_declspec_modifier, $.macro_specifier)), $.type_specifier, ';'),
 
-      macro_specifier: ($) => prec.dynamic(-1, field('name', $.identifier)),
+      macro_specifier: ($) => prec.dynamic(-2, field('name', $.identifier)),
 
       macro_type_specifier: ($) =>
         prec.dynamic(
