@@ -1537,8 +1537,8 @@ module.exports = Object.assign(
 
       system_lib_string: () => token(seq('<', repeat(choice(/[^>\n]/, String.raw`\>`)), '>')),
 
-      true: () => token(choice('TRUE', 'true')),
-      false: () => token(choice('FALSE', 'false')),
+      true: () => 'true',
+      false: () => 'false',
       null: () => choice('NULL', 'nullptr'),
 
       identifier: () =>
