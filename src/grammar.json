@@ -4389,35 +4389,31 @@
       ]
     },
     "_declaration_specifiers": {
-      "type": "PREC_RIGHT",
-      "value": 0,
-      "content": {
-        "type": "SEQ",
-        "members": [
-          {
-            "type": "REPEAT",
-            "content": {
-              "type": "SYMBOL",
-              "name": "_declaration_modifiers"
-            }
-          },
-          {
-            "type": "FIELD",
-            "name": "type",
-            "content": {
-              "type": "SYMBOL",
-              "name": "type_specifier"
-            }
-          },
-          {
-            "type": "REPEAT",
-            "content": {
-              "type": "SYMBOL",
-              "name": "_declaration_modifiers"
-            }
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_declaration_modifiers"
           }
-        ]
-      }
+        },
+        {
+          "type": "FIELD",
+          "name": "type",
+          "content": {
+            "type": "SYMBOL",
+            "name": "type_specifier"
+          }
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_declaration_modifiers"
+          }
+        }
+      ]
     },
     "linkage_specification": {
       "type": "SEQ",
@@ -5140,64 +5136,52 @@
       }
     },
     "attributed_declarator": {
-      "type": "PREC_RIGHT",
-      "value": 0,
-      "content": {
-        "type": "SEQ",
-        "members": [
-          {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_declarator"
+        },
+        {
+          "type": "REPEAT1",
+          "content": {
             "type": "SYMBOL",
-            "name": "_declarator"
-          },
-          {
-            "type": "REPEAT1",
-            "content": {
-              "type": "SYMBOL",
-              "name": "attribute_declaration"
-            }
+            "name": "attribute_declaration"
           }
-        ]
-      }
+        }
+      ]
     },
     "attributed_field_declarator": {
-      "type": "PREC_RIGHT",
-      "value": 0,
-      "content": {
-        "type": "SEQ",
-        "members": [
-          {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_field_declarator"
+        },
+        {
+          "type": "REPEAT1",
+          "content": {
             "type": "SYMBOL",
-            "name": "_field_declarator"
-          },
-          {
-            "type": "REPEAT1",
-            "content": {
-              "type": "SYMBOL",
-              "name": "attribute_declaration"
-            }
+            "name": "attribute_declaration"
           }
-        ]
-      }
+        }
+      ]
     },
     "attributed_type_declarator": {
-      "type": "PREC_RIGHT",
-      "value": 0,
-      "content": {
-        "type": "SEQ",
-        "members": [
-          {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_type_declarator"
+        },
+        {
+          "type": "REPEAT1",
+          "content": {
             "type": "SYMBOL",
-            "name": "_type_declarator"
-          },
-          {
-            "type": "REPEAT1",
-            "content": {
-              "type": "SYMBOL",
-              "name": "attribute_declaration"
-            }
+            "name": "attribute_declaration"
           }
-        ]
-      }
+        }
+      ]
     },
     "pointer_declarator": {
       "type": "PREC_DYNAMIC",
@@ -13600,6 +13584,18 @@
     [
       "storage_class_specifier",
       "expression"
+    ],
+    [
+      "attributed_declarator"
+    ],
+    [
+      "attributed_field_declarator"
+    ],
+    [
+      "attributed_type_declarator"
+    ],
+    [
+      "_declaration_specifiers"
     ],
     [
       "_compound_literal_storage_class_specifier",

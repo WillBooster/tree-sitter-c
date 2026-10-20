@@ -95,3 +95,87 @@ int read_local(int values[2]) {
         (subscript_expression
           argument: (identifier)
           index: (number_literal))))))
+
+================================
+Attributes preserve following array declarators
+================================
+
+int v [[maybe_unused]] [3];
+void h(void) { int v [[maybe_unused]] [3]; }
+struct T { int m [[deprecated]] [3]; };
+typedef int V [[maybe_unused]] [3];
+
+---
+
+(translation_unit
+  (declaration
+    type: (primitive_type)
+    declarator: (array_declarator
+      declarator: (attributed_declarator
+        (identifier)
+        (attribute_declaration
+          (attribute
+            name: (identifier))))
+      size: (number_literal)))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (declaration
+        type: (primitive_type)
+        declarator: (array_declarator
+          declarator: (attributed_declarator
+            (identifier)
+            (attribute_declaration
+              (attribute
+                name: (identifier))))
+          size: (number_literal)))))
+  (struct_specifier
+    name: (type_identifier)
+    body: (field_declaration_list
+      (field_declaration
+        type: (primitive_type)
+        declarator: (array_declarator
+          declarator: (attributed_declarator
+            (field_identifier)
+            (attribute_declaration
+              (attribute
+                name: (identifier))))
+          size: (number_literal)))))
+  (type_definition
+    type: (primitive_type)
+    declarator: (array_declarator
+      declarator: (attributed_declarator
+        (type_identifier)
+        (attribute_declaration
+          (attribute
+            name: (identifier))))
+      size: (number_literal))))
+
+================================
+Abstract array parameters retain their sizes
+================================
+
+void consume(unsigned char [20], int [3]);
+
+---
+
+(translation_unit
+  (declaration
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (sized_type_specifier
+            type: (primitive_type))
+          declarator: (abstract_array_declarator
+            size: (number_literal)))
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (abstract_array_declarator
+            size: (number_literal)))))))

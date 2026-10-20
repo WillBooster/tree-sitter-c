@@ -116,6 +116,10 @@ module.exports = Object.assign(
       [$.storage_class_specifier, $.type_specifier],
       [$.storage_class_specifier, $.type_specifier, $.expression],
       [$.storage_class_specifier, $.expression],
+      [$.attributed_declarator],
+      [$.attributed_field_declarator],
+      [$.attributed_type_declarator],
+      [$._declaration_specifiers],
       [$._compound_literal_storage_class_specifier, $.type_specifier],
       [$._compound_literal_constexpr_specifier, $.type_qualifier],
     ],
@@ -436,9 +440,7 @@ module.exports = Object.assign(
         ),
 
       _declaration_specifiers: ($) =>
-        prec.right(
-          seq(repeat($._declaration_modifiers), field('type', $.type_specifier), repeat($._declaration_modifiers))
-        ),
+        seq(repeat($._declaration_modifiers), field('type', $.type_specifier), repeat($._declaration_modifiers)),
 
       linkage_specification: ($) =>
         seq(
@@ -542,9 +544,9 @@ module.exports = Object.assign(
       abstract_parenthesized_declarator: ($) =>
         prec(1, seq('(', optional($.ms_call_modifier), $._abstract_declarator, ')')),
 
-      attributed_declarator: ($) => prec.right(seq($._declarator, repeat1($.attribute_declaration))),
-      attributed_field_declarator: ($) => prec.right(seq($._field_declarator, repeat1($.attribute_declaration))),
-      attributed_type_declarator: ($) => prec.right(seq($._type_declarator, repeat1($.attribute_declaration))),
+      attributed_declarator: ($) => seq($._declarator, repeat1($.attribute_declaration)),
+      attributed_field_declarator: ($) => seq($._field_declarator, repeat1($.attribute_declaration)),
+      attributed_type_declarator: ($) => seq($._type_declarator, repeat1($.attribute_declaration)),
 
       pointer_declarator: ($) =>
         prec.dynamic(
