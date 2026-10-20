@@ -68,9 +68,20 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$.macro_specifier, $._type_declarator],
+      [$.macro_specifier, $._field_declarator],
+      [$.macro_specifier, $._declarator],
+      [$.macro_specifier, $._declarator, $.attributed_declarator, $.type_specifier],
+      [$.macro_specifier, $._declarator, $.attributed_declarator],
+      [$.macro_specifier, $.sized_type_specifier],
+      [$.macro_specifier, $.type_specifier, $.sized_type_specifier],
+      [$.macro_specifier, $.expression],
+      [$.macro_specifier, $.type_specifier],
+      [$.macro_specifier, $.type_specifier, $.expression],
       [$.type_specifier, $.expression, $.va_arg_expression, $.macro_type_specifier],
       [$.va_arg_expression, $.expression],
       [$.type_definition, $._declaration_modifiers],
+      [$.type_definition, $._declaration_modifiers, $._empty_declaration],
       [$.type_definition, $.type_specifier],
       [$.type_definition, $.type_qualifier, $.extension_expression],
       [$.type_definition, $.type_qualifier],
@@ -107,6 +118,7 @@ module.exports = Object.assign(
       [$.parameter_list, $._old_style_parameter_list],
       [$.function_declarator, $._function_declaration_declarator],
       [$.pointer_declarator],
+      [$.pointer_declarator, $.abstract_pointer_declarator],
       [$.pointer_field_declarator],
       [$.pointer_type_declarator],
       [$.abstract_pointer_declarator],
@@ -141,6 +153,7 @@ module.exports = Object.assign(
 
     inline: ($) => [
       $._non_identifier_type_specifier,
+      $._non_macro_declaration_modifiers,
       $._unattributed_declarator,
       $._unattributed_field_declarator,
       $._unattributed_type_declarator,
@@ -385,7 +398,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat(choice($.type_qualifier, $.attribute_specifier)),
+              repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier)),
               field('declarator', alias($._old_style_declarator, $._declarator))
             )
           )
@@ -419,6 +432,7 @@ module.exports = Object.assign(
       type_definition: ($) =>
         seq(
           optional(prec.dynamic(1, '__extension__')),
+          repeat($.macro_specifier),
           choice(
             seq(repeat($.type_qualifier), 'typedef', $._type_definition_type),
             seq(
@@ -434,10 +448,16 @@ module.exports = Object.assign(
           ';'
         ),
       _type_definition_type: ($) =>
-        seq(repeat($.type_qualifier), field('type', $.type_specifier), repeat($.type_qualifier)),
+        seq(
+          repeat(choice($.type_qualifier, $.macro_specifier)),
+          field('type', $.type_specifier),
+          repeat($.type_qualifier)
+        ),
       _type_definition_declarators: ($) => commaSep1(field('declarator', $._type_declarator)),
 
-      _declaration_modifiers: ($) =>
+      _declaration_modifiers: ($) => choice($._non_macro_declaration_modifiers, $.macro_specifier),
+
+      _non_macro_declaration_modifiers: ($) =>
         choice(
           $.storage_class_specifier,
           $.type_qualifier,
@@ -447,7 +467,11 @@ module.exports = Object.assign(
         ),
 
       _declaration_specifiers: ($) =>
-        seq(repeat($._declaration_modifiers), field('type', $.type_specifier), repeat($._declaration_modifiers)),
+        seq(
+          repeat($._declaration_modifiers),
+          field('type', $.type_specifier),
+          repeat($._non_macro_declaration_modifiers)
+        ),
 
       linkage_specification: ($) =>
         seq(
@@ -570,7 +594,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat(choice($.type_qualifier, $.attribute_specifier)),
+              repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier)),
               field('declarator', $._declarator)
             )
           )
@@ -585,7 +609,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat(choice($.type_qualifier, $.attribute_specifier)),
+              repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier)),
               field('declarator', $._field_declarator)
             )
           )
@@ -600,7 +624,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat(choice($.type_qualifier, $.attribute_specifier)),
+              repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier)),
               field('declarator', $._type_declarator)
             )
           )
@@ -1563,7 +1587,9 @@ module.exports = Object.assign(
       _field_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('field_identifier')),
       _statement_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('statement_identifier')),
 
-      _empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
+      _empty_declaration: ($) => seq(repeat(choice($.ms_declspec_modifier, $.macro_specifier)), $.type_specifier, ';'),
+
+      macro_specifier: ($) => prec.dynamic(-1, field('name', $.identifier)),
 
       macro_type_specifier: ($) =>
         prec.dynamic(

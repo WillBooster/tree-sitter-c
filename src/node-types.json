@@ -1218,6 +1218,10 @@
           "named": true
         },
         {
+          "type": "macro_specifier",
+          "named": true
+        },
+        {
           "type": "ms_declspec_modifier",
           "named": true
         },
@@ -1420,6 +1424,10 @@
           "named": true
         },
         {
+          "type": "macro_specifier",
+          "named": true
+        },
+        {
           "type": "ms_declspec_modifier",
           "named": true
         },
@@ -1452,6 +1460,10 @@
         },
         {
           "type": "linkage_specification",
+          "named": true
+        },
+        {
+          "type": "macro_specifier",
           "named": true
         },
         {
@@ -1729,6 +1741,10 @@
           "named": true
         },
         {
+          "type": "macro_specifier",
+          "named": true
+        },
+        {
           "type": "ms_declspec_modifier",
           "named": true
         },
@@ -2000,6 +2016,10 @@
         },
         {
           "type": "declaration",
+          "named": true
+        },
+        {
+          "type": "macro_specifier",
           "named": true
         },
         {
@@ -2495,6 +2515,22 @@
     }
   },
   {
+    "type": "macro_specifier",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "macro_type_specifier",
     "named": true,
     "fields": {
@@ -2673,6 +2709,10 @@
           "named": true
         },
         {
+          "type": "macro_specifier",
+          "named": true
+        },
+        {
           "type": "ms_declspec_modifier",
           "named": true
         },
@@ -2827,6 +2867,10 @@
         },
         {
           "type": "attribute_specifier",
+          "named": true
+        },
+        {
+          "type": "macro_specifier",
           "named": true
         },
         {
@@ -3071,6 +3115,10 @@
           "named": true
         },
         {
+          "type": "macro_specifier",
+          "named": true
+        },
+        {
           "type": "ms_declspec_modifier",
           "named": true
         },
@@ -3183,6 +3231,10 @@
           "named": true
         },
         {
+          "type": "macro_specifier",
+          "named": true
+        },
+        {
           "type": "ms_declspec_modifier",
           "named": true
         },
@@ -3263,6 +3315,10 @@
         },
         {
           "type": "linkage_specification",
+          "named": true
+        },
+        {
+          "type": "macro_specifier",
           "named": true
         },
         {
@@ -3456,6 +3512,10 @@
           "named": true
         },
         {
+          "type": "macro_specifier",
+          "named": true
+        },
+        {
           "type": "ms_declspec_modifier",
           "named": true
         },
@@ -3565,6 +3625,10 @@
         },
         {
           "type": "linkage_specification",
+          "named": true
+        },
+        {
+          "type": "macro_specifier",
           "named": true
         },
         {
@@ -4054,6 +4118,10 @@
           "named": true
         },
         {
+          "type": "macro_specifier",
+          "named": true
+        },
+        {
           "type": "ms_declspec_modifier",
           "named": true
         },
@@ -4151,6 +4219,10 @@
         },
         {
           "type": "enum_specifier",
+          "named": true
+        },
+        {
+          "type": "macro_specifier",
           "named": true
         },
         {

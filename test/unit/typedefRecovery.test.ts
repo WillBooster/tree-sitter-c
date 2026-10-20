@@ -5,7 +5,7 @@ import { expect, test } from 'vitest';
 
 const wasmPath = path.join(import.meta.dirname, '../../tree-sitter-c.wasm');
 
-test('preserves declarations after an unexpanded header macro before typedef', async () => {
+test('parses typedefs after an unexpanded header macro', async () => {
   await Parser.init();
   const parser = new Parser();
   parser.setLanguage(await Language.load(wasmPath));
@@ -24,8 +24,11 @@ test('preserves declarations after an unexpanded header macro before typedef', a
       try {
         const guard = tree.rootNode.namedChildren[0]!;
         expect(guard.type).toBe('preproc_ifdef');
-        const parsed = guard.descendantsOfType('declaration').find((node) => node.text === declaration)!;
-        expect(parsed?.hasError).toBe(false);
+        expect(tree.rootNode.hasError).toBe(false);
+        const parsed = guard.descendantsOfType('type_definition')[0]!;
+        expect(parsed.text).toBe(`BEGIN_DECLS\ntypedef ${declaration}`);
+        expect(parsed.descendantsOfType('macro_specifier').map((node) => node.text)).toEqual(['BEGIN_DECLS']);
+        expect(parsed.children.some((node) => node.type === 'typedef')).toBe(true);
         expect(parsed?.childForFieldName('type')?.text).toBe(type);
         expect(parsed?.childForFieldName('declarator')?.text).toBe(declarator);
         expect(guard.descendantsOfType('function_declarator').at(-1)?.text).toBe('after(void)');

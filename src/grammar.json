@@ -4015,6 +4015,10 @@
                   {
                     "type": "SYMBOL",
                     "name": "attribute_specifier"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "macro_specifier"
                   }
                 ]
               }
@@ -4215,6 +4219,13 @@
           ]
         },
         {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "macro_specifier"
+          }
+        },
+        {
           "type": "CHOICE",
           "members": [
             {
@@ -4309,8 +4320,17 @@
         {
           "type": "REPEAT",
           "content": {
-            "type": "SYMBOL",
-            "name": "type_qualifier"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "type_qualifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "macro_specifier"
+              }
+            ]
           }
         },
         {
@@ -4368,6 +4388,19 @@
       "members": [
         {
           "type": "SYMBOL",
+          "name": "_non_macro_declaration_modifiers"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "macro_specifier"
+        }
+      ]
+    },
+    "_non_macro_declaration_modifiers": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
           "name": "storage_class_specifier"
         },
         {
@@ -4410,7 +4443,7 @@
           "type": "REPEAT",
           "content": {
             "type": "SYMBOL",
-            "name": "_declaration_modifiers"
+            "name": "_non_macro_declaration_modifiers"
           }
         }
       ]
@@ -5277,6 +5310,10 @@
                   {
                     "type": "SYMBOL",
                     "name": "attribute_specifier"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "macro_specifier"
                   }
                 ]
               }
@@ -5360,6 +5397,10 @@
                   {
                     "type": "SYMBOL",
                     "name": "attribute_specifier"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "macro_specifier"
                   }
                 ]
               }
@@ -5443,6 +5484,10 @@
                   {
                     "type": "SYMBOL",
                     "name": "attribute_specifier"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "macro_specifier"
                   }
                 ]
               }
@@ -13297,8 +13342,17 @@
         {
           "type": "REPEAT",
           "content": {
-            "type": "SYMBOL",
-            "name": "ms_declspec_modifier"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "ms_declspec_modifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "macro_specifier"
+              }
+            ]
           }
         },
         {
@@ -13310,6 +13364,18 @@
           "value": ";"
         }
       ]
+    },
+    "macro_specifier": {
+      "type": "PREC_DYNAMIC",
+      "value": -1,
+      "content": {
+        "type": "FIELD",
+        "name": "name",
+        "content": {
+          "type": "SYMBOL",
+          "name": "identifier"
+        }
+      }
     },
     "macro_type_specifier": {
       "type": "PREC_DYNAMIC",
@@ -13422,6 +13488,51 @@
   ],
   "conflicts": [
     [
+      "macro_specifier",
+      "_type_declarator"
+    ],
+    [
+      "macro_specifier",
+      "_field_declarator"
+    ],
+    [
+      "macro_specifier",
+      "_declarator"
+    ],
+    [
+      "macro_specifier",
+      "_declarator",
+      "attributed_declarator",
+      "type_specifier"
+    ],
+    [
+      "macro_specifier",
+      "_declarator",
+      "attributed_declarator"
+    ],
+    [
+      "macro_specifier",
+      "sized_type_specifier"
+    ],
+    [
+      "macro_specifier",
+      "type_specifier",
+      "sized_type_specifier"
+    ],
+    [
+      "macro_specifier",
+      "expression"
+    ],
+    [
+      "macro_specifier",
+      "type_specifier"
+    ],
+    [
+      "macro_specifier",
+      "type_specifier",
+      "expression"
+    ],
+    [
       "type_specifier",
       "expression",
       "va_arg_expression",
@@ -13434,6 +13545,11 @@
     [
       "type_definition",
       "_declaration_modifiers"
+    ],
+    [
+      "type_definition",
+      "_declaration_modifiers",
+      "_empty_declaration"
     ],
     [
       "type_definition",
@@ -13579,6 +13695,10 @@
       "pointer_declarator"
     ],
     [
+      "pointer_declarator",
+      "abstract_pointer_declarator"
+    ],
+    [
       "pointer_field_declarator"
     ],
     [
@@ -13679,6 +13799,7 @@
   ],
   "inline": [
     "_non_identifier_type_specifier",
+    "_non_macro_declaration_modifiers",
     "_unattributed_declarator",
     "_unattributed_field_declarator",
     "_unattributed_type_declarator",
