@@ -1,0 +1,259 @@
+================================
+Attribute bracket tokens allow intervening trivia
+================================
+
+[ [maybe_unused] ] int spaced;
+[[maybe_unused]] int compact;
+[ /* open */ [ maybe_unused ] /* close */ ] int commented;
+int read_value(int values[2][2]) { return values[0][values[0][1]]; }
+
+---
+
+(translation_unit
+  (declaration
+    (attribute_declaration
+      (attribute
+        name: (identifier)))
+    type: (primitive_type)
+    declarator: (identifier))
+  (declaration
+    (attribute_declaration
+      (attribute
+        name: (identifier)))
+    type: (primitive_type)
+    declarator: (identifier))
+  (declaration
+    (attribute_declaration
+      (comment)
+      (attribute
+        name: (identifier))
+      (comment))
+    type: (primitive_type)
+    declarator: (identifier))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (array_declarator
+            declarator: (array_declarator
+              declarator: (identifier)
+              size: (number_literal))
+            size: (number_literal)))))
+    body: (compound_statement
+      (return_statement
+        (subscript_expression
+          argument: (subscript_expression
+            argument: (identifier)
+            index: (number_literal))
+          index: (subscript_expression
+            argument: (subscript_expression
+              argument: (identifier)
+              index: (number_literal))
+            index: (number_literal)))))))
+
+================================
+C11 thread_local identifiers retain subscript syntax
+================================
+
+int read_local(int values[2]) {
+  thread_local[0] = 1;
+  __extension__ thread_local[1] = 2;
+  return thread_local[0];
+}
+
+---
+
+(translation_unit
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (array_declarator
+            declarator: (identifier)
+            size: (number_literal)))))
+    body: (compound_statement
+      (expression_statement
+        (assignment_expression
+          left: (subscript_expression
+            argument: (identifier)
+            index: (number_literal))
+          right: (number_literal)))
+      (expression_statement
+        (extension_expression
+          (assignment_expression
+            left: (subscript_expression
+              argument: (identifier)
+              index: (number_literal))
+            right: (number_literal))))
+      (return_statement
+        (subscript_expression
+          argument: (identifier)
+          index: (number_literal))))))
+
+================================
+Attributes preserve following array declarators
+================================
+
+int v [[maybe_unused]] [3];
+void h(void) { int v [[maybe_unused]] [3]; }
+struct T { int m [[deprecated]] [3]; };
+typedef int V [[maybe_unused]] [3];
+
+---
+
+(translation_unit
+  (declaration
+    type: (primitive_type)
+    declarator: (array_declarator
+      declarator: (attributed_declarator
+        (identifier)
+        (attribute_declaration
+          (attribute
+            name: (identifier))))
+      size: (number_literal)))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (declaration
+        type: (primitive_type)
+        declarator: (array_declarator
+          declarator: (attributed_declarator
+            (identifier)
+            (attribute_declaration
+              (attribute
+                name: (identifier))))
+          size: (number_literal)))))
+  (struct_specifier
+    name: (type_identifier)
+    body: (field_declaration_list
+      (field_declaration
+        type: (primitive_type)
+        declarator: (array_declarator
+          declarator: (attributed_declarator
+            (field_identifier)
+            (attribute_declaration
+              (attribute
+                name: (identifier))))
+          size: (number_literal)))))
+  (type_definition
+    type: (primitive_type)
+    declarator: (array_declarator
+      declarator: (attributed_declarator
+        (type_identifier)
+        (attribute_declaration
+          (attribute
+            name: (identifier))))
+      size: (number_literal))))
+
+================================
+Abstract array parameters retain their sizes
+================================
+
+void consume(unsigned char [20], int [3]);
+
+---
+
+(translation_unit
+  (declaration
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (sized_type_specifier
+            type: (primitive_type))
+          declarator: (abstract_array_declarator
+            size: (number_literal)))
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (abstract_array_declarator
+            size: (number_literal)))))))
+
+================================
+Arrays separate consecutive attribute groups
+================================
+
+int matrix [[a]] [[b]] [2] [[c]] [[d]] [3];
+struct Matrix { int cells [[a]] [[b]] [2] [[c]] [[d]] [3]; };
+typedef int Grid [[a]] [[b]] [2] [[c]] [[d]] [3];
+
+---
+
+(translation_unit
+  (declaration
+    type: (primitive_type)
+    declarator: (array_declarator
+      declarator: (attributed_declarator
+        (array_declarator
+          declarator: (attributed_declarator
+            (identifier)
+            (attribute_declaration
+              (attribute
+                name: (identifier)))
+            (attribute_declaration
+              (attribute
+                name: (identifier))))
+          size: (number_literal))
+        (attribute_declaration
+          (attribute
+            name: (identifier)))
+        (attribute_declaration
+          (attribute
+            name: (identifier))))
+      size: (number_literal)))
+  (struct_specifier
+    name: (type_identifier)
+    body: (field_declaration_list
+      (field_declaration
+        type: (primitive_type)
+        declarator: (array_declarator
+          declarator: (attributed_declarator
+            (array_declarator
+              declarator: (attributed_declarator
+                (field_identifier)
+                (attribute_declaration
+                  (attribute
+                    name: (identifier)))
+                (attribute_declaration
+                  (attribute
+                    name: (identifier))))
+              size: (number_literal))
+            (attribute_declaration
+              (attribute
+                name: (identifier)))
+            (attribute_declaration
+              (attribute
+                name: (identifier))))
+          size: (number_literal)))))
+  (type_definition
+    type: (primitive_type)
+    declarator: (array_declarator
+      declarator: (attributed_declarator
+        (array_declarator
+          declarator: (attributed_declarator
+            (type_identifier)
+            (attribute_declaration
+              (attribute
+                name: (identifier)))
+            (attribute_declaration
+              (attribute
+                name: (identifier))))
+          size: (number_literal))
+        (attribute_declaration
+          (attribute
+            name: (identifier)))
+        (attribute_declaration
+          (attribute
+            name: (identifier))))
+      size: (number_literal))))
