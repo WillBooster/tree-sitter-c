@@ -1339,7 +1339,11 @@ module.exports = Object.assign(
       // Compound statements, designated initializers, and a trailing comma parse macro arguments, e.g.
       // MYFORLOOP(1, 10, i, { foo(i); bar(i); }) and PARAMS(.foo = foo, .bar = { bar, 1 },)
       argument_list: ($) =>
-        seq('(', commaSep(choice($.expression, $.compound_statement, $.initializer_pair)), optional(','), ')'),
+        seq(
+          '(',
+          optional(seq(commaSep1(choice($.expression, $.compound_statement, $.initializer_pair)), optional(','))),
+          ')'
+        ),
 
       field_expression: ($) =>
         seq(
