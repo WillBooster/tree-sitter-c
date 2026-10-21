@@ -1,6 +1,6 @@
 #include "functionMacro.h"
 
-enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX };
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START };
 
 static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols);
 
@@ -30,13 +30,27 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
         lexer->result_symbol = PREPROC_FUNCTION_NAME;
         return scan_function_macro_name(lexer, valid_symbols[PRAGMA_OPERATOR], PRAGMA_OPERATOR);
     }
-    bool leading = valid_symbols[FUNCTION_ATTRIBUTE_START];
-    bool post_type = valid_symbols[POST_TYPE_FUNCTION_ATTRIBUTE_START];
-    bool suffix = valid_symbols[POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX];
-    if ((leading || post_type || suffix) && !valid_symbols[PREPROC_LPAREN] &&
-        !valid_symbols[PREPROC_NEWLINE] && !valid_symbols[PREPROC_ARG] && !valid_symbols[PREPROC_DIRECTIVE_ARG]) {
-        lexer->result_symbol = leading ? FUNCTION_ATTRIBUTE_START : post_type ? POST_TYPE_FUNCTION_ATTRIBUTE_START : POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX;
-        return scan_function_attribute_guard(lexer, leading || post_type, !leading, valid_symbols[PRAGMA_OPERATOR], PRAGMA_OPERATOR);
+    if (valid_symbols[PREPROC_LPAREN] || valid_symbols[PREPROC_NEWLINE] ||
+        valid_symbols[PREPROC_ARG] || valid_symbols[PREPROC_DIRECTIVE_ARG]) {
+        return scan_preproc_tokens(lexer, valid_symbols);
+    }
+    static const TSSymbol attribute_tokens[] = {
+        FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX,
+        TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START,
+    };
+    const MacroAttributeSymbols symbols = {
+        .pragma = PRAGMA_OPERATOR,
+        .object_start = TRAILING_OBJECT_DECLARATION_START,
+        .allow_pragma = valid_symbols[PRAGMA_OPERATOR],
+        .allow_object_start = valid_symbols[TRAILING_OBJECT_DECLARATION_START],
+    };
+    for (unsigned i = 0; i < sizeof(attribute_tokens) / sizeof(attribute_tokens[0]); i++) {
+        TSSymbol token = attribute_tokens[i];
+        if (!valid_symbols[token]) continue;
+        lexer->result_symbol = token;
+        return scan_function_attribute_guard(lexer,
+            token == FUNCTION_ATTRIBUTE_START || token == POST_TYPE_FUNCTION_ATTRIBUTE_START,
+            token != FUNCTION_ATTRIBUTE_START, token == TRAILING_MACRO_ATTRIBUTE_NAME, &symbols);
     }
     return scan_preproc_tokens(lexer, valid_symbols);
 }

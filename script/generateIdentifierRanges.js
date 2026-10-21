@@ -36,6 +36,9 @@ for (const rule of [
   collectKeywords(grammar.rules[rule], declarationModifiers);
 /** @type {Set<string>} */
 const typeKeywords = new Set();
+/** @type {Set<string>} */
+const scalarTypeKeywords = new Set();
+for (const rule of ['primitive_type', 'sized_type_specifier']) collectKeywords(grammar.rules[rule], scalarTypeKeywords);
 collectTypeKeywords(grammar.rules._non_identifier_type_specifier, typeKeywords);
 const sortedKeywords = [...keywords].toSorted();
 const keywordTable = `#define FUNCTION_MACRO_KEYWORD_MAX_LENGTH ${Math.max(...sortedKeywords.map((word) => word.length))}
@@ -50,6 +53,12 @@ ${[...groupModifiers]
 };
 static const char *const function_macro_type_keywords[] = {
 ${[...typeKeywords]
+  .toSorted()
+  .map((word) => `  ${JSON.stringify(word)},`)
+  .join('\n')}
+};
+static const char *const function_macro_scalar_type_keywords[] = {
+${[...scalarTypeKeywords]
   .toSorted()
   .map((word) => `  ${JSON.stringify(word)},`)
   .join('\n')}
