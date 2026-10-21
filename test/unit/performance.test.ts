@@ -123,6 +123,18 @@ test.each([
   'extern FOO("a" int f(void);\n',
   'extern FOO({ "a" int f(void);\n}\n',
   'extern FOO((struct T){ "a" int f(void);\n}\n',
+  'extern FOO(({ int value; value;\n})\n',
+  'extern FOO(({ int value; value;\n}\n',
+  'const FOO(({ int value; value;\n})\n',
+  '__declspec(dllexport) FOO(({ int value; value;\n})\n',
+  'extern FOO(({}\n',
+  'extern FOO({}\n',
+  'extern FOO(,{}\n',
+  'extern FOO((int){1}\n',
+  'extern FOO((struct T){}\n',
+  'extern FOO("a" int f(void)\n',
+  'extern FOO(1) int f(void)\n',
+  '#if FLAG\nextern FOO("a" int f(void)\n#endif\n',
 ])('keeps unbalanced annotation recovery approximately linear: %s', { timeout: 60_000 }, (line) => {
   const small = line.repeat(100);
   const large = line.repeat(1000);

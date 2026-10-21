@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Language, Parser } from '@willbooster/web-tree-sitter';
+import { Edit, Language, Parser, Query } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 const wasmPath = path.join(import.meta.dirname, '../../tree-sitter-c.wasm');
@@ -664,7 +664,7 @@ test.each([
   }
 });
 
-test('preserves function-pointer returns and supported trailing attributes, pragmas, and argument semicolons', async () => {
+test('preserves function-pointer returns, supported trailing attributes, pragmas, and quoted semicolons', async () => {
   await Parser.init();
   const parser = new Parser().setLanguage(await Language.load(wasmPath));
   const source = `extern CHECK("x") int (*factory(void))(int);
@@ -673,21 +673,18 @@ extern int CHECK(1) const qualified(void);
 extern CHECK("x") int with_asm(void) __asm__("symbol");
 extern CHECK("x") int with_attribute(void) __attribute__((const));
 extern CHECK("x") int with_pragma(void) _Pragma("GCC diagnostic push");
-extern CHECK(({ int value = 1; value; })) int statement_argument(void);
 extern CHECK("a;b", ';') int quoted_argument(void);
 int following(void) { return 0; }
 `;
   const tree = parser.parse(source)!;
   try {
     expect(tree.rootNode.hasError).toBe(false);
-    expect(tree.rootNode.descendantsOfType('declaration')).toHaveLength(9);
+    expect(tree.rootNode.descendantsOfType('declaration')).toHaveLength(7);
     expect(tree.rootNode.descendantsOfType('pragma_operator')).toHaveLength(1);
     expect(tree.rootNode.descendantsOfType('function_definition').at(-1)?.text).toBe(
       'int following(void) { return 0; }'
     );
-    expect(tree.rootNode.descendantsOfType('argument_list').map((node) => node.text)).toContain(
-      '(({ int value = 1; value; }))'
-    );
+    expect(tree.rootNode.descendantsOfType('argument_list').map((node) => node.text)).toContain(`("a;b", ';')`);
   } finally {
     tree.delete();
     parser.delete();
@@ -720,20 +717,15 @@ test.each([
   }
 });
 
-test('preserves statement expressions, inline types, and compound literals in annotation arguments', async () => {
+test('preserves brace-free expression and type arguments with quoted braces and semicolons', async () => {
   await Parser.init();
   const parser = new Parser().setLanguage(await Language.load(wasmPath));
   const argumentsAndNames = [
-    ['({ int value = 1; value; })', 'statement_argument'],
-    ['(/* trivia */ { for (int index = 0; index < 2; index++) {} 1; })', 'loop_argument'],
-    ['struct Inline { int member; }', 'inline_type'],
-    ['struct __attribute__((packed)) Packed { int member; }', 'attributed_type'],
-    ['union Choice { int member; }', 'union_type'],
-    ['struct __attribute__((aligned(sizeof(struct Inner { int x; })))) Outer { int y; }', 'nested_type'],
-    ['(struct Value){ .member = 1 }', 'compound_argument'],
-    ['(struct Value){ .member = ({ int value = 1; value; }) }', 'nested_statement'],
-    ['(struct { int member; }){ .member = 1 }', 'inline_compound_argument'],
-    [`"a;b", ';'`, 'quoted_argument'],
+    ['WRAP(1, 2)', 'call_argument'],
+    ['int (*)(register int)', 'function_type'],
+    ['const int *', 'qualified_type'],
+    ['int[2]', 'array_type'],
+    [`"a;b", ';', "{value} #if", '{', '}', '#'`, 'quoted_argument'],
   ];
   const source = `${argumentsAndNames.map(([argument, name]) => `extern CHECK(${argument}) int ${name}(void);`).join('\n')}
 int following(void) { return 0; }
@@ -741,18 +733,167 @@ int following(void) { return 0; }
   const tree = parser.parse(source)!;
   try {
     expect(tree.rootNode.hasError).toBe(false);
-    expect(
-      tree.rootNode
-        .descendantsOfType('attribute_specifier')
-        .filter((node) => node.childForFieldName('name')?.text === 'CHECK')
-        .map((node) => node.text)
-    ).toEqual(argumentsAndNames.map(([argument]) => `CHECK(${argument})`));
+    expect(tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.text)).toEqual(
+      argumentsAndNames.map(([argument]) => `CHECK(${argument})`)
+    );
     expect(tree.rootNode.namedChildren.filter((node) => node.type === 'declaration').map((node) => node.text)).toEqual(
       argumentsAndNames.map(([argument, name]) => `extern CHECK(${argument}) int ${name}(void);`)
     );
     expect(tree.rootNode.descendantsOfType('function_definition').at(-1)?.text).toBe(
       'int following(void) { return 0; }'
     );
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+const bracedAnnotationArguments = [
+  '({ int value = 1; value; })',
+  '({ extern int shared; shared; })',
+  '({ typedef int Word; Word value = 1; value; })',
+  '(/* trivia */ { for (int index = 0; index < 2; index++) {} 1; })',
+  'struct Inline { int member; }',
+  'struct __attribute__((packed)) Packed { int member; }',
+  'union Choice { int member; }',
+  'struct __attribute__((aligned(sizeof(struct Inner { int x; })))) Outer { int y; }',
+  '(struct Value){ .member = ({ int value = 1; value; }) }',
+  '(struct { int member; }){ .member = 1 }',
+  '(struct Value){ .member = 1 }',
+  '(static int){1}',
+  'struct Empty {}',
+  'enum Kind { KIND_ONE }',
+  'CALL({1, 2})',
+  'CALL /* trivia */ ({1, 2})',
+];
+
+test.each(bracedAnnotationArguments)(
+  'retains following declarations around an unsupported braced annotation: %s',
+  async (argument) => {
+    await Parser.init();
+    const language = await Language.load(wasmPath);
+    const parser = new Parser().setLanguage(language);
+    const query = new Query(
+      language,
+      `
+(type_definition type: (_) @typedef.type declarator: (_) @typedef.name)
+(struct_specifier name: (_) @struct.name)
+(field_declaration type: (_) @field.type declarator: (_) @field.name)
+(declaration type: (_) @prototype.type declarator: (function_declarator declarator: (_) @prototype.name))
+(function_definition type: (_) @function.type declarator: (function_declarator declarator: (_) @function.name))
+`
+    );
+    const trailer = `typedef int saved_t;
+struct Saved { saved_t field; };
+saved_t declared(void);
+saved_t after(void) { return 0; }
+`;
+    const prefix = `extern CHECK(${argument}) int annotated(void);\n`;
+    const source = prefix + trailer;
+    const control = parser.parse(trailer)!;
+    const tree = parser.parse(source)!;
+    const captures = (root: typeof tree.rootNode, offset: number): Array<[string, string, number, number]> =>
+      query
+        .captures(root)
+        .filter(({ node }) => node.startIndex >= offset)
+        .map<[string, string, number, number]>(({ name, node }) => [
+          name,
+          node.text,
+          node.startIndex - offset,
+          node.endIndex - offset,
+        ]);
+    try {
+      const expected = captures(control.rootNode, 0);
+      expect(expected.map(([name, text]) => [name, text])).toEqual([
+        ['typedef.type', 'int'],
+        ['typedef.name', 'saved_t'],
+        ['struct.name', 'Saved'],
+        ['field.type', 'saved_t'],
+        ['field.name', 'field'],
+        ['prototype.type', 'saved_t'],
+        ['prototype.name', 'declared'],
+        ['function.type', 'saved_t'],
+        ['function.name', 'after'],
+      ]);
+      expect(captures(tree.rootNode, prefix.length)).toEqual(expected);
+      const at = source.indexOf('{');
+      const text = '/* edit */';
+      const editedSource = source.slice(0, at) + text + source.slice(at);
+      const editedTree = tree.copy();
+      editedTree.edit(
+        new Edit({
+          startIndex: at,
+          oldEndIndex: at,
+          newEndIndex: at + text.length,
+          startPosition: { row: 0, column: at },
+          oldEndPosition: { row: 0, column: at },
+          newEndPosition: { row: 0, column: at + text.length },
+        })
+      );
+      const incremental = parser.parse(editedSource, editedTree)!;
+      const fresh = parser.parse(editedSource)!;
+      try {
+        expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
+        expect(captures(incremental.rootNode, prefix.length + text.length)).toEqual(expected);
+        expect(captures(fresh.rootNode, prefix.length + text.length)).toEqual(expected);
+        incremental.edit(
+          new Edit({
+            startIndex: at,
+            oldEndIndex: at + text.length,
+            newEndIndex: at,
+            startPosition: { row: 0, column: at },
+            oldEndPosition: { row: 0, column: at + text.length },
+            newEndPosition: { row: 0, column: at },
+          })
+        );
+        const undone = parser.parse(source, incremental)!;
+        try {
+          expect(undone.rootNode.toString()).toBe(tree.rootNode.toString());
+          expect(captures(undone.rootNode, prefix.length)).toEqual(expected);
+        } finally {
+          undone.delete();
+        }
+      } finally {
+        editedTree.delete();
+        incremental.delete();
+        fresh.delete();
+      }
+    } finally {
+      query.delete();
+      control.delete();
+      tree.delete();
+      parser.delete();
+    }
+  }
+);
+
+test('preserves ordinary compound literals and braced macro initializers', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = `#define PACK(...) __VA_ARGS__
+struct Pair { int left; int right; };
+static struct Pair pair = (struct Pair){1, 2};
+int values[] = PACK({3, 4});
+int use(void) { return ((struct Pair){5, 6}).left + values[0] + pair.right; }
+void empty(void) { (void)({}); }
+`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('compound_literal_expression').map((node) => node.text)).toEqual([
+      '(struct Pair){1, 2}',
+      '(struct Pair){5, 6}',
+    ]);
+    expect(tree.rootNode.descendantsOfType('call_expression').map((node) => node.text)).toEqual(['PACK({3, 4})']);
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      'int use(void) { return ((struct Pair){5, 6}).left + values[0] + pair.right; }',
+      'void empty(void) { (void)({}); }',
+    ]);
+    expect(
+      tree.rootNode.namedChildren
+        .filter((node) => node.type === 'declaration')
+        .map((node) => node.childForFieldName('type')?.text)
+    ).toEqual(['struct Pair', 'int']);
   } finally {
     tree.delete();
     parser.delete();

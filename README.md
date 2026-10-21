@@ -72,6 +72,10 @@ The generation source is `script/generateIdentifierRanges.js` in this repository
 The `_preproc_function_name` token ends before splices used to determine adjacency, so the `_preproc_lparen`
 scanner must skip those splices again to reach `(`.
 
+Header annotation lookahead accepts argument/prototype groups without unquoted braces, semicolons or preprocessing directives.
+Quoted punctuation remains literal content. GNU statement-expression, inline-tag, compound-literal
+and directive-bearing annotation arguments need a separate grammar design to keep malformed-input recovery bounded.
+
 Header annotation declarations use `_macro_modified_declaration`, `_macro_declaration_specifiers`,
 `_macro_declaration_declarator`, and `_header_preproc_item`. Adapt these rules alongside public declaration/type
 overrides when extending C. The annotation declarator uses `function_declarator` to retain trailing macro calls.
