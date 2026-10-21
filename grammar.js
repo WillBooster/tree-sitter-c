@@ -707,13 +707,12 @@ module.exports = Object.assign(
         ),
 
       parenthesized_declarator: ($) =>
-        prec.dynamic(PREC.PAREN_DECLARATOR, seq('(', optional($.ms_call_modifier), $._declarator, ')')),
+        prec.dynamic(PREC.PAREN_DECLARATOR, parenthesizedDeclaratorRule($, $._declarator)),
       parenthesized_field_declarator: ($) =>
-        prec.dynamic(PREC.PAREN_DECLARATOR, seq('(', optional($.ms_call_modifier), $._field_declarator, ')')),
+        prec.dynamic(PREC.PAREN_DECLARATOR, parenthesizedDeclaratorRule($, $._field_declarator)),
       parenthesized_type_declarator: ($) =>
-        prec.dynamic(PREC.PAREN_DECLARATOR, seq('(', optional($.ms_call_modifier), $._type_declarator, ')')),
-      abstract_parenthesized_declarator: ($) =>
-        prec(1, seq('(', optional($.ms_call_modifier), $._abstract_declarator, ')')),
+        prec.dynamic(PREC.PAREN_DECLARATOR, parenthesizedDeclaratorRule($, $._type_declarator)),
+      abstract_parenthesized_declarator: ($) => prec(1, parenthesizedDeclaratorRule($, $._abstract_declarator)),
 
       attributed_declarator: ($) => seq($._unattributed_declarator, repeat1($.attribute_declaration)),
       attributed_field_declarator: ($) => seq($._unattributed_field_declarator, repeat1($.attribute_declaration)),
@@ -1764,6 +1763,15 @@ function conditionalMacroRule($, ifdef, ifndef) {
     $.macro_specifier,
     preprocessor('endif')
   );
+}
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'ms_call_modifier'>} $
+ * @param {import('./types/treeSitterDsl').Rule} declarator
+ */
+function parenthesizedDeclaratorRule($, declarator) {
+  const parenthesized = seq('(', optional($.ms_call_modifier), declarator, ')');
+  return choice(parenthesized, prec(2, seq($.ms_call_modifier, parenthesized)));
 }
 
 /**
