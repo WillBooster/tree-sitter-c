@@ -601,3 +601,43 @@ test.each(['static TYPE(int) name(void);', 'extern TYPE(foo_t) make(int);'])(
     }
   }
 );
+
+test('preserves pragma operators before and among function annotations', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = `extern _Pragma("GCC diagnostic push") int before(void);
+extern _Pragma /* gap */ ( "GCC diagnostic push" ) int trivia(void);
+extern ATTR(1) _Pragma("GCC diagnostic push") int after_annotation(void);
+extern int _Pragma("GCC diagnostic push") after_type(void);
+extern int ATTR(1) _Pragma("GCC diagnostic push") after_both(void);
+extern _PragmaName(1) int prefix_name(void);
+int following(void) { return 0; }
+`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(
+      tree.rootNode.descendantsOfType('declaration').map((node) => node.childForFieldName('declarator')?.text)
+    ).toEqual([
+      'before(void)',
+      'trivia(void)',
+      'after_annotation(void)',
+      'after_type(void)',
+      'after_both(void)',
+      'prefix_name(void)',
+    ]);
+    expect(tree.rootNode.descendantsOfType('pragma_operator')).toHaveLength(5);
+    expect(tree.rootNode.descendantsOfType('pragma_operator')[1]!.text).toBe(
+      '_Pragma /* gap */ ( "GCC diagnostic push" )'
+    );
+    expect(
+      tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.childForFieldName('name')?.text)
+    ).toEqual(['ATTR', 'ATTR', '_PragmaName']);
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      'int following(void) { return 0; }',
+    ]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});

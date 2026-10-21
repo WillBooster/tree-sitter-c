@@ -26,10 +26,15 @@ static void function_macro_argument_word(MacroArgumentWord *word, int32_t c);
 static bool function_macro_keyword(const char *word);
 static bool function_macro_word_in(const char *word, const char *const *words, unsigned count);
 
-static bool scan_function_attribute_guard(TSLexer *lexer, bool prototype, bool require_literal) {
+static bool scan_function_attribute_guard(TSLexer *lexer, bool prototype, bool require_literal, bool allow_pragma, TSSymbol pragma_symbol) {
     char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
     MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true, .lookahead_only = true};
-    if (!scan_macro_name(lexer, &name) || (name.ascii && function_macro_keyword(word))) return false;
+    if (!scan_macro_name(lexer, &name)) return false;
+    if (name.ascii && strcmp(word, pragma_word) == 0) {
+        lexer->result_symbol = pragma_symbol;
+        return allow_pragma && scan_pragma_suffix(lexer);
+    }
+    if (name.ascii && function_macro_keyword(word)) return false;
     if (!scan_pragma_spacing(lexer) || lexer->lookahead != '(') return false;
     bool literal = false;
     return function_macro_balanced(lexer, '(', ')', &literal) && (!require_literal || literal) &&

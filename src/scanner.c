@@ -36,7 +36,7 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     if ((leading || post_type || suffix) && !valid_symbols[PREPROC_LPAREN] &&
         !valid_symbols[PREPROC_NEWLINE] && !valid_symbols[PREPROC_ARG] && !valid_symbols[PREPROC_DIRECTIVE_ARG]) {
         lexer->result_symbol = leading ? FUNCTION_ATTRIBUTE_START : post_type ? POST_TYPE_FUNCTION_ATTRIBUTE_START : POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX;
-        return scan_function_attribute_guard(lexer, leading || post_type, !leading);
+        return scan_function_attribute_guard(lexer, leading || post_type, !leading, valid_symbols[PRAGMA_OPERATOR], PRAGMA_OPERATOR);
     }
     return scan_preproc_tokens(lexer, valid_symbols);
 }
