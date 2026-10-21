@@ -1,0 +1,75 @@
+================================
+Uppercase boolean names remain identifiers
+================================
+
+int consume(int value);
+int evaluate(int TRUE, int FALSE) {
+  int result = consume(TRUE) + FALSE;
+  TRUE = result;
+  return TRUE ? FALSE : result;
+}
+bool truth(void) { return true; }
+bool falsity(void) { return false; }
+
+---
+
+(translation_unit
+  (declaration
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (identifier)))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (identifier))
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (identifier))))
+    body: (compound_statement
+      (declaration
+        type: (primitive_type)
+        declarator: (init_declarator
+          declarator: (identifier)
+          value: (binary_expression
+            left: (call_expression
+              function: (identifier)
+              arguments: (argument_list
+                (identifier)))
+            right: (identifier))))
+      (expression_statement
+        (assignment_expression
+          left: (identifier)
+          right: (identifier)))
+      (return_statement
+        (conditional_expression
+          condition: (identifier)
+          consequence: (identifier)
+          alternative: (identifier)))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (true))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (false)))))
