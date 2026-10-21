@@ -38,10 +38,11 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     bool conditional = leading || valid_symbols[CONDITIONAL_MARKER_IFDEF] || valid_symbols[CONDITIONAL_MARKER_IFNDEF];
     if (conditional) {
         while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
-        TSSymbol ifdef = leading ? LEADING_CONDITIONAL_MARKER_IFDEF : CONDITIONAL_MARKER_IFDEF;
-        TSSymbol ifndef = leading ? LEADING_CONDITIONAL_MARKER_IFNDEF : CONDITIONAL_MARKER_IFNDEF;
-        if (lexer->lookahead == '#') return scan_conditional_macro(lexer, ifdef, ifndef,
-            valid_symbols[ifdef], valid_symbols[ifndef], leading);
+        const ConditionalMacroSymbols symbols = {
+            .ifdef = CONDITIONAL_MARKER_IFDEF, .ifndef = CONDITIONAL_MARKER_IFNDEF,
+            .leading_ifdef = LEADING_CONDITIONAL_MARKER_IFDEF, .leading_ifndef = LEADING_CONDITIONAL_MARKER_IFNDEF,
+        };
+        if (lexer->lookahead == '#') return scan_conditional_macro(lexer, &symbols, valid_symbols);
     }
     static const TSSymbol attribute_tokens[] = {
         FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX,

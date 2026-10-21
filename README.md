@@ -65,8 +65,8 @@ Derived grammars must port the inherited external-token dispatch from `src/scann
 Keep preprocessor argument/newline handling ahead of annotation lookahead.
 Port `_conditional_marker_ifdef`, `_conditional_marker_ifndef`, `_leading_conditional_marker_ifdef`, and
 `_leading_conditional_marker_ifndef` with `scan_conditional_macro`. The leading pair checks a following type prefix;
-when both contexts are valid, use the stricter leading check. Each token consumes only its opening directive
-keyword; the directive body, closing directive and following prefix are lookahead. Keep this dispatch ahead of
+when both contexts are valid, choose the leading role if its type proof succeeds, otherwise use the valid
+post-type role. Each token consumes only its opening directive keyword; the directive body, closing directive and following prefix are lookahead. Keep this dispatch ahead of
 the function-annotation guards and return immediately after a failed directive scan.
 The hidden `_function_attribute_start`, `_post_type_function_attribute_start`, and
 `_post_type_function_attribute_suffix` guards look ahead before the ordinary identifier token;

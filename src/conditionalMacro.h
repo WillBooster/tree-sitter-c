@@ -3,35 +3,52 @@
 
 #include "functionMacro.h"
 
+static bool conditional_macro_body(TSLexer *lexer, bool *escaped);
 static bool conditional_macro_word(TSLexer *lexer, MacroName *name, bool escaped);
 static bool conditional_macro_spacing(TSLexer *lexer, bool *separated, bool *escaped);
 static bool conditional_macro_next_line(TSLexer *lexer, bool *escaped);
 static bool conditional_macro_directive(TSLexer *lexer, MacroName *name);
 static bool conditional_macro_marker_line(TSLexer *lexer, bool *escaped);
 static bool conditional_macro_closing(TSLexer *lexer);
-static bool conditional_macro_following(TSLexer *lexer, bool leading);
 static bool conditional_macro_type_prefix(TSLexer *lexer, bool escaped);
 static bool conditional_macro_skip_lines(TSLexer *lexer, bool *escaped);
 static bool conditional_macro_modifier_group(TSLexer *lexer, const char *word, bool *escaped);
 static bool conditional_macro_attribute_declaration(TSLexer *lexer, bool *escaped);
 
-static bool scan_conditional_macro(TSLexer *lexer, TSSymbol ifdef_symbol, TSSymbol ifndef_symbol,
-                                   bool allow_ifdef, bool allow_ifndef, bool leading) {
+typedef struct {
+    TSSymbol ifdef, ifndef, leading_ifdef, leading_ifndef;
+} ConditionalMacroSymbols;
+
+static bool scan_conditional_macro(TSLexer *lexer, const ConditionalMacroSymbols *symbols, const bool *valid_symbols) {
     char directive[7] = {0};
     MacroName command = {.word = directive, .capacity = sizeof(directive) - 1, .ascii = true};
     if (!conditional_macro_directive(lexer, &command) || !command.ascii) return false;
-    if (strcmp(directive, "ifdef") == 0 && allow_ifdef) lexer->result_symbol = ifdef_symbol;
-    else if (strcmp(directive, "ifndef") == 0 && allow_ifndef) lexer->result_symbol = ifndef_symbol;
-    else return false;
+    bool ifdef = strcmp(directive, "ifdef") == 0;
+    if (!ifdef && strcmp(directive, "ifndef") != 0) return false;
+    TSSymbol leading_symbol = ifdef ? symbols->leading_ifdef : symbols->leading_ifndef;
+    TSSymbol generic_symbol = ifdef ? symbols->ifdef : symbols->ifndef;
+    bool leading = valid_symbols[leading_symbol];
+    bool generic = valid_symbols[generic_symbol];
+    if (!leading && !generic) return false;
     lexer->mark_end(lexer);
 
-    bool separated = false;
     bool escaped = false;
+    if (!conditional_macro_body(lexer, &escaped)) return false;
+    if (leading && conditional_macro_type_prefix(lexer, escaped)) {
+        lexer->result_symbol = leading_symbol;
+        return true;
+    }
+    lexer->result_symbol = generic_symbol;
+    return generic;
+}
+
+static bool conditional_macro_body(TSLexer *lexer, bool *escaped) {
+    bool separated = false;
     MacroName condition = {.ascii = true};
-    if (!conditional_macro_spacing(lexer, &separated, &escaped) || !separated ||
-        !conditional_macro_word(lexer, &condition, escaped) || !conditional_macro_next_line(lexer, &escaped)) return false;
-    if (!conditional_macro_marker_line(lexer, &escaped)) return false;
-    return conditional_macro_closing(lexer) && conditional_macro_following(lexer, leading);
+    if (!conditional_macro_spacing(lexer, &separated, escaped) || !separated ||
+        !conditional_macro_word(lexer, &condition, *escaped) || !conditional_macro_next_line(lexer, escaped)) return false;
+    if (!conditional_macro_marker_line(lexer, escaped) || !conditional_macro_closing(lexer)) return false;
+    return conditional_macro_skip_lines(lexer, escaped) && !lexer->eof(lexer) && lexer->lookahead != '#';
 }
 
 static bool conditional_macro_closing(TSLexer *lexer) {
@@ -45,11 +62,6 @@ static bool conditional_macro_closing(TSLexer *lexer) {
     return !escaped && (lexer->eof(lexer) || lexer->lookahead == '\n' || lexer->lookahead == '\r');
 }
 
-static bool conditional_macro_following(TSLexer *lexer, bool leading) {
-    bool escaped = false;
-    if (!conditional_macro_skip_lines(lexer, &escaped) || lexer->eof(lexer) || lexer->lookahead == '#') return false;
-    return !leading || conditional_macro_type_prefix(lexer, escaped);
-}
 
 typedef enum {
     CONDITIONAL_TYPE, CONDITIONAL_MODIFIER, CONDITIONAL_TYPE_MODIFIER, CONDITIONAL_ALIAS, CONDITIONAL_RESERVED,

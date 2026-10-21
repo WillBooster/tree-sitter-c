@@ -233,3 +233,50 @@ void i(void) { }
 --------------------------------------------------------------------------------
 
 (translation_unit (preproc_def name: (identifier)) (declaration (storage_class_specifier) type: (primitive_type) (preproc_ifdef name: (identifier) (macro_specifier name: (identifier))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type) declarator: (identifier))))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement)))
+
+================================================================================
+Conditional object marker after an alias return type
+================================================================================
+
+#define ATTR
+typedef int foo_t;
+static foo_t
+#ifdef X
+ATTR
+#endif
+f(void) { return 0; }
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    name: (identifier))
+  (type_definition
+    type: (primitive_type)
+    declarator: (type_identifier))
+  (function_definition
+    (storage_class_specifier)
+    type: (type_identifier)
+    (preproc_ifdef
+      name: (identifier)
+      (macro_specifier
+        name: (identifier)))
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (number_literal))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (number_literal)))))

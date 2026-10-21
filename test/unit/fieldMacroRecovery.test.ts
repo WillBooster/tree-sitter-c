@@ -87,10 +87,21 @@ test('keeps alias-return annotations and storage-qualified builtin returns', asy
       'alias',
       'timer',
       'after',
+      'postAlias',
+      'followingAlias',
     ]);
     expect(
       tree.rootNode.descendantsOfType('function_definition').map((node) => node.childForFieldName('type')?.text)
-    ).toEqual(['Result', 'void', 'int']);
+    ).toEqual(['Result', 'void', 'int', 'Result', 'int']);
+    const prototype = tree.rootNode
+      .descendantsOfType('declaration')
+      .find((node) => node.text.includes('aliasPrototype'));
+    expect(prototype?.childForFieldName('type')?.text).toBe('Result');
+    expect(prototype?.descendantsOfType('preproc_ifdef')[0]?.text).toBe('#ifndef B\nMARK\n#endif');
+    const definition = tree.rootNode
+      .descendantsOfType('function_definition')
+      .find((node) => definitionName(node) === 'postAlias');
+    expect(definition?.descendantsOfType('preproc_ifdef')[0]?.text).toBe('#ifdef A\nMARK\n#endif');
   } finally {
     tree.delete();
     parser.delete();
@@ -367,6 +378,8 @@ test('keeps native header declarations after semicolonless field macros', { time
   expect(result.stdout).toContain(' - declarator, start: (5, 0), end: (5, 6), text: `lookup`');
   expect(result.stdout).toContain('text: `alias`');
   expect(result.stdout).toContain('text: `timer`');
+  expect(result.stdout).toContain('text: `postAlias`');
+  expect(result.stdout).toContain('text: `followingAlias`');
   expect(result.stdout).not.toContain(' - error,');
 });
 
