@@ -383,8 +383,17 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "SYMBOL",
-              "name": "comment"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "comment"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "pragma_operator"
+                }
+              ]
             }
           },
           {
@@ -416,10 +425,6 @@
         {
           "type": "SYMBOL",
           "name": "system_lib_string"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "pragma_operator"
         },
         {
           "type": "STRING",

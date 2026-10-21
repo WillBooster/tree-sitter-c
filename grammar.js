@@ -259,7 +259,8 @@ module.exports = Object.assign(
 
       preproc_include_argument: ($) => prec.dynamic(-1, seq($.identifier, repeat1($._preproc_include_segment))),
 
-      _preproc_include_segment: ($) => prec.dynamic(-1, seq(repeat($.comment), $._preproc_include_token)),
+      _preproc_include_segment: ($) =>
+        prec.dynamic(-1, seq(repeat(choice($.comment, $.pragma_operator)), $._preproc_include_token)),
 
       _preproc_include_token: ($) =>
         choice(
@@ -268,7 +269,6 @@ module.exports = Object.assign(
           $.char_literal,
           $.string_literal,
           $.system_lib_string,
-          $.pragma_operator,
           ...BINARY_OPERATORS.map(([operator]) => operator),
           '!',
           '~',
