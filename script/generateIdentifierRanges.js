@@ -35,6 +35,9 @@ for (const rule of [
   'gnu_asm_expression',
 ])
   collectKeywords(grammar.rules[rule], declarationModifiers);
+/** @type {Set<string>} */
+const typeKeywords = new Set();
+collectTypeKeywords(grammar.rules._non_identifier_type_specifier, typeKeywords);
 const sortedKeywords = [...keywords].toSorted();
 const keywordTable = `#define FUNCTION_MACRO_KEYWORD_MAX_LENGTH ${Math.max(...sortedKeywords.map((word) => word.length))}
 static const char *const function_macro_keywords[] = {
@@ -42,6 +45,12 @@ ${sortedKeywords.map((word) => `  ${JSON.stringify(word)},`).join('\n')}
 };
 static const char *const function_macro_group_modifiers[] = {
 ${[...groupModifiers]
+  .toSorted()
+  .map((word) => `  ${JSON.stringify(word)},`)
+  .join('\n')}
+};
+static const char *const function_macro_type_keywords[] = {
+${[...typeKeywords]
   .toSorted()
   .map((word) => `  ${JSON.stringify(word)},`)
   .join('\n')}
@@ -123,6 +132,19 @@ ${keywordTable}#endif
   );
 } finally {
   await rm(temporary, { recursive: true, force: true });
+}
+
+/**
+ * @param {unknown} value
+ * @param {Set<string>} output
+ */
+function collectTypeKeywords(value, output) {
+  if (!value || typeof value !== 'object') return;
+  if ('type' in value && value.type === 'SYMBOL' && 'name' in value && typeof value.name === 'string') {
+    collectKeywords(grammar.rules[value.name], output);
+    return;
+  }
+  for (const child of Object.values(value)) collectTypeKeywords(child, output);
 }
 
 /**

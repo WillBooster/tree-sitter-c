@@ -577,3 +577,27 @@ test('retains definitions with opaque parameter annotations', async () => {
     parser.delete();
   }
 });
+
+test.each(['static TYPE(int) name(void);', 'extern TYPE(foo_t) make(int);'])(
+  'preserves macro-type prototypes and following definitions: %s',
+  async (declaration) => {
+    await Parser.init();
+    const parser = new Parser().setLanguage(await Language.load(wasmPath));
+    const source = `${declaration}\nint following(void) { return 0; }\n`;
+    const tree = parser.parse(source)!;
+    try {
+      expect(tree.rootNode.hasError).toBe(false);
+      expect(tree.rootNode.namedChildren[0]!.type).toBe('declaration');
+      expect(tree.rootNode.descendantsOfType('macro_type_specifier').map((node) => node.text)).toEqual([
+        declaration.includes('foo_t') ? 'TYPE(foo_t)' : 'TYPE(int)',
+      ]);
+      expect(tree.rootNode.descendantsOfType('attribute_specifier')).toHaveLength(0);
+      expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+        'int following(void) { return 0; }',
+      ]);
+    } finally {
+      tree.delete();
+      parser.delete();
+    }
+  }
+);

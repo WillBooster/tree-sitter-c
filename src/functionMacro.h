@@ -13,7 +13,7 @@ typedef struct {
 static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close, bool *literal);
 static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested);
 static void function_macro_note_literal(bool *literal, unsigned depth, unsigned nested, const MacroArgumentWord *word, int32_t c);
-static bool function_macro_tail_word(TSLexer *lexer, bool escaped, bool post_type, bool *modifier);
+static bool function_macro_tail_word(TSLexer *lexer, bool escaped, bool post_type, bool *modifier, bool *explicit_type);
 static bool function_macro_declaration_continues(TSLexer *lexer, bool post_type);
 static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote);
 static bool function_macro_argument_escape(TSLexer *lexer, MacroArgumentWord *word);
@@ -89,15 +89,16 @@ static void function_macro_note_literal(bool *literal, unsigned depth, unsigned 
 
 static bool function_macro_declaration_continues(TSLexer *lexer, bool post_type) {
     bool declarator_group = false;
+    bool explicit_type = post_type;
     bool modifier = false;
     for (;;) {
         bool escaped = false;
         if (!function_macro_tail_spacing(lexer, &escaped) || lexer->eof(lexer)) return false;
         int32_t c = lexer->lookahead;
         if (escaped || preproc_word(c, false)) {
-            if (!function_macro_tail_word(lexer, escaped, post_type, &modifier)) return false;
+            if (!function_macro_tail_word(lexer, escaped, post_type, &modifier, &explicit_type)) return false;
         } else if (c == ';') {
-            return declarator_group;
+            return declarator_group && explicit_type;
         } else if (c <= 127 && strchr("{}#)]", c)) {
             return false;
         } else if (c == '(' || c == '[') {
@@ -131,12 +132,14 @@ static bool function_macro_tail_spacing(TSLexer *lexer, bool *escaped) {
     }
 }
 
-static bool function_macro_tail_word(TSLexer *lexer, bool escaped, bool post_type, bool *modifier) {
+static bool function_macro_tail_word(TSLexer *lexer, bool escaped, bool post_type, bool *modifier, bool *explicit_type) {
     char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
     MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = !escaped};
     if (escaped && !scan_macro_name_ucn(lexer)) return false;
     bool continuation = escaped;
     while (scan_macro_name_character(lexer, continuation, &name) == MACRO_NAME_CHARACTER) continuation = true;
+    *explicit_type |= name.ascii && function_macro_word_in(word, function_macro_type_keywords,
+        sizeof(function_macro_type_keywords) / sizeof(function_macro_type_keywords[0]));
     *modifier = name.ascii && function_macro_word_in(word, function_macro_group_modifiers,
         sizeof(function_macro_group_modifiers) / sizeof(function_macro_group_modifiers[0]));
     return !post_type || !name.ascii || !function_macro_keyword(word) ||
