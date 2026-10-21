@@ -37,10 +37,22 @@ for (const rule of [
 /** @type {Set<string>} */
 const typeKeywords = new Set();
 collectTypeKeywords(grammar.rules._non_identifier_type_specifier, typeKeywords);
+const tagKeywords = new Set();
+for (const rule of ['struct_specifier', 'union_specifier', 'enum_specifier']) {
+  let value = grammar.rules[rule];
+  while ('content' in value) value = value.content;
+  collectKeywords(value.members[0], tagKeywords);
+}
 const sortedKeywords = [...keywords].toSorted();
 const keywordTable = `#define FUNCTION_MACRO_KEYWORD_MAX_LENGTH ${Math.max(...sortedKeywords.map((word) => word.length))}
 static const char *const function_macro_keywords[] = {
 ${sortedKeywords.map((word) => `  ${JSON.stringify(word)},`).join('\n')}
+};
+static const char *const function_macro_tag_keywords[] = {
+${[...tagKeywords]
+  .toSorted()
+  .map((word) => `  ${JSON.stringify(word)},`)
+  .join('\n')}
 };
 static const char *const function_macro_group_modifiers[] = {
 ${[...groupModifiers]

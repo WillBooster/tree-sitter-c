@@ -719,3 +719,42 @@ test.each([
     parser.delete();
   }
 });
+
+test('preserves statement expressions, inline types, and compound literals in annotation arguments', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const argumentsAndNames = [
+    ['({ int value = 1; value; })', 'statement_argument'],
+    ['(/* trivia */ { for (int index = 0; index < 2; index++) {} 1; })', 'loop_argument'],
+    ['struct Inline { int member; }', 'inline_type'],
+    ['struct __attribute__((packed)) Packed { int member; }', 'attributed_type'],
+    ['union Choice { int member; }', 'union_type'],
+    ['struct __attribute__((aligned(sizeof(struct Inner { int x; })))) Outer { int y; }', 'nested_type'],
+    ['(struct Value){ .member = 1 }', 'compound_argument'],
+    ['(struct Value){ .member = ({ int value = 1; value; }) }', 'nested_statement'],
+    ['(struct { int member; }){ .member = 1 }', 'inline_compound_argument'],
+    [`"a;b", ';'`, 'quoted_argument'],
+  ];
+  const source = `${argumentsAndNames.map(([argument, name]) => `extern CHECK(${argument}) int ${name}(void);`).join('\n')}
+int following(void) { return 0; }
+`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(
+      tree.rootNode
+        .descendantsOfType('attribute_specifier')
+        .filter((node) => node.childForFieldName('name')?.text === 'CHECK')
+        .map((node) => node.text)
+    ).toEqual(argumentsAndNames.map(([argument]) => `CHECK(${argument})`));
+    expect(tree.rootNode.namedChildren.filter((node) => node.type === 'declaration').map((node) => node.text)).toEqual(
+      argumentsAndNames.map(([argument, name]) => `extern CHECK(${argument}) int ${name}(void);`)
+    );
+    expect(tree.rootNode.descendantsOfType('function_definition').at(-1)?.text).toBe(
+      'int following(void) { return 0; }'
+    );
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});

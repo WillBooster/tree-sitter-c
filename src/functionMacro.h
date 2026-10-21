@@ -3,12 +3,36 @@
 
 #include "pragma.h"
 #include "keywords.h"
+#include <stdlib.h>
 
 typedef struct {
     bool identifier;
     bool number;
     int32_t last;
 } MacroArgumentWord;
+
+typedef struct MacroArgumentTag {
+    unsigned level;
+    struct MacroArgumentTag *parent;
+} MacroArgumentTag;
+
+typedef struct {
+    int32_t previous;
+    MacroArgumentTag *tag;
+    unsigned body_level;
+} MacroArgumentContext;
+
+typedef enum {
+    MACRO_ARGUMENT_INVALID,
+    MACRO_ARGUMENT_CONSUMED,
+    MACRO_ARGUMENT_PUNCTUATION
+} MacroArgumentToken;
+
+typedef enum {
+    MACRO_SLASH_INVALID,
+    MACRO_SLASH_DIVISION,
+    MACRO_SLASH_COMMENT
+} MacroArgumentSlash;
 
 typedef struct {
     bool post_type;
@@ -19,14 +43,19 @@ typedef struct {
 } MacroPrototypeTail;
 
 static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close, bool *literal);
-static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested);
+static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested, MacroArgumentContext *context);
 static void function_macro_note_literal(bool *literal, unsigned depth, unsigned nested, const MacroArgumentWord *word, int32_t c);
 static bool function_macro_tail_word(TSLexer *lexer, bool escaped, MacroPrototypeTail *tail);
 static bool function_macro_tail_group(TSLexer *lexer, int32_t c, MacroPrototypeTail *tail);
 static bool function_macro_declaration_continues(TSLexer *lexer, bool post_type);
 static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote);
 static bool function_macro_argument_escape(TSLexer *lexer, MacroArgumentWord *word);
-static bool function_macro_argument_slash(TSLexer *lexer, bool allow_division);
+static MacroArgumentSlash function_macro_argument_slash(TSLexer *lexer, bool allow_division);
+static bool function_macro_argument_name(TSLexer *lexer, MacroArgumentWord *word, MacroArgumentContext *context, unsigned level);
+static void function_macro_argument_context(MacroArgumentContext *context, int32_t c, unsigned level);
+static MacroArgumentToken function_macro_argument_token(TSLexer *lexer, MacroArgumentWord *word, MacroArgumentContext *context, unsigned level);
+static bool function_macro_argument_tag(MacroArgumentContext *context, unsigned level);
+static void function_macro_argument_drop_tags(MacroArgumentContext *context, unsigned level);
 static bool function_macro_tail_spacing(TSLexer *lexer, bool *escaped);
 static bool function_macro_line_comment(TSLexer *lexer);
 static bool function_macro_block_comment(TSLexer *lexer);
@@ -54,39 +83,107 @@ static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close,
     unsigned depth = 1;
     unsigned nested = 0;
     MacroArgumentWord word = {0};
+    MacroArgumentContext context = {0};
+    bool valid = false;
     lexer->advance(lexer, false);
     while (depth) {
-        if (lexer->eof(lexer)) return false;
         int32_t c = lexer->lookahead;
-        if (c == ';' && !nested) return false;
+        if (lexer->eof(lexer) || (c == ';' && !context.body_level)) goto done;
         function_macro_note_literal(literal, depth, nested, &word, c);
-        if (pragma_space(c)) {
-            lexer->advance(lexer, false);
-            word = (MacroArgumentWord){0};
-            continue;
-        }
-        if (c == '/') {
-            if (!function_macro_argument_slash(lexer, true)) return false;
-            word = (MacroArgumentWord){0};
-            continue;
-        }
-        if (c == '\\') {
-            if (!function_macro_argument_escape(lexer, &word)) return false;
-            continue;
-        }
-        if (c == '"' || (c == '\'' && !word.number)) {
-            if (!function_macro_argument_quote(lexer, c)) return false;
-            word = (MacroArgumentWord){0};
-            continue;
-        }
+        MacroArgumentToken token = function_macro_argument_token(lexer, &word, &context, depth + nested);
+        if (token == MACRO_ARGUMENT_INVALID) goto done;
+        if (token == MACRO_ARGUMENT_CONSUMED) continue;
         function_macro_argument_word(&word, c);
-        if (!function_macro_group(c, open, close, &depth, &nested)) return false;
+        function_macro_argument_context(&context, c, depth + nested);
+        if (!function_macro_group(c, open, close, &depth, &nested, &context)) goto done;
         lexer->advance(lexer, false);
     }
-    return nested == 0;
+    valid = nested == 0;
+done:
+    function_macro_argument_drop_tags(&context, 0);
+    return valid;
 }
 
-static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested) {
+static MacroArgumentToken function_macro_argument_token(TSLexer *lexer, MacroArgumentWord *word, MacroArgumentContext *context, unsigned level) {
+    int32_t c = lexer->lookahead;
+    if (pragma_space(c)) {
+        lexer->advance(lexer, false);
+        *word = (MacroArgumentWord){0};
+        return MACRO_ARGUMENT_CONSUMED;
+    }
+    switch (c) {
+        case '/': {
+            MacroArgumentSlash slash = function_macro_argument_slash(lexer, true);
+            if (slash == MACRO_SLASH_INVALID) return MACRO_ARGUMENT_INVALID;
+            if (slash == MACRO_SLASH_DIVISION) function_macro_argument_context(context, '/', level);
+            break;
+        }
+        case '\\':
+            if (!function_macro_argument_escape(lexer, word)) return MACRO_ARGUMENT_INVALID;
+            if (word->identifier || word->number) context->previous = 'w';
+            return MACRO_ARGUMENT_CONSUMED;
+        case '"':
+        case '\'':
+            if (c == '\'' && word->number) return MACRO_ARGUMENT_PUNCTUATION;
+            if (!function_macro_argument_quote(lexer, c)) return MACRO_ARGUMENT_INVALID;
+            function_macro_argument_context(context, c, level);
+            break;
+        default:
+            if (!word->number && preproc_word(c, false)) {
+                return function_macro_argument_name(lexer, word, context, level)
+                    ? MACRO_ARGUMENT_CONSUMED : MACRO_ARGUMENT_INVALID;
+            }
+            return MACRO_ARGUMENT_PUNCTUATION;
+    }
+    *word = (MacroArgumentWord){0};
+    return MACRO_ARGUMENT_CONSUMED;
+}
+
+static bool function_macro_argument_name(TSLexer *lexer, MacroArgumentWord *word, MacroArgumentContext *context, unsigned level) {
+    char text[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
+    MacroName name = {.word = text, .capacity = sizeof(text) - 1, .ascii = !word->identifier};
+    MacroNameCharacter character;
+    do {
+        character = scan_macro_name_character(lexer, name.length || !name.ascii, &name);
+    } while (character == MACRO_NAME_CHARACTER || character == MACRO_NAME_SPLICE);
+    if (character == MACRO_NAME_INVALID) return false;
+    if (name.ascii && !context->body_level && function_macro_word_in(text, function_macro_tag_keywords,
+        sizeof(function_macro_tag_keywords) / sizeof(function_macro_tag_keywords[0])) &&
+        !function_macro_argument_tag(context, level)) return false;
+    word->identifier = true;
+    context->previous = 'w';
+    return true;
+}
+
+static void function_macro_argument_context(MacroArgumentContext *context, int32_t c, unsigned level) {
+    if (c == '{') {
+        bool body = (context->tag && context->tag->level == level) || (context->previous == '(' && level > 1);
+        if (body && !context->body_level) context->body_level = level + 1;
+        function_macro_argument_drop_tags(context, level);
+    } else if (c != '(' && c != '[' && c != ':') {
+        function_macro_argument_drop_tags(context, level);
+    }
+    context->previous = c;
+}
+
+static bool function_macro_argument_tag(MacroArgumentContext *context, unsigned level) {
+    if (context->tag && context->tag->level == level) return true;
+    MacroArgumentTag *tag = malloc(sizeof(MacroArgumentTag));
+    if (!tag) return false;
+    *tag = (MacroArgumentTag){.level = level, .parent = context->tag};
+    context->tag = tag;
+    return true;
+}
+
+static void function_macro_argument_drop_tags(MacroArgumentContext *context, unsigned level) {
+    while (context->tag && context->tag->level >= level) {
+        MacroArgumentTag *tag = context->tag;
+        context->tag = tag->parent;
+        free(tag);
+    }
+}
+
+static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested, MacroArgumentContext *context) {
     if (c == open) (*depth)++;
     else if (c == close) (*depth)--;
     else if (c > 0 && c < 128 && strchr("([{", c)) (*nested)++;
@@ -94,6 +191,9 @@ static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigne
         if (!*nested) return false;
         (*nested)--;
     }
+    unsigned level = *depth + *nested;
+    function_macro_argument_drop_tags(context, level + 1);
+    if (context->body_level > level) context->body_level = 0;
     return true;
 }
 
@@ -200,12 +300,13 @@ static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote) {
     return false;
 }
 
-static bool function_macro_argument_slash(TSLexer *lexer, bool allow_division) {
+static MacroArgumentSlash function_macro_argument_slash(TSLexer *lexer, bool allow_division) {
     lexer->advance(lexer, false);
-    if (!scan_preproc_splices(lexer)) return allow_division;
-    if (lexer->lookahead == '/') return function_macro_line_comment(lexer);
-    if (lexer->lookahead == '*') return function_macro_block_comment(lexer);
-    return allow_division;
+    if (scan_preproc_splices(lexer)) {
+        if (lexer->lookahead == '/') return function_macro_line_comment(lexer) ? MACRO_SLASH_COMMENT : MACRO_SLASH_INVALID;
+        if (lexer->lookahead == '*') return function_macro_block_comment(lexer) ? MACRO_SLASH_COMMENT : MACRO_SLASH_INVALID;
+    }
+    return allow_division ? MACRO_SLASH_DIVISION : MACRO_SLASH_INVALID;
 }
 
 static bool function_macro_line_comment(TSLexer *lexer) {

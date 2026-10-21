@@ -126,6 +126,11 @@ static const char *const function_macro_keywords[] = {
   "volatile",
   "while",
 };
+static const char *const function_macro_tag_keywords[] = {
+  "enum",
+  "struct",
+  "union",
+};
 static const char *const function_macro_group_modifiers[] = {
   "_Alignas",
   "_Atomic",

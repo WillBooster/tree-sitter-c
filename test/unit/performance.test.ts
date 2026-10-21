@@ -119,8 +119,11 @@ test.each([
   }
 );
 
-test('keeps unbalanced annotation recovery approximately linear', { timeout: 60_000 }, () => {
-  const line = 'extern FOO("a" int f(void);\n';
+test.each([
+  'extern FOO("a" int f(void);\n',
+  'extern FOO({ "a" int f(void);\n}\n',
+  'extern FOO((struct T){ "a" int f(void);\n}\n',
+])('keeps unbalanced annotation recovery approximately linear: %s', { timeout: 60_000 }, (line) => {
   const small = line.repeat(100);
   const large = line.repeat(1000);
   parseAverageCpuTime(large, true);
