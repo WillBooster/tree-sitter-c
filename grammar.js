@@ -482,7 +482,13 @@ module.exports = Object.assign(
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
               repeat(
-                choice($.type_qualifier, $.attribute_specifier, $.macro_specifier, $._conditional_macro_specifier)
+                choice(
+                  $.type_qualifier,
+                  $.attribute_specifier,
+                  prec(-1, $.ms_call_modifier),
+                  $.macro_specifier,
+                  $._conditional_macro_specifier
+                )
               ),
               field('declarator', alias($._old_style_declarator, $._declarator))
             )
@@ -730,7 +736,13 @@ module.exports = Object.assign(
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
               repeat(
-                choice($.type_qualifier, $.attribute_specifier, $.macro_specifier, $._conditional_macro_specifier)
+                choice(
+                  $.type_qualifier,
+                  $.attribute_specifier,
+                  prec(-1, $.ms_call_modifier),
+                  $.macro_specifier,
+                  $._conditional_macro_specifier
+                )
               ),
               field('declarator', $._field_declarator)
             )
@@ -747,7 +759,13 @@ module.exports = Object.assign(
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
               repeat(
-                choice($.type_qualifier, $.attribute_specifier, $.macro_specifier, $._conditional_macro_specifier)
+                choice(
+                  $.type_qualifier,
+                  $.attribute_specifier,
+                  prec(-1, $.ms_call_modifier),
+                  $.macro_specifier,
+                  $._conditional_macro_specifier
+                )
               ),
               field('declarator', $._type_declarator)
             )
@@ -762,7 +780,7 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat(choice($.type_qualifier, $.attribute_specifier)),
+              repeat(choice($.type_qualifier, $.attribute_specifier, prec(-1, $.ms_call_modifier))),
               field('declarator', optional($._abstract_declarator))
             )
           )
@@ -1786,7 +1804,15 @@ function pointerDeclaratorRule($, declarator) {
       '*',
       repeat($.attribute_declaration),
       repeat($.ms_pointer_modifier),
-      repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier, $._conditional_macro_specifier)),
+      repeat(
+        choice(
+          $.type_qualifier,
+          $.attribute_specifier,
+          prec(-1, $.ms_call_modifier),
+          $.macro_specifier,
+          $._conditional_macro_specifier
+        )
+      ),
       field('declarator', declarator)
     )
   );
