@@ -68,6 +68,8 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._preproc_include_token, $.preproc_argument_list],
+      [$._preproc_include_path, $.preproc_include_argument],
       [$.compound_statement, $.initializer_list],
       [$.comma_expression, $._initializer_element],
       [$.comma_expression, $.initializer_pair],
@@ -241,17 +243,39 @@ module.exports = Object.assign(
       preproc_include: ($) =>
         seq(
           preprocessor('include'),
-          field(
-            'path',
-            choice(
-              $.string_literal,
-              $.system_lib_string,
-              $.identifier,
-              alias($.preproc_call_expression, $.call_expression)
-            )
-          ),
+          field('path', choice($._preproc_include_path, $.preproc_include_argument)),
           repeat(choice($.comment, $.pragma_operator)),
           sym('_preproc_newline')
+        ),
+
+      _preproc_include_path: ($) =>
+        choice(
+          $.string_literal,
+          $.system_lib_string,
+          $.identifier,
+          alias($.preproc_call_expression, $.call_expression)
+        ),
+
+      preproc_include_argument: ($) =>
+        prec.dynamic(-1, prec.right(seq($.identifier, repeat1($._preproc_include_token)))),
+
+      _preproc_include_token: ($) =>
+        choice(
+          $.identifier,
+          $.number_literal,
+          $.char_literal,
+          $.string_literal,
+          $.system_lib_string,
+          $.comment,
+          $.pragma_operator,
+          ...BINARY_OPERATORS.map(([operator]) => operator),
+          '!',
+          '~',
+          '(',
+          ')',
+          ',',
+          'defined',
+          token(prec(-3, /\S/))
         ),
 
       preproc_def: ($) =>
