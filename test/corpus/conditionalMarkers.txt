@@ -165,3 +165,71 @@ int after(void) { return 0; }
     (compound_statement
       (return_statement
         (number_literal)))))
+
+================================================================================
+Conditional object marker before a tag-only definition
+================================================================================
+
+#define PACKED
+#ifdef ANNOTATE
+PACKED
+#endif
+struct Record { int value; };
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def name: (identifier))
+  (preproc_ifdef
+    name: (identifier)
+    (macro_specifier name: (identifier)))
+  (struct_specifier
+    name: (type_identifier)
+    body: (field_declaration_list
+      (field_declaration
+        type: (primitive_type)
+        declarator: (field_identifier))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration type: (primitive_type))))
+    body: (compound_statement
+      (return_statement (number_literal)))))
+
+================================================================================
+Conditional object marker between typedef and its type
+================================================================================
+
+#define MARK
+#define A
+typedef
+#ifdef A
+MARK
+#endif
+int T;
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit (preproc_def name: (identifier)) (preproc_def name: (identifier)) (type_definition (preproc_ifdef name: (identifier) (macro_specifier name: (identifier))) type: (primitive_type) declarator: (type_identifier)) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (number_literal)))))
+
+================================================================================
+Conditional object marker before a prototype
+================================================================================
+
+#define M
+extern int
+#ifdef X
+M
+#endif
+f(void);
+int g(void);
+int h(int a);
+void i(void) { }
+
+--------------------------------------------------------------------------------
+
+(translation_unit (preproc_def name: (identifier)) (declaration (storage_class_specifier) type: (primitive_type) (preproc_ifdef name: (identifier) (macro_specifier name: (identifier))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type) declarator: (identifier))))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement)))

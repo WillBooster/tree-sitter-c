@@ -71,6 +71,15 @@
           "value": "declaration"
         },
         {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_conditional_declaration"
+          },
+          "named": true,
+          "value": "declaration"
+        },
+        {
           "type": "SYMBOL",
           "name": "_top_level_statement"
         },
@@ -265,6 +274,15 @@
           "content": {
             "type": "SYMBOL",
             "name": "_trailing_macro_modified_declaration"
+          },
+          "named": true,
+          "value": "declaration"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_conditional_declaration"
           },
           "named": true,
           "value": "declaration"
@@ -5958,8 +5976,17 @@
         {
           "type": "REPEAT",
           "content": {
-            "type": "SYMBOL",
-            "name": "macro_specifier"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "macro_specifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_leading_conditional_macro_specifier"
+              }
+            ]
           }
         },
         {
@@ -6255,6 +6282,137 @@
                                 {
                                   "type": "SYMBOL",
                                   "name": "_macro_declaration_declarator"
+                                },
+                                {
+                                  "type": "CHOICE",
+                                  "members": [
+                                    {
+                                      "type": "SYMBOL",
+                                      "name": "gnu_asm_expression"
+                                    },
+                                    {
+                                      "type": "BLANK"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "init_declarator"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "type": "STRING",
+              "value": ";"
+            }
+          ]
+        }
+      ]
+    },
+    "_conditional_declaration": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "PREC_DYNAMIC",
+              "value": 1,
+              "content": {
+                "type": "SYMBOL",
+                "name": "_conditional_function_specifiers"
+              }
+            },
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "FIELD",
+                  "name": "declarator",
+                  "content": {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "CHOICE",
+                            "members": [
+                              {
+                                "type": "SYMBOL",
+                                "name": "ms_call_modifier"
+                              },
+                              {
+                                "type": "BLANK"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "_declaration_declarator"
+                          },
+                          {
+                            "type": "CHOICE",
+                            "members": [
+                              {
+                                "type": "SYMBOL",
+                                "name": "gnu_asm_expression"
+                              },
+                              {
+                                "type": "BLANK"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "init_declarator"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": ","
+                      },
+                      {
+                        "type": "FIELD",
+                        "name": "declarator",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "CHOICE",
+                                  "members": [
+                                    {
+                                      "type": "SYMBOL",
+                                      "name": "ms_call_modifier"
+                                    },
+                                    {
+                                      "type": "BLANK"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_declaration_declarator"
                                 },
                                 {
                                   "type": "CHOICE",
@@ -6606,6 +6764,10 @@
               {
                 "type": "SYMBOL",
                 "name": "macro_specifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_leading_conditional_macro_specifier"
               }
             ]
           }
@@ -15953,6 +16115,10 @@
               {
                 "type": "SYMBOL",
                 "name": "macro_specifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_leading_conditional_macro_specifier"
               }
             ]
           }
@@ -16230,6 +16396,10 @@
     }
   ],
   "conflicts": [
+    [
+      "_declaration_modifiers",
+      "_empty_declaration"
+    ],
     [
       "_statement_declaration",
       "_statement_declaration_modifiers"

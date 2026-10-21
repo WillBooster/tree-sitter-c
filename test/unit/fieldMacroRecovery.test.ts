@@ -156,6 +156,112 @@ test('keeps native conditional return types and enclosing directive boundaries',
   expect(result.stdout).toContain(' - conditional, start: (6, 0), end: (8, 6)');
 });
 
+test('keeps tag-only declarations free of phantom declarators', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(path.join(root, 'tree-sitter-c.wasm')));
+  const tree = parser.parse(fs.readFileSync(path.join(root, 'test/fixtures/conditionalTags.c'), 'utf8'))!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('declaration')).toHaveLength(0);
+    expect(tree.rootNode.namedChildren.map((node) => node.type)).toEqual([
+      'preproc_def',
+      'preproc_ifdef',
+      'struct_specifier',
+      'preproc_ifdef',
+      'union_specifier',
+      'preproc_ifdef',
+      'enum_specifier',
+      'preproc_ifdef',
+      'struct_specifier',
+      'function_definition',
+    ]);
+    expect(
+      tree.rootNode
+        .descendantsOfType(['struct_specifier', 'union_specifier', 'enum_specifier'])
+        .map((node) => node.childForFieldName('name')?.text)
+    ).toEqual(['Record', 'Number', 'Choice', 'Forward']);
+    expect(tree.rootNode.descendantsOfType('function_definition').map(definitionName)).toEqual(['after']);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('keeps native conditional tag declarations free of missing names', { timeout: 300_000 }, () => {
+  const result = spawnSync('script/tree-sitter', ['parse', '--grammar-path', '.', 'test/fixtures/conditionalTags.c'], {
+    cwd: root,
+    env: { ...process.env, TREE_SITTER_LIBDIR: path.join(root, '.tmp/field-macro-recovery-lib') },
+    encoding: 'utf8',
+    timeout: 300_000,
+  });
+  expect(result.error).toBeUndefined();
+  expect(result.status, result.stdout + result.stderr).toBe(0);
+  expect(result.stdout).not.toContain('(declaration ');
+  expect(result.stdout).toContain('name: (type_identifier [4, 7] - [4, 13])');
+  expect(result.stdout).toContain('name: (type_identifier [8, 6] - [8, 12])');
+  expect(result.stdout).toContain('name: (type_identifier [12, 5] - [12, 11])');
+});
+
+test('retains conditional typedefs, grouped modifiers and following prototypes', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(path.join(root, 'tree-sitter-c.wasm')));
+  const tree = parser.parse(fs.readFileSync(path.join(root, 'test/fixtures/conditionalDeclarations.c'), 'utf8'))!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(
+      tree.rootNode.descendantsOfType('type_definition').map((node) => node.childForFieldName('declarator')?.text)
+    ).toEqual(['Before', 'After']);
+    const declarations = tree.rootNode.descendantsOfType('declaration');
+    expect(declarations.map((node) => node.childForFieldName('declarator')?.text)).toEqual([
+      'aligned',
+      'f(void)',
+      'g(void)',
+      'h(int a)',
+    ]);
+    expect(declarations.every((node) => node.parent?.type === 'translation_unit')).toBe(true);
+    expect(tree.rootNode.descendantsOfType('function_definition').map(definitionName)).toEqual([
+      'marked',
+      'square',
+      'pragmatic',
+      'i',
+    ]);
+    const markers = tree.rootNode.descendantsOfType('macro_specifier');
+    expect(markers).toHaveLength(7);
+    expect(markers.every((node) => node.childForFieldName('name')?.text === 'MARK')).toBe(true);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('retains native conditional typedefs and following prototype queries', { timeout: 300_000 }, () => {
+  const result = spawnSync(
+    'script/tree-sitter',
+    [
+      'query',
+      '--grammar-path',
+      '.',
+      '--captures',
+      'test/fixtures/fieldMacros.scm',
+      'test/fixtures/conditionalDeclarations.c',
+    ],
+    {
+      cwd: root,
+      env: { ...process.env, TREE_SITTER_LIBDIR: path.join(root, '.tmp/field-macro-recovery-lib') },
+      encoding: 'utf8',
+      timeout: 300_000,
+    }
+  );
+  expect(result.error).toBeUndefined();
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout).not.toContain(' - error,');
+  expect(result.stdout).toContain(' - type, start: (4, 12), end: (4, 18), text: `Before`');
+  expect(result.stdout).toContain(' - type, start: (9, 4), end: (9, 9), text: `After`');
+  expect(result.stdout).toContain(' - declarator, start: (31, 4), end: (31, 5), text: `g`');
+  expect(result.stdout).toContain(' - declarator, start: (32, 4), end: (32, 5), text: `h`');
+  expect(result.stdout).toContain(' - function, start: (33, 5), end: (33, 6), text: `i`');
+});
+
 test('retains a following prototype after versioned annotation groups', async () => {
   await Parser.init();
   const parser = new Parser().setLanguage(await Language.load(path.join(root, 'tree-sitter-c.wasm')));
@@ -173,21 +279,23 @@ test('retains a following prototype after versioned annotation groups', async ()
   }
 });
 
-test('invalidates conditional lookahead after a marker edit and undo', async () => {
+test.each([
+  { label: 'marker', needle: 'HEADER_MARKER', original: 'HEADER_MARKER', replacement: 'int', row: 3 },
+  { label: 'following type', needle: 'void timer', original: 'void ', replacement: '', row: 5 },
+])('invalidates conditional lookahead after a $label edit and undo', async ({ needle, original, replacement, row }) => {
   await Parser.init();
   const parser = new Parser().setLanguage(await Language.load(path.join(root, 'tree-sitter-c.wasm')));
   const tree = parser.parse(conditionalSource)!;
-  const at = conditionalSource.indexOf('HEADER_MARKER', conditionalSource.indexOf('#ifdef'));
-  const replacement = 'int';
-  const editedSource = conditionalSource.slice(0, at) + replacement + conditionalSource.slice(at + 13);
+  const at = conditionalSource.indexOf(needle, conditionalSource.indexOf('#ifdef'));
+  const editedSource = conditionalSource.slice(0, at) + replacement + conditionalSource.slice(at + original.length);
   tree.edit(
     new Edit({
       startIndex: at,
-      oldEndIndex: at + 13,
+      oldEndIndex: at + original.length,
       newEndIndex: at + replacement.length,
-      startPosition: { row: 3, column: 0 },
-      oldEndPosition: { row: 3, column: 13 },
-      newEndPosition: { row: 3, column: replacement.length },
+      startPosition: { row, column: 0 },
+      oldEndPosition: { row, column: original.length },
+      newEndPosition: { row, column: replacement.length },
     })
   );
   const incremental = parser.parse(editedSource, tree)!;
@@ -199,10 +307,10 @@ test('invalidates conditional lookahead after a marker edit and undo', async () 
       new Edit({
         startIndex: at,
         oldEndIndex: at + replacement.length,
-        newEndIndex: at + 13,
-        startPosition: { row: 3, column: 0 },
-        oldEndPosition: { row: 3, column: replacement.length },
-        newEndPosition: { row: 3, column: 13 },
+        newEndIndex: at + original.length,
+        startPosition: { row, column: 0 },
+        oldEndPosition: { row, column: replacement.length },
+        newEndPosition: { row, column: original.length },
       })
     );
     const undone = parser.parse(conditionalSource, incremental)!;

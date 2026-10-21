@@ -71,6 +71,7 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._declaration_modifiers, $._empty_declaration],
       [$._statement_declaration, $._statement_declaration_modifiers],
       [$.declaration, $._declaration_modifiers],
       [$._statement_declaration, $._statement_type_definition, $._statement_declaration_modifiers],
@@ -241,6 +242,7 @@ module.exports = Object.assign(
           $.declaration,
           alias(sym('_macro_modified_declaration'), $.declaration),
           alias(sym('_trailing_macro_modified_declaration'), $.declaration),
+          alias(sym('_conditional_declaration'), $.declaration),
           $._top_level_statement,
           $.attributed_statement,
           $.type_definition,
@@ -280,6 +282,7 @@ module.exports = Object.assign(
           $.declaration,
           alias(sym('_macro_modified_declaration'), $.declaration),
           alias(sym('_trailing_macro_modified_declaration'), $.declaration),
+          alias(sym('_conditional_declaration'), $.declaration),
           $.statement,
           $.type_definition,
           $._empty_declaration,
@@ -515,6 +518,9 @@ module.exports = Object.assign(
           $._macro_declaration_declarator
         ),
 
+      _conditional_declaration: ($) =>
+        declarationRule($, sym('_conditional_function_specifiers'), $._non_macro_declaration_modifiers, false),
+
       _trailing_macro_modified_declaration: ($) =>
         seq(
           sym('_trailing_object_declaration_start'),
@@ -559,7 +565,7 @@ module.exports = Object.assign(
 
       _type_definition_type: ($) =>
         seq(
-          repeat(choice($.type_qualifier, $.macro_specifier)),
+          repeat(choice($.type_qualifier, $.macro_specifier, $._leading_conditional_macro_specifier)),
           field('type', $.type_specifier),
           repeat($.type_qualifier)
         ),
@@ -1708,7 +1714,12 @@ module.exports = Object.assign(
       _field_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('field_identifier')),
       _statement_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('statement_identifier')),
 
-      _empty_declaration: ($) => seq(repeat(choice($.ms_declspec_modifier, $.macro_specifier)), $.type_specifier, ';'),
+      _empty_declaration: ($) =>
+        seq(
+          repeat(choice($.ms_declspec_modifier, $.macro_specifier, $._leading_conditional_macro_specifier)),
+          $.type_specifier,
+          ';'
+        ),
       _statement_empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
 
       macro_specifier: ($) => prec.dynamic(-2, field('name', $.identifier)),
@@ -1826,14 +1837,14 @@ function declarationRule($, specifiers, modifiers, allowInferredType = true, dec
 }
 
 /**
- * @param {import('./types/treeSitterDsl').GrammarSymbols<'macro_specifier' | 'type_qualifier' | '_type_definition_type' | '_non_identifier_type_specifier' | '_type_definition_declarators' | 'attribute_specifier'>} $
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'macro_specifier' | '_leading_conditional_macro_specifier' | 'type_qualifier' | '_type_definition_type' | '_non_identifier_type_specifier' | '_type_definition_declarators' | 'attribute_specifier'>} $
  * @param {import('./types/treeSitterDsl').Rule} modifiers
  * @param {boolean} allowPrefixMarkers
  */
 function typeDefinitionRule($, modifiers, allowPrefixMarkers) {
   return seq(
     optional(prec.dynamic(1, '__extension__')),
-    ...(allowPrefixMarkers ? [repeat($.macro_specifier)] : []),
+    ...(allowPrefixMarkers ? [repeat(choice($.macro_specifier, $._leading_conditional_macro_specifier))] : []),
     choice(
       seq(repeat($.type_qualifier), 'typedef', $._type_definition_type),
       seq(

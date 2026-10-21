@@ -96,16 +96,18 @@ overriding declaration or declarator behavior.
 Conditional declaration markers support an `#ifdef` or `#ifndef` block containing one marker identifier,
 followed by `#endif` and a declaration prefix. Comments, blank lines and line splices in trivia are accepted.
 Leading markers require a builtin type, or a type alias followed by another identifier or `*`; declaration
-modifiers alone do not establish a type. EOF, another directive and adjacent marker blocks retain ordinary
-preprocessor parsing. The scanner does not infer whether a conditional identifier expands to a type or annotation.
+modifiers alone do not establish a type. Known grouped modifiers, pragma extras and bracket attributes are
+checked once before the type. Groups with unquoted braces, semicolons or directives need separate support.
+EOF, another directive and adjacent marker blocks retain ordinary preprocessor parsing. The scanner does not infer whether a conditional identifier expands to a type or annotation.
 
-Normal and old-style pointer declarators also accept conditional markers. Function definitions accept them after
-the return type through `_conditional_function_definition` and `_conditional_old_style_function_definition`;
-adapt these header rules when overriding function definitions. The conditional remains a direct `preproc_ifdef`
-child of its annotated declaration or pointer, with its physical directive range. Its marker identifier has the
-ordinary `macro_specifier.name` field. A containing function or field starts at its first annotation.
-Other conditional forms, multiple-marker bodies, adjacent marker blocks, implicit-int prefixes and post-type
-object markers need separate annotation support.
+Normal and old-style pointer declarators and typedef type prefixes also accept conditional markers. Post-type
+markers use `_conditional_declaration`, `_conditional_function_definition`, and
+`_conditional_old_style_function_definition`; adapt these header rules when overriding declarations or function
+definitions. The conditional remains a direct `preproc_ifdef` child of its annotated declaration or pointer,
+with its physical directive range. Tag-only declarations retain their top-level tag node without inventing a
+declarator. The marker identifier has the ordinary `macro_specifier.name` field. A containing function or field starts at its first annotation.
+Other conditional forms, multiple-marker bodies, adjacent marker blocks, implicit-int prefixes and body-bearing
+modifier groups need separate annotation support.
 
 Trailing object annotations support one complete `primitive_type` token, plain pointer stars and an identifier,
 for example `int *value ATTR((1));`. The first argument token after initial parentheses must be numeric,
