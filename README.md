@@ -61,9 +61,12 @@ and the node types in `src/node-types.json` for grammars extending C (such as C+
 The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, and `functionMacro.h`.
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
-Keep preprocessor argument/newline handling ahead of the general function-like identifier path.
-`_function_attribute_context` and `_post_type_function_attribute_context` select physical prototype checks;
-they are context flags and are never emitted. Port the `scan_function_attribute_name` call with both flags.
+Keep preprocessor argument/newline handling ahead of annotation lookahead.
+The hidden `_function_attribute_start`, `_post_type_function_attribute_start`, and
+`_post_type_function_attribute_suffix` guards look ahead before the ordinary identifier token;
+keep them outside the name field so identifier leaves and ordinary C lexing retain their shape.
+Port `scan_function_attribute_guard` and the lookahead-only name-range handling in `pragma.h`.
+First guards check the prototype tail; post-type continuation guards inspect only their own argument group.
 Regenerate Unicode and keyword tables from the derived grammar's metadata.
 The generation source is `script/generateIdentifierRanges.js` in this repository.
 The `_preproc_function_name` token ends before splices used to determine adjacency, so the `_preproc_lparen`

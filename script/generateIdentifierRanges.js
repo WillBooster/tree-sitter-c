@@ -23,6 +23,18 @@ for (const rule of [
   'bit_int_specifier',
 ])
   collectKeywords(grammar.rules[rule], groupModifiers);
+/** @type {Set<string>} */
+const declarationModifiers = new Set();
+for (const rule of [
+  'storage_class_specifier',
+  'type_qualifier',
+  'alignas_qualifier',
+  'ms_call_modifier',
+  'ms_declspec_modifier',
+  'attribute_specifier',
+  'gnu_asm_expression',
+])
+  collectKeywords(grammar.rules[rule], declarationModifiers);
 const sortedKeywords = [...keywords].toSorted();
 const keywordTable = `#define FUNCTION_MACRO_KEYWORD_MAX_LENGTH ${Math.max(...sortedKeywords.map((word) => word.length))}
 static const char *const function_macro_keywords[] = {
@@ -30,6 +42,12 @@ ${sortedKeywords.map((word) => `  ${JSON.stringify(word)},`).join('\n')}
 };
 static const char *const function_macro_group_modifiers[] = {
 ${[...groupModifiers]
+  .toSorted()
+  .map((word) => `  ${JSON.stringify(word)},`)
+  .join('\n')}
+};
+static const char *const function_macro_declaration_modifiers[] = {
+${[...declarationModifiers]
   .toSorted()
   .map((word) => `  ${JSON.stringify(word)},`)
   .join('\n')}

@@ -12,6 +12,7 @@ typedef struct {
     unsigned capacity;
     unsigned length;
     bool ascii;
+    bool lookahead_only;
 } MacroName;
 
 typedef enum {
@@ -22,6 +23,7 @@ typedef enum {
 } MacroNameCharacter;
 
 static bool scan_macro_name(TSLexer *lexer, MacroName *name);
+static void scan_macro_name_start(TSLexer *lexer, bool lookahead_only);
 static MacroNameCharacter scan_macro_name_character(TSLexer *lexer, bool continuation, MacroName *name);
 static bool scan_macro_name_ucn(TSLexer *lexer);
 
@@ -367,7 +369,7 @@ static bool scan_function_macro_name(TSLexer *lexer, bool allow_pragma, TSSymbol
 static bool scan_macro_name(TSLexer *lexer, MacroName *name) {
     bool has_name = false;
     for (;;) {
-        while (!has_name && pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
+        if (!has_name) scan_macro_name_start(lexer, name->lookahead_only);
         MacroNameCharacter character = scan_macro_name_character(lexer, has_name, name);
         if (character == MACRO_NAME_INVALID) return false;
         if (character == MACRO_NAME_END) return has_name;
@@ -376,8 +378,13 @@ static bool scan_macro_name(TSLexer *lexer, MacroName *name) {
             return scan_preproc_splices(lexer);
         }
         has_name = true;
-        lexer->mark_end(lexer);
+        if (!name->lookahead_only) lexer->mark_end(lexer);
     }
+}
+
+static void scan_macro_name_start(TSLexer *lexer, bool lookahead_only) {
+    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
+    if (lookahead_only) lexer->mark_end(lexer);
 }
 
 static MacroNameCharacter scan_macro_name_character(TSLexer *lexer, bool continuation, MacroName *name) {

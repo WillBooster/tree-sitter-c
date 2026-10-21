@@ -325,11 +325,105 @@ test('retains parenthesized prototype names and following definitions', async ()
   }
 });
 
+test.each(['1 + 2', 'VERSION + 1', '-1', '1 ? 2 : 3', '"a" "b"'])(
+  'parses post-type annotation expression %s without losing following functions',
+  async (argument) => {
+    await Parser.init();
+    const parser = new Parser().setLanguage(await Language.load(wasmPath));
+    const source = `#define ATTR(x) __attribute__((unused))
+int ATTR(${argument}) annotated(void);
+int following(void) { return 0; }
+`;
+    const tree = parser.parse(source)!;
+    try {
+      expect(tree.rootNode.hasError).toBe(false);
+      const attribute = tree.rootNode.descendantsOfType('attribute_specifier')[0];
+      expect(attribute?.childForFieldName('name')?.text).toBe('ATTR');
+      expect(attribute?.childForFieldName('arguments')?.text).toBe(`(${argument})`);
+      expect(
+        tree.rootNode.descendantsOfType('function_declarator').map((node) => node.childForFieldName('declarator')?.text)
+      ).toEqual(['annotated', 'following']);
+      expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+        'int following(void) { return 0; }',
+      ]);
+    } finally {
+      tree.delete();
+      parser.delete();
+    }
+  }
+);
+
+test('keeps fresh declarations after standalone header annotations inside their guard', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = `#ifndef HEADER_GUARD
+#define HEADER_GUARD
+BEGIN_HEADER
+SCOPE_NOTE("old", version(10.0, 13.0))
+extern void first(const T *arg);
+int second(void);
+END_HEADER
+#endif
+`;
+  const tree = parser.parse(source)!;
+  try {
+    const guard = tree.rootNode.namedChildren[0];
+    expect(guard?.type).toBe('preproc_ifdef');
+    expect(guard?.text).toBe(source.trimEnd());
+    expect(guard?.descendantsOfType('declaration').map((node) => node.text)).toEqual([
+      'extern void first(const T *arg);',
+      'int second(void);',
+    ]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('retains declarations after annotated tag definitions', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = 'enum Kind { A, B } NOTE("old", version(10.0, 10.8)) UNAVAILABLE(platform);\nint after(void);\n';
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int after(void);');
+    expect(tree.rootNode.namedChildren.at(-1)?.type).toBe('declaration');
+    expect(tree.rootNode.descendantsOfType('enum_specifier')[0]?.text).toBe('enum Kind { A, B }');
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('retains both functions around an opaque statement macro with a named type argument', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = `int first(void) {
+  STATEMENT(a, (unsigned int flags))
+  return 0;
+}
+int after(void) { return 1; }
+`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      source.slice(0, source.indexOf('int after')).trimEnd(),
+      'int after(void) { return 1; }',
+    ]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
 test.each([
   ['void g_foo(void) DEPRECATED_FOR(g_bar);', 'g_foo'],
   ['int second(Arg) THROWS(Exception);', 'second'],
   ['void third(int, const char *, ...) PRINTF(1, 2);', 'third'],
   ['int fourth(void) ATTR_ZERO();', 'fourth'],
+  ['extern ATTR(1) void lead(void) DEPRECATED_FOR(target);', 'lead'],
+  ['extern ATTR(1) int declared(Arg) THROWS(Exception);', 'declared'],
+  ['int ATTR(2) applied(Arg) THROWS(Exception);', 'applied'],
 ])('retains the real prototype name in %s', async (prototype, name) => {
   await Parser.init();
   const parser = new Parser().setLanguage(await Language.load(wasmPath));

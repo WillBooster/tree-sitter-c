@@ -10,12 +10,11 @@ typedef struct {
     int32_t last;
 } MacroArgumentWord;
 
-static bool function_macro_arguments_before_declarator(TSLexer *lexer, bool require_literal);
 static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close, bool *literal);
 static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested);
 static void function_macro_note_literal(bool *literal, unsigned depth, unsigned nested, const MacroArgumentWord *word, int32_t c);
-static bool function_macro_tail_modifier(TSLexer *lexer, bool escaped);
-static bool function_macro_declaration_continues(TSLexer *lexer);
+static bool function_macro_tail_word(TSLexer *lexer, bool escaped, bool post_type, bool *modifier);
+static bool function_macro_declaration_continues(TSLexer *lexer, bool post_type);
 static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote);
 static bool function_macro_argument_escape(TSLexer *lexer, MacroArgumentWord *word);
 static bool function_macro_argument_slash(TSLexer *lexer, bool allow_division);
@@ -25,24 +24,16 @@ static bool function_macro_block_comment(TSLexer *lexer);
 static void function_macro_argument_word(MacroArgumentWord *word, int32_t c);
 
 static bool function_macro_keyword(const char *word);
+static bool function_macro_word_in(const char *word, const char *const *words, unsigned count);
 
-static bool scan_function_attribute_name(TSLexer *lexer, bool allow_pragma, TSSymbol pragma_symbol, bool declaration_context, bool require_literal) {
+static bool scan_function_attribute_guard(TSLexer *lexer, bool prototype, bool require_literal) {
     char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
-    MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true};
-    if (!scan_macro_name(lexer, &name)) return false;
-    if (allow_pragma && name.ascii && strcmp(word, pragma_word) == 0 && scan_pragma_suffix(lexer)) {
-        lexer->result_symbol = pragma_symbol;
-        return true;
-    }
-    if (name.ascii && function_macro_keyword(word)) return false;
+    MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true, .lookahead_only = true};
+    if (!scan_macro_name(lexer, &name) || (name.ascii && function_macro_keyword(word))) return false;
     if (!scan_pragma_spacing(lexer) || lexer->lookahead != '(') return false;
-    return !declaration_context || function_macro_arguments_before_declarator(lexer, require_literal);
-}
-
-static bool function_macro_arguments_before_declarator(TSLexer *lexer, bool require_literal) {
     bool literal = false;
     return function_macro_balanced(lexer, '(', ')', &literal) && (!require_literal || literal) &&
-           function_macro_declaration_continues(lexer);
+        (!prototype || function_macro_declaration_continues(lexer, require_literal));
 }
 
 static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close, bool *literal) {
@@ -96,7 +87,7 @@ static void function_macro_note_literal(bool *literal, unsigned depth, unsigned 
     if (c == '"' || (c == '\'' && !word->number) || (c >= '0' && c <= '9' && !word->identifier)) *literal = true;
 }
 
-static bool function_macro_declaration_continues(TSLexer *lexer) {
+static bool function_macro_declaration_continues(TSLexer *lexer, bool post_type) {
     bool declarator_group = false;
     bool modifier = false;
     for (;;) {
@@ -104,7 +95,7 @@ static bool function_macro_declaration_continues(TSLexer *lexer) {
         if (!function_macro_tail_spacing(lexer, &escaped) || lexer->eof(lexer)) return false;
         int32_t c = lexer->lookahead;
         if (escaped || preproc_word(c, false)) {
-            modifier = function_macro_tail_modifier(lexer, escaped);
+            if (!function_macro_tail_word(lexer, escaped, post_type, &modifier)) return false;
         } else if (c == ';') {
             return declarator_group;
         } else if (c <= 127 && strchr("{}#)]", c)) {
@@ -140,17 +131,17 @@ static bool function_macro_tail_spacing(TSLexer *lexer, bool *escaped) {
     }
 }
 
-static bool function_macro_tail_modifier(TSLexer *lexer, bool escaped) {
+static bool function_macro_tail_word(TSLexer *lexer, bool escaped, bool post_type, bool *modifier) {
     char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
     MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = !escaped};
     if (escaped && !scan_macro_name_ucn(lexer)) return false;
     bool continuation = escaped;
     while (scan_macro_name_character(lexer, continuation, &name) == MACRO_NAME_CHARACTER) continuation = true;
-    if (!name.ascii) return false;
-    for (unsigned i = 0; i < sizeof(function_macro_group_modifiers) / sizeof(function_macro_group_modifiers[0]); i++) {
-        if (!strcmp(word, function_macro_group_modifiers[i])) return true;
-    }
-    return false;
+    *modifier = name.ascii && function_macro_word_in(word, function_macro_group_modifiers,
+        sizeof(function_macro_group_modifiers) / sizeof(function_macro_group_modifiers[0]));
+    return !post_type || !name.ascii || !function_macro_keyword(word) ||
+        function_macro_word_in(word, function_macro_declaration_modifiers,
+            sizeof(function_macro_declaration_modifiers) / sizeof(function_macro_declaration_modifiers[0]));
 }
 
 static bool function_macro_argument_escape(TSLexer *lexer, MacroArgumentWord *word) {
@@ -226,11 +217,16 @@ static void function_macro_argument_word(MacroArgumentWord *word, int32_t c) {
 }
 
 static bool function_macro_keyword(const char *word) {
+    return function_macro_word_in(word, function_macro_keywords,
+        sizeof(function_macro_keywords) / sizeof(function_macro_keywords[0]));
+}
+
+static bool function_macro_word_in(const char *word, const char *const *words, unsigned count) {
     unsigned start = 0;
-    unsigned end = sizeof(function_macro_keywords) / sizeof(function_macro_keywords[0]);
+    unsigned end = count;
     while (start < end) {
         unsigned middle = start + (end - start) / 2;
-        int order = strcmp(word, function_macro_keywords[middle]);
+        int order = strcmp(word, words[middle]);
         if (order == 0) return true;
         if (order < 0) end = middle;
         else start = middle + 1;
