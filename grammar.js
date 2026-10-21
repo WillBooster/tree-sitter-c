@@ -75,6 +75,7 @@ module.exports = Object.assign(
       [$._macro_declaration_specifiers, $.type_definition, $._declaration_modifiers],
       [$._macro_declaration_specifiers, $._declaration_modifiers, $._empty_declaration],
       [$._macro_declaration_specifiers, $._declaration_modifiers],
+      [$.preproc_include_argument],
       [$._preproc_include_token, $.preproc_argument_list],
       [$._preproc_include_path, $.preproc_include_argument],
       [$.compound_statement, $.initializer_list],
@@ -254,8 +255,10 @@ module.exports = Object.assign(
           alias($.preproc_call_expression, $.call_expression)
         ),
 
-      preproc_include_argument: ($) =>
-        prec.dynamic(-1, prec.right(seq($.identifier, repeat1($._preproc_include_token)))),
+      preproc_include_argument: ($) => prec.dynamic(-1, seq($.identifier, repeat1($._preproc_include_segment))),
+
+      _preproc_include_segment: ($) =>
+        prec.dynamic(-1, seq(repeat(choice($.comment, $.pragma_operator)), $._preproc_include_token)),
 
       _preproc_include_token: ($) =>
         choice(
@@ -264,8 +267,6 @@ module.exports = Object.assign(
           $.char_literal,
           $.string_literal,
           $.system_lib_string,
-          $.comment,
-          $.pragma_operator,
           ...BINARY_OPERATORS.map(([operator]) => operator),
           '!',
           '~',
@@ -427,7 +428,8 @@ module.exports = Object.assign(
 
       declaration: ($) => declarationRule($, $._declaration_specifiers, true),
 
-      _macro_modified_declaration: ($) => declarationRule($, $._macro_declaration_specifiers, false),
+      _macro_modified_declaration: ($) =>
+        declarationRule($, $._macro_declaration_specifiers, false, $._macro_declaration_declarator),
 
       _macro_declaration_specifiers: ($) => {
         const modifier = choice($._declaration_modifiers, alias($._macro_attribute_suffix, $.attribute_specifier));
@@ -554,15 +556,9 @@ module.exports = Object.assign(
         ),
 
       _declaration_declarator: ($) =>
-        choice(
-          $.attributed_declarator,
-          $.pointer_declarator,
-          alias($._function_declaration_declarator, $.function_declarator),
-          $.array_declarator,
-          $.parenthesized_declarator,
-          $.identifier,
-          alias(VA_ARG_KEYWORDS, $.identifier)
-        ),
+        declarationDeclaratorRule($, alias($._function_declaration_declarator, $.function_declarator)),
+
+      _macro_declaration_declarator: ($) => declarationDeclaratorRule($, $.function_declarator),
 
       _field_declarator: ($) =>
         choice(alias($.attributed_field_declarator, $.attributed_declarator), $._unattributed_field_declarator),
@@ -1630,8 +1626,9 @@ module.exports = Object.assign(
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'storage_class_specifier' | 'ms_call_modifier' | '_declaration_declarator' | 'gnu_asm_expression' | 'init_declarator' | '_declaration_modifiers'>} $
  * @param {import('./types/treeSitterDsl').Rule} specifiers
  * @param {boolean} allowAuto
+ * @param {import('./types/treeSitterDsl').Rule} declarator
  */
-function declarationRule($, specifiers, allowAuto) {
+function declarationRule($, specifiers, allowAuto, declarator = $._declaration_declarator) {
   return seq(
     allowAuto
       ? choice(
@@ -1649,13 +1646,26 @@ function declarationRule($, specifiers, allowAuto) {
     commaSep1(
       field(
         'declarator',
-        choice(
-          seq(optional($.ms_call_modifier), $._declaration_declarator, optional($.gnu_asm_expression)),
-          $.init_declarator
-        )
+        choice(seq(optional($.ms_call_modifier), declarator, optional($.gnu_asm_expression)), $.init_declarator)
       )
     ),
     ';'
+  );
+}
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'attributed_declarator' | 'pointer_declarator' | 'array_declarator' | 'parenthesized_declarator' | 'identifier'>} $
+ * @param {import('./types/treeSitterDsl').Rule} functionDeclarator
+ */
+function declarationDeclaratorRule($, functionDeclarator) {
+  return choice(
+    $.attributed_declarator,
+    $.pointer_declarator,
+    functionDeclarator,
+    $.array_declarator,
+    $.parenthesized_declarator,
+    $.identifier,
+    alias(VA_ARG_KEYWORDS, $.identifier)
   );
 }
 

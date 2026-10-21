@@ -26,7 +26,6 @@ for (const rule of [
 /** @type {Set<string>} */
 const declarationModifiers = new Set();
 for (const rule of [
-  'storage_class_specifier',
   'type_qualifier',
   'alignas_qualifier',
   'ms_call_modifier',

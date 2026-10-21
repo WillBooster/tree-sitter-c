@@ -44,13 +44,15 @@ test('keeps nested ordinary calls approximately linear', { timeout: 60_000 }, ()
   expect(largeFastest / smallFastest).toBeLessThan(18);
 });
 
-test.each(['leading', 'trailing'])(
+test.each(['leading', 'post-type', 'trailing'])(
   'keeps flat %s annotation chains approximately linear',
   { timeout: 60_000 },
   (placement) => {
     const source = (count: number): string => {
       const attributes = Array.from({ length: count }, (_, index) => `A${index}(1)`).join(' ');
-      return placement === 'leading' ? `extern ${attributes} int f(void);` : `int f(void) ${attributes};`;
+      if (placement === 'leading') return `extern ${attributes} int f(void);`;
+      if (placement === 'post-type') return `int ${attributes} f(void);`;
+      return `int f(void) ${attributes};`;
     };
     const small = source(100);
     const large = source(1000);
@@ -116,6 +118,20 @@ test.each([
     expect(largeFastest / smallFastest).toBeLessThan(10);
   }
 );
+
+test('keeps unbalanced annotation recovery approximately linear', { timeout: 60_000 }, () => {
+  const line = 'extern FOO("a" int f(void);\n';
+  const small = line.repeat(100);
+  const large = line.repeat(1000);
+  parseAverageCpuTime(large, true);
+  let smallFastest = Infinity;
+  let largeFastest = Infinity;
+  for (let run = 0; run < 5; run++) {
+    smallFastest = Math.min(smallFastest, parseAverageCpuTime(small, true));
+    largeFastest = Math.min(largeFastest, parseAverageCpuTime(large, true));
+  }
+  expect(largeFastest / smallFastest).toBeLessThan(18);
+});
 
 function attributedSwitchSource(count: number): string {
   return `void f(int x){switch(x){${Array.from({ length: count }, (_, index) => `case ${index}: [[a]] x++; break;`).join('')}}}`;

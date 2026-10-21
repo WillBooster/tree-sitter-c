@@ -641,3 +641,81 @@ int following(void) { return 0; }
     parser.delete();
   }
 });
+
+test.each([
+  'static inline FOO("x") unsigned long f(void) BAR(1);',
+  'static FOO("x") unsigned long const f(void) BAR(1);',
+  '__declspec(dllexport) FOO("x") int const f(void) FOO(1);',
+])('preserves annotated prototypes and following definitions with trailing macros: %s', async (declaration) => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const tree = parser.parse(`${declaration}\nint after(void) { return 1; }\n`)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(
+      tree.rootNode.descendantsOfType('function_declarator').map((node) => node.childForFieldName('declarator')?.text)
+    ).toEqual(['f', 'after']);
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      'int after(void) { return 1; }',
+    ]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('preserves function-pointer returns and supported trailing attributes, pragmas, and argument semicolons', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = `extern CHECK("x") int (*factory(void))(int);
+extern int CHECK(1) (*post_factory(void))(int);
+extern int CHECK(1) const qualified(void);
+extern CHECK("x") int with_asm(void) __asm__("symbol");
+extern CHECK("x") int with_attribute(void) __attribute__((const));
+extern CHECK("x") int with_pragma(void) _Pragma("GCC diagnostic push");
+extern CHECK(({ int value = 1; value; })) int statement_argument(void);
+extern CHECK("a;b", ';') int quoted_argument(void);
+int following(void) { return 0; }
+`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('declaration')).toHaveLength(9);
+    expect(tree.rootNode.descendantsOfType('pragma_operator')).toHaveLength(1);
+    expect(tree.rootNode.descendantsOfType('function_definition').at(-1)?.text).toBe(
+      'int following(void) { return 0; }'
+    );
+    expect(tree.rootNode.descendantsOfType('argument_list').map((node) => node.text)).toContain(
+      '(({ int value = 1; value; }))'
+    );
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each([
+  'extern Result *lookup(void);',
+  'static Result lookup(void);',
+  'inline Result lookup(void);',
+  'Result *lookup(void);',
+  'Result lookup(void);',
+])('retains an alias-return prototype after a standalone annotation: %s', async (prototype) => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const tree = parser.parse(`BEGIN\nATTR("x")\n${prototype}\nint following(void) { return 0; }\n`)!;
+  try {
+    const declaration = tree.rootNode.descendantsOfType('declaration').find((node) => node.text === prototype);
+    expect(declaration?.childForFieldName('type')?.text).toBe('Result');
+    expect(
+      tree.rootNode.descendantsOfType('function_declarator').map((node) => node.childForFieldName('declarator')?.text)
+    ).toEqual(['lookup', 'following']);
+    expect(tree.rootNode.descendantsOfType('attribute_specifier')).toHaveLength(0);
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      'int following(void) { return 0; }',
+    ]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});

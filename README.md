@@ -73,7 +73,8 @@ The `_preproc_function_name` token ends before splices used to determine adjacen
 scanner must skip those splices again to reach `(`.
 
 Header annotation declarations use `_macro_modified_declaration`, `_macro_declaration_specifiers`,
-and `_header_preproc_item`. Adapt these rules alongside public declaration/type overrides when extending C.
+`_macro_declaration_declarator`, and `_header_preproc_item`. Adapt these rules alongside public declaration/type
+overrides when extending C. The annotation declarator uses `function_declarator` to retain trailing macro calls.
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
