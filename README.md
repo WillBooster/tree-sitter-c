@@ -56,12 +56,43 @@ const parser = new Parser();
 parser.setLanguage(await Language.load(c));
 ```
 
-The package also ships `grammar.js`, the scanner sources `src/scanner.c`, `src/pragma.h` and `src/identifier.h`, the queries in `queries/`,
+The package also ships `grammar.js`, scanner sources under `src/`, the queries in `queries/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
-Derived grammars must handle every inherited external token in their scanner, including `_preproc_function_name`.
-Port both the `_preproc_function_name` dispatch and the `_preproc_lparen` splice-skipping loop from `src/scanner.c`,
-using `scan_function_macro_name` from `src/pragma.h`. The macro-name token ends before the splices used to determine
-adjacency, so the parameter scanner must skip them again to reach `(`.
+The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, and `functionMacro.h`.
+
+Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
+Keep preprocessor argument/newline handling ahead of annotation lookahead.
+The hidden `_function_attribute_start`, `_post_type_function_attribute_start`, and
+`_post_type_function_attribute_suffix` guards look ahead before the ordinary identifier token;
+keep them outside the name field so identifier leaves and ordinary C lexing retain their shape.
+Port `scan_function_attribute_guard`, its `MacroAttributeSymbols` context, and the name-range handling in `pragma.h`.
+The `_trailing_object_declaration_start` guard checks an object prefix before declaration parsing;
+`_trailing_macro_attribute_name` consumes only the annotation name and preserves its ordinary identifier leaf.
+Keep the shared first-word dispatch so a failed lookahead never falls back from an advanced lexer cursor.
+First prototype guards check the prototype tail; post-type continuation guards inspect only their own argument group.
+Regenerate Unicode and keyword tables from the derived grammar's metadata.
+The generation source is `script/generateIdentifierRanges.js` in this repository.
+The primitive keyword data shared by grammar generation and object-prefix classification is in `src/grammarKeywords.cjs`.
+The `_preproc_function_name` token ends before splices used to determine adjacency, so the `_preproc_lparen`
+scanner must skip those splices again to reach `(`.
+
+Prototype annotation lookahead accepts argument/prototype groups without unquoted braces, semicolons or preprocessing directives.
+Quoted punctuation remains literal content. GNU statement-expression, inline-tag, compound-literal
+and directive-bearing annotation arguments need a separate grammar design to keep malformed-input recovery bounded.
+
+Header annotation declarations use `_macro_modified_declaration`, `_macro_declaration_specifiers`,
+`_macro_declaration_declarator`, and `_header_preproc_item`. Adapt these rules alongside public declaration/type
+overrides when extending C. The annotation declarator uses `function_declarator` to retain trailing macro calls.
+The separate `_trailing_macro_modified_declaration` route uses public declaration specifiers and
+`_trailing_macro_object_declarator` / `_trailing_macro_pointer_declarator`; adapt these header rules when
+overriding declaration or declarator behavior.
+
+Trailing object annotations support one complete `primitive_type` token, plain pointer stars and an identifier,
+for example `int *value ATTR((1));`. The first argument token after initial parentheses must be numeric,
+a string/character quote or a comma. Comments and whitespace may separate the prefix tokens; the remaining
+arguments use the structural annotation-argument grammar. Sized-only starts such as `unsigned` or `long`,
+qualified/multiword/unknown-type prefixes,
+arrays, parenthesized/function declarators, initializers and multiple declarators need separate support.
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
@@ -70,7 +101,7 @@ fuzzed with, at version 7.0.5 or later. No other runtime loads the parser:
 ```toml
 [dependencies]
 tree-sitter = { package = "willbooster-tree-sitter", version = "7.0.5" }
-tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "7" }
+tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "11" }
 ```
 
 ```rust

@@ -532,6 +532,10 @@
           "named": true
         },
         {
+          "type": "initializer_list",
+          "named": true
+        },
+        {
           "type": "initializer_pair",
           "named": true
         },
@@ -541,6 +545,10 @@
         },
         {
           "type": "system_lib_string",
+          "named": true
+        },
+        {
+          "type": "type_descriptor",
           "named": true
         }
       ]
@@ -760,10 +768,31 @@
   {
     "type": "attribute_specifier",
     "named": true,
-    "fields": {},
+    "fields": {
+      "arguments": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "argument_list",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
     "children": {
       "multiple": false,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "argument_list",
@@ -2456,6 +2485,10 @@
         {
           "type": "preproc_ifdef",
           "named": true
+        },
+        {
+          "type": "preproc_include",
+          "named": true
         }
       ]
     }
@@ -3743,6 +3776,10 @@
             "named": true
           },
           {
+            "type": "preproc_include_argument",
+            "named": true
+          },
+          {
             "type": "string_literal",
             "named": true
           },
@@ -3763,6 +3800,45 @@
         },
         {
           "type": "pragma_operator",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "preproc_include_argument",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "char_literal",
+          "named": true
+        },
+        {
+          "type": "comment",
+          "named": true
+        },
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "number_literal",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
+          "named": true
+        },
+        {
+          "type": "string_literal",
+          "named": true
+        },
+        {
+          "type": "system_lib_string",
           "named": true
         }
       ]

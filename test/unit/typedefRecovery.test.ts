@@ -41,7 +41,7 @@ test('parses typedefs after an unexpanded header macro', async () => {
   }
 });
 
-test('retains legacy implicit-int declaration recovery after qualifiers', async () => {
+test('parses qualified implicit-int declarations without losing following declarations', async () => {
   await Parser.init();
   const parser = new Parser();
   parser.setLanguage(await Language.load(wasmPath));
@@ -49,7 +49,7 @@ test('retains legacy implicit-int declaration recovery after qualifiers', async 
     const source = 'const x = 1; volatile y = 2; const z; void f(void) { const local = 3; int after; }';
     const tree = parser.parse(source)!;
     try {
-      expect(tree.rootNode.descendantsOfType('ERROR')).toHaveLength(0);
+      expect(tree.rootNode.hasError).toBe(false);
       const declarations = tree.rootNode.descendantsOfType('declaration');
       expect(declarations.map((node) => node.text)).toEqual([
         'const x = 1;',
@@ -58,7 +58,20 @@ test('retains legacy implicit-int declaration recovery after qualifiers', async 
         'const local = 3;',
         'int after;',
       ]);
-      expect(declarations.map((node) => node.childForFieldName('type')?.text)).toEqual(['x', 'y', 'z', 'local', 'int']);
+      expect(declarations.map((node) => node.childForFieldName('declarator')?.text)).toEqual([
+        'x = 1',
+        'y = 2',
+        'z',
+        'local = 3',
+        'after',
+      ]);
+      expect(declarations.map((node) => node.childForFieldName('type')?.text)).toEqual([
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'int',
+      ]);
       expect(tree.rootNode.descendantsOfType('number_literal').map((node) => node.text)).toEqual(['1', '2', '3']);
       expect(tree.rootNode.descendantsOfType('function_definition').at(-1)?.childForFieldName('declarator')?.text).toBe(
         'f(void)'

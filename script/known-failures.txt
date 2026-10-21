@@ -238,7 +238,6 @@ examples/git/builtin/branch.c
 examples/git/builtin/checkout.c
 examples/git/builtin/clean.c
 examples/git/builtin/clone.c
-examples/git/builtin/commit.c
 examples/git/builtin/config.c
 examples/git/builtin/count-objects.c
 examples/git/builtin/credential-store.c
