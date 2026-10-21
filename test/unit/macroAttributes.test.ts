@@ -189,7 +189,7 @@ extern META("escaped \" )", '\\', \
 3) int spliced(void);
 #define UNUSED __attribute__((unused))
 typedef struct Context Context;
-static inline void discard(Context *context UNUSED) __attribute__((unused)) {}
+static inline void discard(Context *UNUSED context) __attribute__((unused)) {}
 int following(void) { return 0; }
 `;
   const tree = parser.parse(source)!;
@@ -200,14 +200,17 @@ int following(void) { return 0; }
     expect(modifiers.map((node) => node.childForFieldName('name')?.text)).toEqual(['META', 'META', 'META']);
     expect(
       tree.rootNode.descendantsOfType('function_definition').map((node) => node.childForFieldName('declarator')?.text)
-    ).toEqual(['discard(Context *context UNUSED) __attribute__((unused))', 'following(void)']);
+    ).toEqual(['discard(Context *UNUSED context) __attribute__((unused))', 'following(void)']);
     expect(
       tree.rootNode
         .descendantsOfType('declaration')
         .slice(0, 3)
         .map((node) => node.childForFieldName('declarator')?.childForFieldName('declarator')?.text)
     ).toEqual(['guarded', 'commented', 'spliced']);
-    expect(tree.rootNode.descendantsOfType('ERROR').map((node) => node.text)).toEqual(['UNUSED']);
+    expect(tree.rootNode.hasError).toBe(false);
+    const pointer = tree.rootNode.descendantsOfType('pointer_declarator')[0]!;
+    expect(pointer.childForFieldName('declarator')?.text).toBe('context');
+    expect(pointer.descendantsOfType('macro_specifier').map((node) => node.text)).toEqual(['UNUSED']);
   } finally {
     tree.delete();
     parser.delete();
@@ -221,18 +224,23 @@ test('retains function and asm declaration boundaries with trailing attribute gr
   const tree = parser.parse(source)!;
   try {
     expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
-      'static inline void gnu(Context *p UNUSED) __attribute__((unused)) {}',
-      'static inline void short_gnu(Context *p UNUSED) __attribute((unused)) {}',
-      'static inline void macro(Context *p UNUSED) OTHER_ATTR(1, "(") {}',
-      'static inline void standard(Context *p UNUSED) [[]] {}',
-      'static inline __declspec(noinline) void microsoft(Context *p UNUSED) {}',
+      'static inline void gnu(Context *UNUSED p) __attribute__((unused)) {}',
+      'static inline void short_gnu(Context *UNUSED p) __attribute((unused)) {}',
+      'static inline void macro(Context *UNUSED p) OTHER_ATTR(1, "(") {}',
+      'static inline void standard(Context *UNUSED p) [[]] {}',
+      'static inline __declspec(noinline) void microsoft(Context *UNUSED p) {}',
       'int following(void) { return 0; }',
     ]);
     expect(tree.rootNode.descendantsOfType('declaration').map((node) => node.text)).toContain(
-      'int assembler(Context *p UNUSED) __asm__("assembler");'
+      'int assembler(Context *UNUSED p) __asm__("assembler");'
     );
-    expect(tree.rootNode.descendantsOfType('ERROR').map((node) => node.text)).toEqual(
+    expect(tree.rootNode.descendantsOfType('ERROR')).toHaveLength(0);
+    const pointers = tree.rootNode.descendantsOfType('pointer_declarator');
+    expect(pointers.map((node) => node.childForFieldName('declarator')?.text)).toEqual(
       Array.from({ length: 6 }, () => 'p')
+    );
+    expect(pointers.flatMap((node) => node.descendantsOfType('macro_specifier').map((marker) => marker.text))).toEqual(
+      Array.from({ length: 6 }, () => 'UNUSED')
     );
   } finally {
     tree.delete();

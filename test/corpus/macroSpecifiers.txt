@@ -1,0 +1,270 @@
+==================
+Object-like macros in declaration specifiers
+==================
+
+#define API
+#define api
+#define CC
+typedef int value_t;
+API value_t *CC create(void);
+API int scalar(void);
+API int definition(void) { return 0; }
+api int lower_case(void);
+API typedef int alias_t;
+typedef API int other_alias_t;
+API struct S { int member; };
+int following(void) { return 0; }
+
+---
+
+(translation_unit
+  (preproc_def
+    name: (identifier))
+  (preproc_def
+    name: (identifier))
+  (preproc_def
+    name: (identifier))
+  (type_definition
+    type: (primitive_type)
+    declarator: (type_identifier))
+  (declaration
+    (macro_specifier
+      name: (identifier))
+    type: (type_identifier)
+    declarator: (pointer_declarator
+      (macro_specifier
+        name: (identifier))
+      declarator: (function_declarator
+        declarator: (identifier)
+        parameters: (parameter_list
+          (parameter_declaration
+            type: (primitive_type))))))
+  (declaration
+    (macro_specifier
+      name: (identifier))
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)))))
+  (function_definition
+    (macro_specifier
+      name: (identifier))
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (number_literal))))
+  (declaration
+    (macro_specifier
+      name: (identifier))
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)))))
+  (type_definition
+    (macro_specifier
+      name: (identifier))
+    type: (primitive_type)
+    declarator: (type_identifier))
+  (type_definition
+    (macro_specifier
+      name: (identifier))
+    type: (primitive_type)
+    declarator: (type_identifier))
+  (macro_specifier
+    name: (identifier))
+  (struct_specifier
+    name: (type_identifier)
+    body: (field_declaration_list
+      (field_declaration
+        type: (primitive_type)
+        declarator: (field_identifier))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (number_literal)))))
+
+==================
+Object-like macros after pointer stars
+==================
+
+#define API
+#define CC
+int *CC pointer;
+int *CC function(void);
+struct T { int *CC field; };
+typedef int *CC pointer_t;
+API int *CC definition(void) { return 0; }
+
+---
+
+(translation_unit
+  (preproc_def
+    name: (identifier))
+  (preproc_def
+    name: (identifier))
+  (declaration
+    type: (primitive_type)
+    declarator: (pointer_declarator
+      (macro_specifier
+        name: (identifier))
+      declarator: (identifier)))
+  (declaration
+    type: (primitive_type)
+    declarator: (pointer_declarator
+      (macro_specifier
+        name: (identifier))
+      declarator: (function_declarator
+        declarator: (identifier)
+        parameters: (parameter_list
+          (parameter_declaration
+            type: (primitive_type))))))
+  (struct_specifier
+    name: (type_identifier)
+    body: (field_declaration_list
+      (field_declaration
+        type: (primitive_type)
+        declarator: (pointer_declarator
+          (macro_specifier
+            name: (identifier))
+          declarator: (field_identifier)))))
+  (type_definition
+    type: (primitive_type)
+    declarator: (pointer_declarator
+      (macro_specifier
+        name: (identifier))
+      declarator: (type_identifier)))
+  (function_definition
+    (macro_specifier
+      name: (identifier))
+    type: (primitive_type)
+    declarator: (pointer_declarator
+      (macro_specifier
+        name: (identifier))
+      declarator: (function_declarator
+        declarator: (identifier)
+        parameters: (parameter_list
+          (parameter_declaration
+            type: (primitive_type)))))
+    body: (compound_statement
+      (return_statement
+        (number_literal)))))
+
+==================
+Ordinary typedef and pointer declarations
+==================
+
+typedef int A;
+typedef int C;
+typedef int (*callback_t)(C);
+A B(C);
+A value;
+A *pointer;
+int *named(int *p);
+void unnamed(int *, A, A (*)(C));
+#define TYPE(T) T
+TYPE(A) expanded_type;
+int invoke(callback_t fn, C argument) { return fn(argument); }
+
+---
+
+(translation_unit
+  (type_definition
+    type: (primitive_type)
+    declarator: (type_identifier))
+  (type_definition
+    type: (primitive_type)
+    declarator: (type_identifier))
+  (type_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (parenthesized_declarator
+        (pointer_declarator
+          declarator: (type_identifier)))
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (type_identifier)))))
+  (declaration
+    type: (type_identifier)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (type_identifier)))))
+  (declaration
+    type: (type_identifier)
+    declarator: (identifier))
+  (declaration
+    type: (type_identifier)
+    declarator: (pointer_declarator
+      declarator: (identifier)))
+  (declaration
+    type: (primitive_type)
+    declarator: (pointer_declarator
+      declarator: (function_declarator
+        declarator: (identifier)
+        parameters: (parameter_list
+          (parameter_declaration
+            type: (primitive_type)
+            declarator: (pointer_declarator
+              declarator: (identifier)))))))
+  (declaration
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (abstract_pointer_declarator))
+        (parameter_declaration
+          type: (type_identifier))
+        (parameter_declaration
+          type: (type_identifier)
+          declarator: (abstract_function_declarator
+            declarator: (abstract_parenthesized_declarator
+              (abstract_pointer_declarator))
+            parameters: (parameter_list
+              (parameter_declaration
+                type: (type_identifier))))))))
+  (preproc_function_def
+    name: (identifier)
+    parameters: (preproc_params
+      (identifier))
+    value: (preproc_arg))
+  (declaration
+    type: (macro_type_specifier
+      name: (identifier)
+      type: (type_descriptor
+        type: (type_identifier)))
+    declarator: (identifier))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (type_identifier)
+          declarator: (identifier))
+        (parameter_declaration
+          type: (type_identifier)
+          declarator: (identifier))))
+    body: (compound_statement
+      (return_statement
+        (call_expression
+          function: (identifier)
+          arguments: (argument_list
+            (identifier)))))))
