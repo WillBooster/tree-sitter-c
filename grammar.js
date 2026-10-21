@@ -68,6 +68,13 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._macro_declaration_specifiers],
+      [$._macro_declaration_specifiers, $.type_definition, $.type_specifier],
+      [$._macro_declaration_specifiers, $.type_specifier, $.expression],
+      [$._macro_declaration_specifiers, $.type_specifier],
+      [$._macro_declaration_specifiers, $.type_definition, $._declaration_modifiers],
+      [$._macro_declaration_specifiers, $._declaration_modifiers, $._empty_declaration],
+      [$._macro_declaration_specifiers, $._declaration_modifiers],
       [$.preproc_include_argument],
       [$._preproc_include_token, $.preproc_argument_list],
       [$._preproc_include_path, $.preproc_include_argument],
@@ -148,6 +155,9 @@ module.exports = Object.assign(
       sym('_preproc_lparen'),
       sym('_preproc_directive_arg'),
       sym('_preproc_function_name'),
+      sym('_function_attribute_start'),
+      sym('_post_type_function_attribute_start'),
+      sym('_post_type_function_attribute_suffix'),
     ],
 
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
@@ -194,34 +204,22 @@ module.exports = Object.assign(
           alias($._old_style_function_definition, $.function_definition),
           $.linkage_specification,
           $.declaration,
+          alias(sym('_macro_modified_declaration'), $.declaration),
           $._top_level_statement,
           $.attributed_statement,
           $.type_definition,
           $._empty_declaration,
-          sym('preproc_if'),
-          sym('preproc_ifdef'),
+          alias(sym('preproc_if_in_header'), sym('preproc_if')),
+          alias(sym('preproc_ifdef_in_header'), sym('preproc_ifdef')),
           $.preproc_include,
           $.preproc_def,
           $.preproc_function_def,
           $.preproc_call
         ),
 
-      _block_item: ($) =>
-        choice(
-          $.function_definition,
-          alias($._old_style_function_definition, $.function_definition),
-          $.linkage_specification,
-          $.declaration,
-          $.statement,
-          $.type_definition,
-          $._empty_declaration,
-          sym('preproc_if'),
-          sym('preproc_ifdef'),
-          $.preproc_include,
-          $.preproc_def,
-          $.preproc_function_def,
-          $.preproc_call
-        ),
+      _block_item: ($) => blockItemRule($, false),
+
+      _header_preproc_item: ($) => blockItemRule($, true),
 
       // Derived grammars that replace externals still need this lexical fallback. Comment-rich spacing makes the
       // lexer too large for the pinned Node Wasm optimizer; the external scanner handles those forms.
@@ -312,6 +310,8 @@ module.exports = Object.assign(
           ),
           sym('_preproc_newline')
         ),
+
+      ...preprocIf('_in_header', () => sym('_header_preproc_item')),
 
       ...preprocIf('', () => sym('_block_item')),
       ...preprocIf('_in_single_case', () => sym('_single_case_body'), 0, true),
@@ -426,30 +426,35 @@ module.exports = Object.assign(
           )
         ),
 
-      declaration: ($) =>
-        seq(
-          choice(
-            $._declaration_specifiers,
-            prec.dynamic(
-              PREC.PAREN_DECLARATOR - 1,
-              seq(
-                repeat($._declaration_modifiers),
-                alias('auto', $.storage_class_specifier),
-                repeat($._declaration_modifiers)
-              )
-            )
+      declaration: ($) => declarationRule($, $._declaration_specifiers, true),
+
+      _macro_modified_declaration: ($) =>
+        declarationRule($, $._macro_declaration_specifiers, false, $._macro_declaration_declarator),
+
+      _macro_declaration_specifiers: ($) => {
+        const modifier = choice($._declaration_modifiers, alias($._macro_attribute_suffix, $.attribute_specifier));
+        const postModifier = choice(
+          $._declaration_modifiers,
+          alias($._post_type_macro_attribute_suffix, $.attribute_specifier)
+        );
+        return choice(
+          seq(
+            choice($.storage_class_specifier, $.type_qualifier, $.ms_declspec_modifier),
+            repeat($._declaration_modifiers),
+            alias($._macro_attribute_specifier, $.attribute_specifier),
+            repeat(modifier),
+            field('type', $._non_identifier_type_specifier),
+            repeat(postModifier)
           ),
-          commaSep1(
-            field(
-              'declarator',
-              choice(
-                seq(optional($.ms_call_modifier), $._declaration_declarator, optional($.gnu_asm_expression)),
-                $.init_declarator
-              )
-            )
-          ),
-          ';'
-        ),
+          seq(
+            repeat($._declaration_modifiers),
+            field('type', choice($._non_identifier_type_specifier, $._type_identifier)),
+            repeat($._declaration_modifiers),
+            alias($._post_type_macro_attribute_specifier, $.attribute_specifier),
+            repeat(postModifier)
+          )
+        );
+      },
 
       type_definition: ($) =>
         seq(
@@ -492,6 +497,19 @@ module.exports = Object.assign(
         ),
 
       attribute_specifier: ($) => seq(choice('__attribute__', '__attribute'), '(', $.argument_list, ')'),
+
+      _macro_attribute_specifier: ($) => macroAttributeRule($, 'leading'),
+
+      _post_type_macro_attribute_specifier: ($) => macroAttributeRule($, 'post-type'),
+
+      _macro_attribute_suffix: ($) => macroAttributeRule($, 'continuation'),
+
+      _post_type_macro_attribute_suffix: ($) => macroAttributeRule($, 'post-type-continuation'),
+
+      _macro_attribute_argument_list: ($) => {
+        const argument = macroAttributeArgument($);
+        return seq('(', optional(argument), repeat(seq(',', optional(argument))), ')');
+      },
 
       attribute: ($) =>
         seq(optional(seq(field('prefix', $.identifier), '::')), field('name', $.identifier), optional($.argument_list)),
@@ -538,15 +556,9 @@ module.exports = Object.assign(
         ),
 
       _declaration_declarator: ($) =>
-        choice(
-          $.attributed_declarator,
-          $.pointer_declarator,
-          alias($._function_declaration_declarator, $.function_declarator),
-          $.array_declarator,
-          $.parenthesized_declarator,
-          $.identifier,
-          alias(VA_ARG_KEYWORDS, $.identifier)
-        ),
+        declarationDeclaratorRule($, alias($._function_declaration_declarator, $.function_declarator)),
+
+      _macro_declaration_declarator: ($) => declarationDeclaratorRule($, $.function_declarator),
 
       _field_declarator: ($) =>
         choice(alias($.attributed_field_declarator, $.attributed_declarator), $._unattributed_field_declarator),
@@ -1601,11 +1613,116 @@ module.exports = Object.assign(
           )
         ),
 
+      _preproc_number: () =>
+        /(\d|\.\d)([\p{XID_Continue}.]|[eEpP][+-]|'[_a-zA-Z0-9]|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8})*/u,
+
       comment: () => token(choice(LINE_COMMENT, seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
     },
   }),
   { PREC, preprocIf, preprocessor, commaSep, commaSep1 }
 );
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'storage_class_specifier' | 'ms_call_modifier' | '_declaration_declarator' | 'gnu_asm_expression' | 'init_declarator' | '_declaration_modifiers'>} $
+ * @param {import('./types/treeSitterDsl').Rule} specifiers
+ * @param {boolean} allowAuto
+ * @param {import('./types/treeSitterDsl').Rule} declarator
+ */
+function declarationRule($, specifiers, allowAuto, declarator = $._declaration_declarator) {
+  return seq(
+    allowAuto
+      ? choice(
+          specifiers,
+          prec.dynamic(
+            PREC.PAREN_DECLARATOR - 1,
+            seq(
+              repeat($._declaration_modifiers),
+              alias('auto', $.storage_class_specifier),
+              repeat($._declaration_modifiers)
+            )
+          )
+        )
+      : specifiers,
+    commaSep1(
+      field(
+        'declarator',
+        choice(seq(optional($.ms_call_modifier), declarator, optional($.gnu_asm_expression)), $.init_declarator)
+      )
+    ),
+    ';'
+  );
+}
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'attributed_declarator' | 'pointer_declarator' | 'array_declarator' | 'parenthesized_declarator' | 'identifier'>} $
+ * @param {import('./types/treeSitterDsl').Rule} functionDeclarator
+ */
+function declarationDeclaratorRule($, functionDeclarator) {
+  return choice(
+    $.attributed_declarator,
+    $.pointer_declarator,
+    functionDeclarator,
+    $.array_declarator,
+    $.parenthesized_declarator,
+    $.identifier,
+    alias(VA_ARG_KEYWORDS, $.identifier)
+  );
+}
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'function_definition' | '_old_style_function_definition' | 'linkage_specification' | 'declaration' | '_macro_modified_declaration' | 'statement' | 'type_definition' | '_empty_declaration' | 'preproc_include' | 'preproc_def' | 'preproc_function_def' | 'preproc_call'>} $
+ * @param {boolean} header
+ */
+function blockItemRule($, header) {
+  return choice(
+    $.function_definition,
+    alias($._old_style_function_definition, $.function_definition),
+    $.linkage_specification,
+    $.declaration,
+    ...(header ? [alias($._macro_modified_declaration, $.declaration)] : []),
+    $.statement,
+    $.type_definition,
+    $._empty_declaration,
+    header ? alias(sym('preproc_if_in_header'), sym('preproc_if')) : sym('preproc_if'),
+    header ? alias(sym('preproc_ifdef_in_header'), sym('preproc_ifdef')) : sym('preproc_ifdef'),
+    $.preproc_include,
+    $.preproc_def,
+    $.preproc_function_def,
+    $.preproc_call
+  );
+}
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'identifier' | 'argument_list' | '_macro_attribute_argument_list'>} $
+ * @param {'leading' | 'post-type' | 'continuation' | 'post-type-continuation'} context
+ */
+function macroAttributeRule($, context) {
+  const guard =
+    context === 'continuation'
+      ? []
+      : [
+          sym(
+            context === 'leading'
+              ? '_function_attribute_start'
+              : context === 'post-type'
+                ? '_post_type_function_attribute_start'
+                : '_post_type_function_attribute_suffix'
+          ),
+        ];
+  return prec.dynamic(
+    -2,
+    seq(
+      ...guard,
+      field('name', $.identifier),
+      field('arguments', alias($._macro_attribute_argument_list, $.argument_list))
+    )
+  );
+}
+
+/** @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'type_descriptor' | '_preproc_number' | 'number_literal'>} $ */
+function macroAttributeArgument($) {
+  return choice($.expression, prec.dynamic(-1, $.type_descriptor), alias($._preproc_number, $.number_literal));
+}
 
 /**
  * @param {import('./types/treeSitterDsl').RuleOrLiteral} type

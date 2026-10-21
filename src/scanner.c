@@ -1,6 +1,8 @@
-#include "pragma.h"
+#include "functionMacro.h"
 
-enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME };
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX };
+
+static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols);
 
 void *tree_sitter_c_external_scanner_create(void) {
     return NULL;
@@ -28,6 +30,18 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
         lexer->result_symbol = PREPROC_FUNCTION_NAME;
         return scan_function_macro_name(lexer, valid_symbols[PRAGMA_OPERATOR], PRAGMA_OPERATOR);
     }
+    bool leading = valid_symbols[FUNCTION_ATTRIBUTE_START];
+    bool post_type = valid_symbols[POST_TYPE_FUNCTION_ATTRIBUTE_START];
+    bool suffix = valid_symbols[POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX];
+    if ((leading || post_type || suffix) && !valid_symbols[PREPROC_LPAREN] &&
+        !valid_symbols[PREPROC_NEWLINE] && !valid_symbols[PREPROC_ARG] && !valid_symbols[PREPROC_DIRECTIVE_ARG]) {
+        lexer->result_symbol = leading ? FUNCTION_ATTRIBUTE_START : post_type ? POST_TYPE_FUNCTION_ATTRIBUTE_START : POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX;
+        return scan_function_attribute_guard(lexer, leading || post_type, !leading, valid_symbols[PRAGMA_OPERATOR], PRAGMA_OPERATOR);
+    }
+    return scan_preproc_tokens(lexer, valid_symbols);
+}
+
+static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols) {
     bool directive_text = !valid_symbols[PREPROC_ARG] && valid_symbols[PREPROC_DIRECTIVE_ARG];
     TSSymbol argument_symbol = directive_text ? PREPROC_DIRECTIVE_ARG : PREPROC_ARG;
     bool argument_valid = valid_symbols[PREPROC_ARG] || directive_text;
