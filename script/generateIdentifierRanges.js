@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import grammarKeywords from '../src/grammarKeywords.js';
+import grammarKeywords from '../src/grammarKeywords.cjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const parser = await readFile(path.join(root, 'src/parser.c'), 'utf8');

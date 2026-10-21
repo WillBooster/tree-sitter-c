@@ -333,3 +333,34 @@ test.each(['\\\n', '\\\r\n'])(
     }
   }
 );
+
+test('preserves GNU assembly labels and their query fields beside trailing object annotations', async () => {
+  await Parser.init();
+  const language = await Language.load(wasmPath);
+  const parser = new Parser().setLanguage(language);
+  const query = new Query(language, '(gnu_asm_expression assembly_code: (string_literal) @assembly)');
+  const source = `int foo __asm__("bar");
+int *baz asm("qux");
+int a2 __asm("x");
+int annotated ATTR(.5);
+int after(void) { return 0; }
+`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual(['"bar"', '"qux"', '"x"']);
+    expect(tree.rootNode.descendantsOfType('gnu_asm_expression').map((node) => node.text)).toEqual([
+      '__asm__("bar")',
+      'asm("qux")',
+      '__asm("x")',
+    ]);
+    expect(tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.text)).toEqual(['ATTR(.5)']);
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      'int after(void) { return 0; }',
+    ]);
+  } finally {
+    tree.delete();
+    query.delete();
+    parser.delete();
+  }
+});

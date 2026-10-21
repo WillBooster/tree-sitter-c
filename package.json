@@ -21,7 +21,7 @@
     "src/node-types.json",
     "tree-sitter.json",
     "*.wasm",
-    "src/grammarKeywords.js",
+    "src/grammarKeywords.cjs",
     "src/pragma.h",
     "src/identifier.h",
     "src/keywords.h",

@@ -12,7 +12,7 @@ const { grammar, alias, choice, field, optional, prec, repeat, repeat1, seq, sym
   /** @type {typeof globalThis & typeof import('./types/treeSitterDsl')} */ (globalThis);
 
 // oxlint-disable-next-line unicorn/prefer-module -- Tree-sitter loads this grammar as CommonJS.
-const { primitiveTypeKeywords } = require('./src/grammarKeywords.js');
+const { primitiveTypeKeywords } = require('./src/grammarKeywords.cjs');
 
 const PREC = {
   PAREN_DECLARATOR: -10,

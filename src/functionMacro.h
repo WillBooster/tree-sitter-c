@@ -44,6 +44,7 @@ static bool function_macro_object_prefix(TSLexer *lexer);
 static bool function_macro_object_word(TSLexer *lexer, MacroName *name, bool escaped);
 static bool function_macro_scalar_type_keyword(const char *word);
 static bool function_macro_object_type_keyword(const char *word);
+static bool function_macro_attribute_keyword(const char *word, bool trailing);
 static bool function_macro_keyword(const char *word);
 static bool function_macro_word_in(const char *word, const char *const *words, unsigned count);
 
@@ -60,7 +61,7 @@ static bool scan_function_attribute_guard(TSLexer *lexer, bool prototype, bool r
         return function_macro_object_prefix(lexer);
     }
     if (lexer->result_symbol == symbols->object_start) return false;
-    if (!trailing && name.ascii && function_macro_keyword(word)) return false;
+    if (name.ascii && function_macro_attribute_keyword(word, trailing)) return false;
     if (!scan_pragma_spacing(lexer) || lexer->lookahead != '(') return false;
     if (trailing) return function_macro_trailing_argument_prefix(lexer);
     bool literal = false;
@@ -96,7 +97,7 @@ static bool function_macro_object_prefix(TSLexer *lexer) {
     escaped = false;
     if (!function_macro_tail_spacing(lexer, &escaped)) return false;
     name = (MacroName){.word = word, .capacity = sizeof(word) - 1, .ascii = true};
-    if (!function_macro_object_word(lexer, &name, escaped) || (name.ascii && strcmp(word, pragma_word) == 0)) return false;
+    if (!function_macro_object_word(lexer, &name, escaped) || (name.ascii && function_macro_attribute_keyword(word, true))) return false;
     return scan_pragma_spacing(lexer) && lexer->lookahead == '(' && function_macro_trailing_argument_prefix(lexer);
 }
 
@@ -124,6 +125,12 @@ static bool function_macro_scalar_type_keyword(const char *word) {
 static bool function_macro_object_type_keyword(const char *word) {
     return function_macro_word_in(word, function_macro_object_type_keywords,
         sizeof(function_macro_object_type_keywords) / sizeof(function_macro_object_type_keywords[0]));
+}
+
+static bool function_macro_attribute_keyword(const char *word, bool trailing) {
+    if (!trailing) return function_macro_keyword(word);
+    return strcmp(word, pragma_word) == 0 || function_macro_word_in(word, function_macro_group_modifiers,
+        sizeof(function_macro_group_modifiers) / sizeof(function_macro_group_modifiers[0]));
 }
 
 static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close, bool *literal) {
