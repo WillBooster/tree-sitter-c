@@ -8278,6 +8278,14 @@
           "name": "field_declaration"
         },
         {
+          "type": "PREC_DYNAMIC",
+          "value": -1,
+          "content": {
+            "type": "SYMBOL",
+            "name": "macro_specifier"
+          }
+        },
+        {
           "type": "SYMBOL",
           "name": "preproc_def"
         },
@@ -14675,6 +14683,10 @@
     [
       "attributed_type_declarator",
       "_type_declarator"
+    ],
+    [
+      "_declaration_modifiers",
+      "_field_declaration_list_item"
     ],
     [
       "_declaration_specifiers"

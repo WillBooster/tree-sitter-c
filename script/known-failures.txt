@@ -484,7 +484,6 @@ examples/git/worktree.c
 examples/git/wt-status.c
 examples/git/xdiff/xdiff.h
 examples/libuv/include/uv.h
-examples/libuv/include/uv/unix.h
 examples/libuv/include/uv/win.h
 examples/libuv/src/fs-poll.c
 examples/libuv/src/heap-inl.h

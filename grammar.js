@@ -142,6 +142,7 @@ module.exports = Object.assign(
       [$.attributed_field_declarator, $._field_declarator],
       [$.attributed_type_declarator],
       [$.attributed_type_declarator, $._type_declarator],
+      [$._declaration_modifiers, $._field_declaration_list_item],
       [$._declaration_specifiers],
       [$._compound_literal_storage_class_specifier, $.type_specifier],
       [$._compound_literal_constexpr_specifier, $.type_qualifier],
@@ -877,6 +878,7 @@ module.exports = Object.assign(
       _field_declaration_list_item: ($) =>
         choice(
           $.field_declaration,
+          prec.dynamic(-1, $.macro_specifier),
           $.preproc_def,
           $.preproc_function_def,
           $.preproc_call,
