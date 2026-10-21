@@ -63,10 +63,11 @@ The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
 Keep preprocessor argument/newline handling ahead of annotation lookahead.
-Port the appended `_conditional_marker_ifdef` and `_conditional_marker_ifndef` tokens and
-`scan_conditional_macro` when using conditional declaration markers. Each token consumes only its opening
-directive keyword; its remaining directive, marker and closing-directive checks are lookahead.
-Keep this dispatch ahead of the function-annotation guards and return immediately after a failed directive scan.
+Port `_conditional_marker_ifdef`, `_conditional_marker_ifndef`, `_leading_conditional_marker_ifdef`, and
+`_leading_conditional_marker_ifndef` with `scan_conditional_macro`. The leading pair checks a following type prefix;
+when both contexts are valid, use the stricter leading check. Each token consumes only its opening directive
+keyword; the directive body, closing directive and following prefix are lookahead. Keep this dispatch ahead of
+the function-annotation guards and return immediately after a failed directive scan.
 The hidden `_function_attribute_start`, `_post_type_function_attribute_start`, and
 `_post_type_function_attribute_suffix` guards look ahead before the ordinary identifier token;
 keep them outside the name field so identifier leaves and ordinary C lexing retain their shape.
@@ -93,14 +94,18 @@ The separate `_trailing_macro_modified_declaration` route uses public declaratio
 overriding declaration or declarator behavior.
 
 Conditional declaration markers support an `#ifdef` or `#ifndef` block containing one marker identifier,
-followed by `#endif`. Comments, blank lines and line splices in trivia are accepted. Existing `macro_specifier`
-positions accept these blocks, including leading declaration markers and normal or old-style pointer modifiers.
-Function definitions also accept them after the return type through `_conditional_function_definition` and
-`_conditional_old_style_function_definition`; adapt these header rules when overriding function definitions.
-The conditional remains a `preproc_ifdef` node. At existing marker positions it is wrapped in a `macro_specifier`;
-that wrapper has a conditional child instead of a required `name` field. A containing function or field starts at
-its first annotation. The scanner checks the physical directive shape before accepting the opening keyword, so a conditional containing declarations retains ordinary preprocessor parsing.
-Other conditional forms, multiple-marker bodies and post-type object markers need separate annotation support.
+followed by `#endif` and a declaration prefix. Comments, blank lines and line splices in trivia are accepted.
+Leading markers require a builtin type, or a type alias followed by another identifier or `*`; declaration
+modifiers alone do not establish a type. EOF, another directive and adjacent marker blocks retain ordinary
+preprocessor parsing. The scanner does not infer whether a conditional identifier expands to a type or annotation.
+
+Normal and old-style pointer declarators also accept conditional markers. Function definitions accept them after
+the return type through `_conditional_function_definition` and `_conditional_old_style_function_definition`;
+adapt these header rules when overriding function definitions. The conditional remains a direct `preproc_ifdef`
+child of its annotated declaration or pointer, with its physical directive range. Its marker identifier has the
+ordinary `macro_specifier.name` field. A containing function or field starts at its first annotation.
+Other conditional forms, multiple-marker bodies, adjacent marker blocks, implicit-int prefixes and post-type
+object markers need separate annotation support.
 
 Trailing object annotations support one complete `primitive_type` token, plain pointer stars and an identifier,
 for example `int *value ATTR((1));`. The first argument token after initial parentheses must be numeric,

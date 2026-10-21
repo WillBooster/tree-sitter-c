@@ -1,6 +1,6 @@
 #include "conditionalMacro.h"
 
-enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF };
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF };
 
 static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols);
 
@@ -34,11 +34,14 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
         valid_symbols[PREPROC_ARG] || valid_symbols[PREPROC_DIRECTIVE_ARG]) {
         return scan_preproc_tokens(lexer, valid_symbols);
     }
-    if (valid_symbols[CONDITIONAL_MARKER_IFDEF] || valid_symbols[CONDITIONAL_MARKER_IFNDEF]) {
+    bool leading = valid_symbols[LEADING_CONDITIONAL_MARKER_IFDEF] || valid_symbols[LEADING_CONDITIONAL_MARKER_IFNDEF];
+    bool conditional = leading || valid_symbols[CONDITIONAL_MARKER_IFDEF] || valid_symbols[CONDITIONAL_MARKER_IFNDEF];
+    if (conditional) {
         while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
-        if (lexer->lookahead == '#') return scan_conditional_macro(lexer,
-            CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF,
-            valid_symbols[CONDITIONAL_MARKER_IFDEF], valid_symbols[CONDITIONAL_MARKER_IFNDEF]);
+        TSSymbol ifdef = leading ? LEADING_CONDITIONAL_MARKER_IFDEF : CONDITIONAL_MARKER_IFDEF;
+        TSSymbol ifndef = leading ? LEADING_CONDITIONAL_MARKER_IFNDEF : CONDITIONAL_MARKER_IFNDEF;
+        if (lexer->lookahead == '#') return scan_conditional_macro(lexer, ifdef, ifndef,
+            valid_symbols[ifdef], valid_symbols[ifndef], leading);
     }
     static const TSSymbol attribute_tokens[] = {
         FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX,

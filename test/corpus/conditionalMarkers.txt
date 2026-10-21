@@ -21,11 +21,10 @@ int after(void) { return 0; }
   (preproc_if
     condition: (identifier)
     (function_definition
-      (macro_specifier
-        (preproc_ifdef
-          name: (identifier)
-          (macro_specifier
-            name: (identifier))))
+      (preproc_ifdef
+        name: (identifier)
+        (macro_specifier
+          name: (identifier)))
       type: (primitive_type)
       declarator: (function_declarator
         declarator: (identifier)
@@ -75,11 +74,10 @@ int after(void) { return 0; }
   (function_definition
     type: (primitive_type)
     declarator: (pointer_declarator
-      (macro_specifier
-        (preproc_ifdef
-          name: (identifier)
-          (macro_specifier
-            name: (identifier))))
+      (preproc_ifdef
+        name: (identifier)
+        (macro_specifier
+          name: (identifier)))
       declarator: (function_declarator
         declarator: (identifier)
         parameters: (parameter_list

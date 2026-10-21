@@ -1457,6 +1457,10 @@
           "named": true
         },
         {
+          "type": "preproc_ifdef",
+          "named": true
+        },
+        {
           "type": "storage_class_specifier",
           "named": true
         },
@@ -1823,6 +1827,10 @@
         },
         {
           "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "preproc_ifdef",
           "named": true
         },
         {
@@ -2609,7 +2617,7 @@
     "fields": {
       "name": {
         "multiple": false,
-        "required": false,
+        "required": true,
         "types": [
           {
             "type": "identifier",
@@ -2617,16 +2625,6 @@
           }
         ]
       }
-    },
-    "children": {
-      "multiple": false,
-      "required": false,
-      "types": [
-        {
-          "type": "preproc_ifdef",
-          "named": true
-        }
-      ]
     }
   },
   {
@@ -2816,6 +2814,10 @@
           "named": true
         },
         {
+          "type": "preproc_ifdef",
+          "named": true
+        },
+        {
           "type": "storage_class_specifier",
           "named": true
         },
@@ -2982,6 +2984,10 @@
         },
         {
           "type": "ms_pointer_modifier",
+          "named": true
+        },
+        {
+          "type": "preproc_ifdef",
           "named": true
         },
         {
@@ -4369,6 +4375,10 @@
         },
         {
           "type": "ms_declspec_modifier",
+          "named": true
+        },
+        {
+          "type": "preproc_ifdef",
           "named": true
         },
         {

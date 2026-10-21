@@ -71,7 +71,6 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
-      [$._declaration_modifiers, $._empty_declaration],
       [$._statement_declaration, $._statement_declaration_modifiers],
       [$.declaration, $._declaration_modifiers],
       [$._statement_declaration, $._statement_type_definition, $._statement_declaration_modifiers],
@@ -189,6 +188,8 @@ module.exports = Object.assign(
       sym('_trailing_object_declaration_start'),
       sym('_conditional_marker_ifdef'),
       sym('_conditional_marker_ifndef'),
+      sym('_leading_conditional_marker_ifdef'),
+      sym('_leading_conditional_marker_ifndef'),
     ],
 
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
@@ -477,7 +478,9 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier)),
+              repeat(
+                choice($.type_qualifier, $.attribute_specifier, $.macro_specifier, $._conditional_macro_specifier)
+              ),
               field('declarator', alias($._old_style_declarator, $._declarator))
             )
           )
@@ -562,7 +565,8 @@ module.exports = Object.assign(
         ),
       _type_definition_declarators: ($) => commaSep1(field('declarator', $._type_declarator)),
 
-      _declaration_modifiers: ($) => choice($._non_macro_declaration_modifiers, $.macro_specifier),
+      _declaration_modifiers: ($) =>
+        choice($._non_macro_declaration_modifiers, $.macro_specifier, $._leading_conditional_macro_specifier),
 
       _statement_declaration_modifiers: ($) => $._non_macro_declaration_modifiers,
 
@@ -720,7 +724,9 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier)),
+              repeat(
+                choice($.type_qualifier, $.attribute_specifier, $.macro_specifier, $._conditional_macro_specifier)
+              ),
               field('declarator', $._field_declarator)
             )
           )
@@ -735,7 +741,9 @@ module.exports = Object.assign(
               '*',
               repeat($.attribute_declaration),
               repeat($.ms_pointer_modifier),
-              repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier)),
+              repeat(
+                choice($.type_qualifier, $.attribute_specifier, $.macro_specifier, $._conditional_macro_specifier)
+              ),
               field('declarator', $._type_declarator)
             )
           )
@@ -1703,20 +1711,15 @@ module.exports = Object.assign(
       _empty_declaration: ($) => seq(repeat(choice($.ms_declspec_modifier, $.macro_specifier)), $.type_specifier, ';'),
       _statement_empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
 
-      macro_specifier: ($) => prec.dynamic(-2, choice(field('name', $.identifier), $._conditional_macro_specifier)),
+      macro_specifier: ($) => prec.dynamic(-2, field('name', $.identifier)),
 
       _conditional_macro_specifier: () => alias(sym('_marker_preproc_ifdef'), sym('preproc_ifdef')),
+      _leading_conditional_macro_specifier: () => alias(sym('_leading_marker_preproc_ifdef'), sym('preproc_ifdef')),
 
       _marker_preproc_ifdef: ($) =>
-        seq(
-          choice(
-            alias(sym('_conditional_marker_ifdef'), '#ifdef'),
-            alias(sym('_conditional_marker_ifndef'), '#ifndef')
-          ),
-          field('name', $.identifier),
-          $.macro_specifier,
-          preprocessor('endif')
-        ),
+        conditionalMacroRule($, sym('_conditional_marker_ifdef'), sym('_conditional_marker_ifndef')),
+      _leading_marker_preproc_ifdef: ($) =>
+        conditionalMacroRule($, sym('_leading_conditional_marker_ifdef'), sym('_leading_conditional_marker_ifndef')),
 
       macro_type_specifier: ($) =>
         prec.dynamic(
@@ -1739,7 +1742,21 @@ module.exports = Object.assign(
 );
 
 /**
- * @param {import('./types/treeSitterDsl').GrammarSymbols<'ms_based_modifier' | 'ms_call_modifier' | 'attribute_declaration' | 'ms_pointer_modifier' | 'type_qualifier' | 'attribute_specifier' | 'macro_specifier'>} $
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'identifier' | 'macro_specifier'>} $
+ * @param {import('./types/treeSitterDsl').Rule} ifdef
+ * @param {import('./types/treeSitterDsl').Rule} ifndef
+ */
+function conditionalMacroRule($, ifdef, ifndef) {
+  return seq(
+    choice(alias(ifdef, '#ifdef'), alias(ifndef, '#ifndef')),
+    field('name', $.identifier),
+    $.macro_specifier,
+    preprocessor('endif')
+  );
+}
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'ms_based_modifier' | 'ms_call_modifier' | 'attribute_declaration' | 'ms_pointer_modifier' | 'type_qualifier' | 'attribute_specifier' | 'macro_specifier' | '_conditional_macro_specifier'>} $
  * @param {import('./types/treeSitterDsl').Rule} declarator
  */
 function pointerDeclaratorRule($, declarator) {
@@ -1750,7 +1767,7 @@ function pointerDeclaratorRule($, declarator) {
       '*',
       repeat($.attribute_declaration),
       repeat($.ms_pointer_modifier),
-      repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier)),
+      repeat(choice($.type_qualifier, $.attribute_specifier, $.macro_specifier, $._conditional_macro_specifier)),
       field('declarator', declarator)
     )
   );

@@ -70,12 +70,90 @@ test('keeps an old-style function when its return type crosses a conditional mar
     const conditional = definitions[0]!.descendantsOfType('preproc_ifdef')[0]!;
     expect(conditional.startPosition).toEqual({ row: 2, column: 0 });
     expect(conditional.endPosition).toEqual({ row: 4, column: 6 });
-    expect(conditional.parent?.type).toBe('macro_specifier');
-    expect(conditional.parent?.parent?.type).toBe('pointer_declarator');
+    expect(conditional.parent?.type).toBe('pointer_declarator');
   } finally {
     tree.delete();
     parser.delete();
   }
+});
+
+test('keeps alias-return annotations and storage-qualified builtin returns', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(path.join(root, 'tree-sitter-c.wasm')));
+  const tree = parser.parse(fs.readFileSync(path.join(root, 'test/fixtures/conditionalAlias.c'), 'utf8'))!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('function_definition').map(definitionName)).toEqual([
+      'alias',
+      'timer',
+      'after',
+    ]);
+    expect(
+      tree.rootNode.descendantsOfType('function_definition').map((node) => node.childForFieldName('type')?.text)
+    ).toEqual(['Result', 'void', 'int']);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('keeps enclosing conditionals closed before following declarations', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(path.join(root, 'tree-sitter-c.wasm')));
+  for (const file of ['conditionalOuter.c', 'conditionalDirective.c']) {
+    const tree = parser.parse(fs.readFileSync(path.join(root, 'test/fixtures', file), 'utf8'))!;
+    try {
+      const branch = tree.rootNode.descendantsOfType('preproc_if')[0]!;
+      expect(branch.startPosition).toEqual({ row: 0, column: 0 });
+      expect(branch.endPosition).toEqual({ row: 4, column: 6 });
+      if (file === 'conditionalOuter.c') {
+        const functions = tree.rootNode.descendantsOfType('function_definition');
+        expect(functions.map(definitionName)).toEqual(['f', 'g']);
+        expect(functions.map((node) => node.parent?.type)).toEqual(['translation_unit', 'translation_unit']);
+      } else {
+        expect(tree.rootNode.namedChildren.map((node) => node.type)).toEqual([
+          'preproc_if',
+          'declaration',
+          'preproc_ifdef',
+          'preproc_def',
+        ]);
+        expect(tree.rootNode.namedChildren[1]!.childForFieldName('declarator')?.text).toBe('a');
+        expect(tree.rootNode.namedChildren[2]!.endPosition).toEqual({ row: 8, column: 6 });
+      }
+    } finally {
+      tree.delete();
+    }
+  }
+  parser.delete();
+});
+
+test('keeps native conditional return types and enclosing directive boundaries', { timeout: 300_000 }, () => {
+  const result = spawnSync(
+    'script/tree-sitter',
+    [
+      'query',
+      '--grammar-path',
+      '.',
+      '--captures',
+      'test/fixtures/fieldMacros.scm',
+      'test/fixtures/conditionalType.c',
+      'test/fixtures/conditionalOuter.c',
+      'test/fixtures/conditionalDirective.c',
+    ],
+    {
+      cwd: root,
+      env: { ...process.env, TREE_SITTER_LIBDIR: path.join(root, '.tmp/field-macro-recovery-lib') },
+      encoding: 'utf8',
+      timeout: 300_000,
+    }
+  );
+  expect(result.error).toBeUndefined();
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout).toContain(' - function, start: (4, 0), end: (4, 1), text: `f`');
+  expect(result.stdout.match(/ - branch, start: \(0, 0\), end: \(4, 6\)/gu)).toHaveLength(2);
+  expect(result.stdout).toContain(' - function, start: (5, 4), end: (5, 5), text: `f`');
+  expect(result.stdout).toContain(' - function, start: (6, 4), end: (6, 5), text: `g`');
+  expect(result.stdout).toContain(' - conditional, start: (6, 0), end: (8, 6)');
 });
 
 test('retains a following prototype after versioned annotation groups', async () => {
@@ -156,6 +234,7 @@ test('keeps native header declarations after semicolonless field macros', { time
       fixture,
       conditionalFixture,
       'test/fixtures/conditionalReturn.c',
+      'test/fixtures/conditionalAlias.c',
     ],
     {
       cwd: root,
@@ -178,6 +257,8 @@ test('keeps native header declarations after semicolonless field macros', { time
   expect(result.stdout).toContain(' - function, start: (5, 5), end: (5, 10)');
   expect(result.stdout).toContain(' - function, start: (9, 4), end: (9, 9)');
   expect(result.stdout).toContain(' - declarator, start: (5, 0), end: (5, 6), text: `lookup`');
+  expect(result.stdout).toContain('text: `alias`');
+  expect(result.stdout).toContain('text: `timer`');
   expect(result.stdout).not.toContain(' - error,');
 });
 

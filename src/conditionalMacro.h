@@ -8,9 +8,13 @@ static bool conditional_macro_spacing(TSLexer *lexer, bool *separated, bool *esc
 static bool conditional_macro_next_line(TSLexer *lexer, bool *escaped);
 static bool conditional_macro_directive(TSLexer *lexer, MacroName *name);
 static bool conditional_macro_marker_line(TSLexer *lexer, bool *escaped);
+static bool conditional_macro_closing(TSLexer *lexer);
+static bool conditional_macro_following(TSLexer *lexer, bool leading);
+static bool conditional_macro_type_prefix(TSLexer *lexer, bool escaped);
+static bool conditional_macro_skip_lines(TSLexer *lexer, bool *escaped);
 
 static bool scan_conditional_macro(TSLexer *lexer, TSSymbol ifdef_symbol, TSSymbol ifndef_symbol,
-                                   bool allow_ifdef, bool allow_ifndef) {
+                                   bool allow_ifdef, bool allow_ifndef, bool leading) {
     char directive[7] = {0};
     MacroName command = {.word = directive, .capacity = sizeof(directive) - 1, .ascii = true};
     if (!conditional_macro_directive(lexer, &command) || !command.ascii) return false;
@@ -25,12 +29,67 @@ static bool scan_conditional_macro(TSLexer *lexer, TSSymbol ifdef_symbol, TSSymb
     if (!conditional_macro_spacing(lexer, &separated, &escaped) || !separated ||
         !conditional_macro_word(lexer, &condition, escaped) || !conditional_macro_next_line(lexer, &escaped)) return false;
     if (!conditional_macro_marker_line(lexer, &escaped)) return false;
-    memset(directive, 0, sizeof(directive));
-    command = (MacroName){.word = directive, .capacity = sizeof(directive) - 1, .ascii = true};
+    return conditional_macro_closing(lexer) && conditional_macro_following(lexer, leading);
+}
+
+static bool conditional_macro_closing(TSLexer *lexer) {
+    char directive[7] = {0};
+    MacroName command = {.word = directive, .capacity = sizeof(directive) - 1, .ascii = true};
     if (!conditional_macro_directive(lexer, &command) || !command.ascii || strcmp(directive, "endif") != 0)
         return false;
+    bool separated = false;
+    bool escaped = false;
     if (!conditional_macro_spacing(lexer, &separated, &escaped)) return false;
     return !escaped && (lexer->eof(lexer) || lexer->lookahead == '\n' || lexer->lookahead == '\r');
+}
+
+static bool conditional_macro_following(TSLexer *lexer, bool leading) {
+    bool escaped = false;
+    if (!conditional_macro_skip_lines(lexer, &escaped) || lexer->eof(lexer) || lexer->lookahead == '#') return false;
+    return !leading || conditional_macro_type_prefix(lexer, escaped);
+}
+
+typedef enum {
+    CONDITIONAL_TYPE, CONDITIONAL_MODIFIER, CONDITIONAL_TYPE_MODIFIER, CONDITIONAL_ALIAS, CONDITIONAL_RESERVED,
+} ConditionalMacroPrefix;
+
+static ConditionalMacroPrefix conditional_macro_prefix_kind(const MacroName *name, const char *word);
+
+static bool conditional_macro_type_prefix(TSLexer *lexer, bool escaped) {
+    for (;;) {
+        char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
+        MacroName type = {.word = word, .capacity = sizeof(word) - 1, .ascii = true};
+        if (!conditional_macro_word(lexer, &type, escaped)) return false;
+        ConditionalMacroPrefix kind = conditional_macro_prefix_kind(&type, word);
+        if (kind == CONDITIONAL_TYPE) return true;
+        if (!conditional_macro_skip_lines(lexer, &escaped)) return false;
+        if (kind == CONDITIONAL_TYPE_MODIFIER && lexer->lookahead == '(') return true;
+        if (kind == CONDITIONAL_MODIFIER || kind == CONDITIONAL_TYPE_MODIFIER) continue;
+        if (kind == CONDITIONAL_RESERVED) return false;
+        if (lexer->lookahead == '*') return true;
+        MacroName declarator = {.ascii = true};
+        return conditional_macro_word(lexer, &declarator, escaped);
+    }
+}
+
+static ConditionalMacroPrefix conditional_macro_prefix_kind(const MacroName *name, const char *word) {
+    if (!name->ascii || !function_macro_keyword(word)) return CONDITIONAL_ALIAS;
+    bool type = function_macro_word_in(word, function_macro_type_keywords,
+        sizeof(function_macro_type_keywords) / sizeof(function_macro_type_keywords[0]));
+    bool modifier = (!type && function_macro_object_prefix_keyword(word)) ||
+        function_macro_word_in(word, function_macro_declaration_modifiers,
+            sizeof(function_macro_declaration_modifiers) / sizeof(function_macro_declaration_modifiers[0]));
+    if (type) return modifier ? CONDITIONAL_TYPE_MODIFIER : CONDITIONAL_TYPE;
+    return modifier ? CONDITIONAL_MODIFIER : CONDITIONAL_RESERVED;
+}
+
+static bool conditional_macro_skip_lines(TSLexer *lexer, bool *escaped) {
+    bool separated = false;
+    for (;;) {
+        *escaped = false;
+        if (!conditional_macro_spacing(lexer, &separated, escaped)) return false;
+        if (*escaped || !scan_preproc_newline(lexer, false)) return true;
+    }
 }
 
 static bool conditional_macro_marker_line(TSLexer *lexer, bool *escaped) {
