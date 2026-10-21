@@ -87,10 +87,11 @@ The separate `_trailing_macro_modified_declaration` route uses public declaratio
 `_trailing_macro_object_declarator` / `_trailing_macro_pointer_declarator`; adapt these header rules when
 overriding declaration or declarator behavior.
 
-Trailing object annotations support a one-word primitive/sized type, plain pointer stars and an identifier,
+Trailing object annotations support one complete `primitive_type` token, plain pointer stars and an identifier,
 for example `int *value ATTR((1));`. The first argument token after initial parentheses must be numeric,
 a string/character quote or a comma. Comments and whitespace may separate the prefix tokens; the remaining
-arguments use the structural annotation-argument grammar. Qualified/multiword/unknown-type prefixes,
+arguments use the structural annotation-argument grammar. Sized-only starts such as `unsigned` or `long`,
+qualified/multiword/unknown-type prefixes,
 arrays, parenthesized/function declarators, initializers and multiple declarators need separate support.
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on

@@ -40,7 +40,7 @@ for (const rule of [
 const typeKeywords = new Set();
 /** @type {Set<string>} */
 const scalarTypeKeywords = new Set();
-for (const rule of ['primitive_type', 'sized_type_specifier']) collectKeywords(grammar.rules[rule], scalarTypeKeywords);
+collectKeywords(grammar.rules.primitive_type, scalarTypeKeywords);
 /** @type {Set<string>} */
 const objectPrefixKeywords = new Set(grammarKeywords.primitiveTypeKeywords);
 for (const rule of ['sized_type_specifier', 'storage_class_specifier'])

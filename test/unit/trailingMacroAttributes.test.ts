@@ -376,3 +376,43 @@ int after(void) { return 0; }
     parser.delete();
   }
 });
+
+test('preserves sized-type prototypes with arbitrary and contextual type names', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = `#define TYPE int
+#define size_t int
+#define ATTR(...)
+unsigned TYPE ATTR(1) f(void);
+long size_t ATTR(1) g(void);
+unsigned value;
+int after(void) { return 0; }
+`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const declarations = tree.rootNode.descendantsOfType('declaration');
+    expect(declarations.map((node) => node.childForFieldName('type')?.text)).toEqual([
+      'unsigned TYPE',
+      'long size_t',
+      'unsigned',
+    ]);
+    expect(declarations.map((node) => node.childForFieldName('declarator')?.text)).toEqual([
+      'f(void)',
+      'g(void)',
+      'value',
+    ]);
+    expect(declarations[0]?.childForFieldName('type')?.childForFieldName('type')?.type).toBe('type_identifier');
+    expect(declarations[0]?.childForFieldName('type')?.childForFieldName('type')?.text).toBe('TYPE');
+    expect(tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.text)).toEqual([
+      'ATTR(1)',
+      'ATTR(1)',
+    ]);
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      'int after(void) { return 0; }',
+    ]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});

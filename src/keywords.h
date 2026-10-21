@@ -191,9 +191,6 @@ static const char *const function_macro_type_keywords[] = {
   "void",
 };
 static const char *const function_macro_scalar_type_keywords[] = {
-  "_Complex",
-  "_Imaginary",
-  "__complex__",
   "bool",
   "char",
   "char16_t",
@@ -209,12 +206,9 @@ static const char *const function_macro_scalar_type_keywords[] = {
   "int64_t",
   "int8_t",
   "intptr_t",
-  "long",
   "max_align_t",
   "nullptr_t",
   "ptrdiff_t",
-  "short",
-  "signed",
   "size_t",
   "ssize_t",
   "uint16_t",
@@ -222,7 +216,6 @@ static const char *const function_macro_scalar_type_keywords[] = {
   "uint64_t",
   "uint8_t",
   "uintptr_t",
-  "unsigned",
   "void",
 };
 static const char *const function_macro_object_prefix_keywords[] = {
