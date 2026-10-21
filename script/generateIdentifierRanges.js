@@ -37,6 +37,7 @@ for (const rule of [
 /** @type {Set<string>} */
 const typeKeywords = new Set();
 collectTypeKeywords(grammar.rules._non_identifier_type_specifier, typeKeywords);
+/** @type {Set<string>} */
 const tagKeywords = new Set();
 for (const rule of ['struct_specifier', 'union_specifier', 'enum_specifier']) {
   let value = grammar.rules[rule];
