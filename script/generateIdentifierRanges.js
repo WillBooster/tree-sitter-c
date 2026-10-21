@@ -10,11 +10,29 @@ const parser = await readFile(path.join(root, 'src/parser.c'), 'utf8');
 const grammar = JSON.parse(await readFile(path.join(root, 'src/grammar.json'), 'utf8'));
 /** @type {Set<string>} */
 const keywords = new Set();
-collectKeywords(grammar);
+collectKeywords(grammar, keywords);
+/** @type {Set<string>} */
+const groupModifiers = new Set();
+for (const rule of [
+  'attribute_specifier',
+  'ms_declspec_modifier',
+  'gnu_asm_expression',
+  'alignas_qualifier',
+  'typeof_specifier',
+  'atomic_type_specifier',
+  'bit_int_specifier',
+])
+  collectKeywords(grammar.rules[rule], groupModifiers);
 const sortedKeywords = [...keywords].toSorted();
 const keywordTable = `#define FUNCTION_MACRO_KEYWORD_MAX_LENGTH ${Math.max(...sortedKeywords.map((word) => word.length))}
 static const char *const function_macro_keywords[] = {
 ${sortedKeywords.map((word) => `  ${JSON.stringify(word)},`).join('\n')}
+};
+static const char *const function_macro_group_modifiers[] = {
+${[...groupModifiers]
+  .toSorted()
+  .map((word) => `  ${JSON.stringify(word)},`)
+  .join('\n')}
 };
 
 `;
@@ -91,9 +109,10 @@ ${keywordTable}#endif
 
 /**
  * @param {unknown} value
+ * @param {Set<string>} output
  * @param {boolean} lexical
  */
-function collectKeywords(value, lexical = false) {
+function collectKeywords(value, output, lexical = false) {
   if (!value || typeof value !== 'object') return;
   if (lexical && 'type' in value && value.type === 'SEQ') return;
   const token = lexical || ('type' in value && (value.type === 'TOKEN' || value.type === 'IMMEDIATE_TOKEN'));
@@ -104,7 +123,7 @@ function collectKeywords(value, lexical = false) {
     typeof value.value === 'string' &&
     /^[A-Za-z_][A-Za-z_0-9]*$/.test(value.value)
   ) {
-    keywords.add(value.value);
+    output.add(value.value);
   }
-  for (const child of Object.values(value)) collectKeywords(child, token);
+  for (const child of Object.values(value)) collectKeywords(child, output, token);
 }

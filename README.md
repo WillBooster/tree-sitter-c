@@ -56,12 +56,21 @@ const parser = new Parser();
 parser.setLanguage(await Language.load(c));
 ```
 
-The package also ships `grammar.js`, the scanner sources `src/scanner.c`, `src/pragma.h` and `src/identifier.h`, the queries in `queries/`,
+The package also ships `grammar.js`, scanner sources under `src/`, the queries in `queries/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
-Derived grammars must handle every inherited external token in their scanner, including `_preproc_function_name`.
-Port both the `_preproc_function_name` dispatch and the `_preproc_lparen` splice-skipping loop from `src/scanner.c`,
-using `scan_function_macro_name` from `src/pragma.h`. The macro-name token ends before the splices used to determine
-adjacency, so the parameter scanner must skip them again to reach `(`.
+The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, and `functionMacro.h`.
+
+Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
+Keep preprocessor argument/newline handling ahead of the general function-like identifier path.
+`_function_attribute_context` and `_post_type_function_attribute_context` select physical prototype checks;
+they are context flags and are never emitted. Port the `scan_function_attribute_name` call with both flags.
+Regenerate Unicode and keyword tables from the derived grammar's metadata.
+The generation source is `script/generateIdentifierRanges.js` in this repository.
+The `_preproc_function_name` token ends before splices used to determine adjacency, so the `_preproc_lparen`
+scanner must skip those splices again to reach `(`.
+
+Header annotation declarations use `_macro_modified_declaration`, `_macro_declaration_specifiers`,
+and `_header_preproc_item`. Adapt these rules alongside public declaration/type overrides when extending C.
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and

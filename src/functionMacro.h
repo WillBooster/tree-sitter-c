@@ -10,20 +10,23 @@ typedef struct {
     int32_t last;
 } MacroArgumentWord;
 
-static bool function_macro_arguments_before_declarator(TSLexer *lexer);
-static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close);
+static bool function_macro_arguments_before_declarator(TSLexer *lexer, bool require_literal);
+static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close, bool *literal);
+static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested);
+static void function_macro_note_literal(bool *literal, unsigned depth, unsigned nested, const MacroArgumentWord *word, int32_t c);
+static bool function_macro_tail_modifier(TSLexer *lexer, bool escaped);
 static bool function_macro_declaration_continues(TSLexer *lexer);
 static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote);
 static bool function_macro_argument_escape(TSLexer *lexer, MacroArgumentWord *word);
-static bool function_macro_argument_slash(TSLexer *lexer);
+static bool function_macro_argument_slash(TSLexer *lexer, bool allow_division);
+static bool function_macro_tail_spacing(TSLexer *lexer, bool *escaped);
 static bool function_macro_line_comment(TSLexer *lexer);
 static bool function_macro_block_comment(TSLexer *lexer);
 static void function_macro_argument_word(MacroArgumentWord *word, int32_t c);
 
-static bool function_macro_tail_keyword(TSLexer *lexer);
 static bool function_macro_keyword(const char *word);
 
-static bool scan_function_attribute_name(TSLexer *lexer, bool allow_pragma, TSSymbol pragma_symbol, bool declaration_context) {
+static bool scan_function_attribute_name(TSLexer *lexer, bool allow_pragma, TSSymbol pragma_symbol, bool declaration_context, bool require_literal) {
     char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
     MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true};
     if (!scan_macro_name(lexer, &name)) return false;
@@ -33,27 +36,31 @@ static bool scan_function_attribute_name(TSLexer *lexer, bool allow_pragma, TSSy
     }
     if (name.ascii && function_macro_keyword(word)) return false;
     if (!scan_pragma_spacing(lexer) || lexer->lookahead != '(') return false;
-    return !declaration_context || function_macro_arguments_before_declarator(lexer);
+    return !declaration_context || function_macro_arguments_before_declarator(lexer, require_literal);
 }
 
-static bool function_macro_arguments_before_declarator(TSLexer *lexer) {
-    return function_macro_balanced(lexer, '(', ')') && function_macro_declaration_continues(lexer);
+static bool function_macro_arguments_before_declarator(TSLexer *lexer, bool require_literal) {
+    bool literal = false;
+    return function_macro_balanced(lexer, '(', ')', &literal) && (!require_literal || literal) &&
+           function_macro_declaration_continues(lexer);
 }
 
-static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close) {
+static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close, bool *literal) {
     unsigned depth = 1;
+    unsigned nested = 0;
     MacroArgumentWord word = {0};
     lexer->advance(lexer, false);
     while (depth) {
         if (lexer->eof(lexer)) return false;
         int32_t c = lexer->lookahead;
+        function_macro_note_literal(literal, depth, nested, &word, c);
         if (pragma_space(c)) {
             lexer->advance(lexer, false);
             word = (MacroArgumentWord){0};
             continue;
         }
         if (c == '/') {
-            if (!function_macro_argument_slash(lexer)) return false;
+            if (!function_macro_argument_slash(lexer, true)) return false;
             word = (MacroArgumentWord){0};
             continue;
         }
@@ -67,47 +74,83 @@ static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close)
             continue;
         }
         function_macro_argument_word(&word, c);
-        if (c == open) depth++;
-        if (c == close) depth--;
+        if (!function_macro_group(c, open, close, &depth, &nested)) return false;
         lexer->advance(lexer, false);
+    }
+    return nested == 0;
+}
+
+static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested) {
+    if (c == open) (*depth)++;
+    else if (c == close) (*depth)--;
+    else if (c > 0 && c < 128 && strchr("([{", c)) (*nested)++;
+    else if (c > 0 && c < 128 && strchr(")]}", c)) {
+        if (!*nested) return false;
+        (*nested)--;
     }
     return true;
 }
 
+static void function_macro_note_literal(bool *literal, unsigned depth, unsigned nested, const MacroArgumentWord *word, int32_t c) {
+    if (!literal || depth != 1 || nested) return;
+    if (c == '"' || (c == '\'' && !word->number) || (c >= '0' && c <= '9' && !word->identifier)) *literal = true;
+}
+
 static bool function_macro_declaration_continues(TSLexer *lexer) {
     bool declarator_group = false;
-    bool keyword = true;
+    bool modifier = false;
     for (;;) {
-        if (!scan_pragma_spacing(lexer) || lexer->eof(lexer)) return false;
+        bool escaped = false;
+        if (!function_macro_tail_spacing(lexer, &escaped) || lexer->eof(lexer)) return false;
         int32_t c = lexer->lookahead;
-        if (c == ';') return declarator_group;
-        if (c <= 127 && strchr("{}#)]", c)) return false;
-        if (c == '(' || c == '[') {
-            if (!function_macro_balanced(lexer, c, c == '(' ? ')' : ']')) return false;
-            declarator_group |= c == '(' && !keyword;
-            keyword = true;
-        } else if (preproc_word(c, false)) {
-            keyword = function_macro_tail_keyword(lexer);
+        if (escaped || preproc_word(c, false)) {
+            modifier = function_macro_tail_modifier(lexer, escaped);
+        } else if (c == ';') {
+            return declarator_group;
+        } else if (c <= 127 && strchr("{}#)]", c)) {
+            return false;
+        } else if (c == '(' || c == '[') {
+            if (!function_macro_balanced(lexer, c, c == '(' ? ')' : ']', NULL)) return false;
+            declarator_group |= c == '(' && !modifier;
+            modifier = false;
         } else if (c == '"' || c == '\'') {
             if (!function_macro_argument_quote(lexer, c)) return false;
         } else {
             lexer->advance(lexer, false);
-            keyword = false;
+            modifier = false;
         }
     }
 }
 
-static bool function_macro_tail_keyword(TSLexer *lexer) {
-    char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
-    unsigned length = 0;
-    bool ascii = true;
-    do {
+static bool function_macro_tail_spacing(TSLexer *lexer, bool *escaped) {
+    for (;;) {
         int32_t c = lexer->lookahead;
-        if (c < 128 && length < sizeof(word) - 1) word[length++] = (char)c;
-        else ascii = false;
-        lexer->advance(lexer, false);
-    } while (preproc_word(lexer->lookahead, true));
-    return ascii && function_macro_keyword(word);
+        if (pragma_space(c)) {
+            lexer->advance(lexer, false);
+        } else if (c == '\\') {
+            lexer->advance(lexer, false);
+            if (scan_preproc_newline(lexer, false)) continue;
+            *escaped = lexer->lookahead == 'u' || lexer->lookahead == 'U';
+            return *escaped;
+        } else if (c == '/') {
+            if (!function_macro_argument_slash(lexer, false)) return false;
+        } else {
+            return true;
+        }
+    }
+}
+
+static bool function_macro_tail_modifier(TSLexer *lexer, bool escaped) {
+    char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
+    MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = !escaped};
+    if (escaped && !scan_macro_name_ucn(lexer)) return false;
+    bool continuation = escaped;
+    while (scan_macro_name_character(lexer, continuation, &name) == MACRO_NAME_CHARACTER) continuation = true;
+    if (!name.ascii) return false;
+    for (unsigned i = 0; i < sizeof(function_macro_group_modifiers) / sizeof(function_macro_group_modifiers[0]); i++) {
+        if (!strcmp(word, function_macro_group_modifiers[i])) return true;
+    }
+    return false;
 }
 
 static bool function_macro_argument_escape(TSLexer *lexer, MacroArgumentWord *word) {
@@ -134,12 +177,12 @@ static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote) {
     return false;
 }
 
-static bool function_macro_argument_slash(TSLexer *lexer) {
+static bool function_macro_argument_slash(TSLexer *lexer, bool allow_division) {
     lexer->advance(lexer, false);
-    if (!scan_preproc_splices(lexer)) return true;
+    if (!scan_preproc_splices(lexer)) return allow_division;
     if (lexer->lookahead == '/') return function_macro_line_comment(lexer);
     if (lexer->lookahead == '*') return function_macro_block_comment(lexer);
-    return true;
+    return allow_division;
 }
 
 static bool function_macro_line_comment(TSLexer *lexer) {

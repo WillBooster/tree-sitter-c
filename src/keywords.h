@@ -126,5 +126,23 @@ static const char *const function_macro_keywords[] = {
   "volatile",
   "while",
 };
+static const char *const function_macro_group_modifiers[] = {
+  "_Alignas",
+  "_Atomic",
+  "_BitInt",
+  "__asm",
+  "__asm__",
+  "__attribute",
+  "__attribute__",
+  "__declspec",
+  "__typeof",
+  "__typeof__",
+  "__typeof_unqual",
+  "__typeof_unqual__",
+  "alignas",
+  "asm",
+  "typeof",
+  "typeof_unqual",
+};
 
 #endif

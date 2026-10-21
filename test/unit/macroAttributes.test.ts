@@ -258,6 +258,163 @@ test('retains following definitions after standalone macro-generated functions',
   }
 });
 
+test('keeps conditional statement fragments and nested annotated prototypes', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = `#if A
+x + 1;
+foo(a) + bar;
+#if B
+extern ATTR(1) int nested(void);
+#endif
+#endif
+int g(void);
+`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('expression_statement').map((node) => node.text)).toEqual([
+      'x + 1;',
+      'foo(a) + bar;',
+    ]);
+    expect(
+      tree.rootNode.descendantsOfType('preproc_if').map((node) => [node.startPosition.row, node.endPosition.row])
+    ).toEqual([
+      [0, 6],
+      [3, 5],
+    ]);
+    expect(
+      tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.childForFieldName('name')?.text)
+    ).toEqual(['ATTR']);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('retains parenthesized prototype names and following definitions', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/macroAnnotationRecovery.c'), 'utf8');
+  const tree = parser.parse(source)!;
+  try {
+    const attributes = tree.rootNode
+      .descendantsOfType('attribute_specifier')
+      .filter((node) => node.childForFieldName('name'));
+    expect(attributes.map((node) => node.childForFieldName('name')?.text)).toEqual(['ATTR', 'ATTR', 'ATTR']);
+    const declarations = tree.rootNode
+      .descendantsOfType('declaration')
+      .filter((node) =>
+        node.descendantsOfType('attribute_specifier').some((attribute) => attribute.childForFieldName('name'))
+      );
+    expect(
+      declarations.map((node) => node.childForFieldName('declarator')?.descendantsOfType('identifier')[0]?.text)
+    ).toEqual(['parenthesized', 'factory', 'nested']);
+    const names = tree.rootNode
+      .descendantsOfType('function_declarator')
+      .map((node) => node.childForFieldName('declarator'))
+      .filter((node) => node?.type === 'identifier')
+      .map((node) => node?.text);
+    expect(names).toEqual(['factory', 'following']);
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      'int following(void) { return 0; }',
+    ]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each([
+  ['void g_foo(void) DEPRECATED_FOR(g_bar);', 'g_foo'],
+  ['int second(Arg) THROWS(Exception);', 'second'],
+  ['void third(int, const char *, ...) PRINTF(1, 2);', 'third'],
+  ['int fourth(void) ATTR_ZERO();', 'fourth'],
+])('retains the real prototype name in %s', async (prototype, name) => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = `typedef int Arg;\n${prototype}\n`;
+  const tree = parser.parse(source)!;
+  try {
+    const names = tree.rootNode
+      .descendantsOfType('function_declarator')
+      .map((node) => node.childForFieldName('declarator')?.text);
+    expect(names).toContain(name);
+    expect(
+      tree.rootNode
+        .descendantsOfType('attribute_specifier')
+        .filter((node) => node.childForFieldName('name')?.text === name)
+    ).toHaveLength(0);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('accepts escaped prototype names and return-type tags', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/macroAnnotationEscapedNames.c'), 'utf8');
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(
+      tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.childForFieldName('name')?.text)
+    ).toEqual(['ATTR', 'ATTR', 'ATTR']);
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      'int following(void) { return 0; }',
+    ]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('retains structured exception statements inside conditional fragments', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = '#if X\n__try { f(); __leave; } __except(1) { }\n#endif\n';
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('seh_try_statement')).toHaveLength(1);
+    expect(tree.rootNode.descendantsOfType('seh_leave_statement')).toHaveLength(1);
+    expect(tree.rootNode.namedChildren[0]?.text).toBe(source.trim());
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('ends macro include paths before following calls', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = `#include CONFIG_H
+MODULE_LICENSE("GPL");
+#include OTHER_H
+foo(1);
+int last(void) { return 0; }
+`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('preproc_include').map((node) => node.text)).toEqual([
+      '#include CONFIG_H\n',
+      '#include OTHER_H\n',
+    ]);
+    expect(tree.rootNode.descendantsOfType('expression_statement').map((node) => node.text)).toEqual([
+      'MODULE_LICENSE("GPL");',
+      'foo(1);',
+    ]);
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      'int last(void) { return 0; }',
+    ]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
 test('keeps native modifier captures and following function ranges', { timeout: 300_000 }, () => {
   const root = path.join(import.meta.dirname, '../..');
   fs.mkdirSync(path.join(root, '.tmp'), { recursive: true });
