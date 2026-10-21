@@ -574,3 +574,177 @@ int *value;
     body: (compound_statement
       (return_statement
         (identifier)))))
+
+================================
+Calling conventions before parenthesized declarators
+================================
+
+typedef int __stdcall (*Callback)(int);
+typedef int __stdcall (*CallbackArray[2])(int);
+struct Holder { int __stdcall (*callback)(int); };
+void consume(int __stdcall (*cb)(int));
+void nested(int __stdcall (*(*factory)(void))(int));
+int size(void) { return sizeof(int __stdcall (*)(int)); }
+void convert(void) { (void)(int __stdcall (*)(int))0; }
+int __stdcall (prototype)(void);
+int __stdcall (defined)(void) { return 0; }
+int __stdcall (*object)(int);
+int after(void) { return 0; }
+
+---
+
+(translation_unit
+  (type_definition
+    (primitive_type)
+    (function_declarator
+      (parenthesized_declarator
+        (ms_call_modifier)
+        (pointer_declarator
+          (type_identifier)))
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (type_definition
+    (primitive_type)
+    (function_declarator
+      (parenthesized_declarator
+        (ms_call_modifier)
+        (pointer_declarator
+          (array_declarator
+            (type_identifier)
+            (number_literal))))
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (struct_specifier
+    (type_identifier)
+    (field_declaration_list
+      (field_declaration
+        (primitive_type)
+        (function_declarator
+          (parenthesized_declarator
+            (ms_call_modifier)
+            (pointer_declarator
+              (field_identifier)))
+          (parameter_list
+            (parameter_declaration
+              (primitive_type)))))))
+  (declaration
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (function_declarator
+            (parenthesized_declarator
+              (ms_call_modifier)
+              (pointer_declarator
+                (identifier)))
+            (parameter_list
+              (parameter_declaration
+                (primitive_type))))))))
+  (declaration
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (function_declarator
+            (parenthesized_declarator
+              (ms_call_modifier)
+              (pointer_declarator
+                (function_declarator
+                  (parenthesized_declarator
+                    (pointer_declarator
+                      (identifier)))
+                  (parameter_list
+                    (parameter_declaration
+                      (primitive_type))))))
+            (parameter_list
+              (parameter_declaration
+                (primitive_type))))))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (sizeof_expression
+          (type_descriptor
+            (primitive_type)
+            (abstract_function_declarator
+              (abstract_parenthesized_declarator
+                (ms_call_modifier)
+                (abstract_pointer_declarator))
+              (parameter_list
+                (parameter_declaration
+                  (primitive_type)))))))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (expression_statement
+        (cast_expression
+          (type_descriptor
+            (primitive_type))
+          (cast_expression
+            (type_descriptor
+              (primitive_type)
+              (abstract_function_declarator
+                (abstract_parenthesized_declarator
+                  (ms_call_modifier)
+                  (abstract_pointer_declarator))
+                (parameter_list
+                  (parameter_declaration
+                    (primitive_type)))))
+            (number_literal))))))
+  (declaration
+    (primitive_type)
+    (function_declarator
+      (parenthesized_declarator
+        (ms_call_modifier)
+        (identifier))
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (parenthesized_declarator
+        (ms_call_modifier)
+        (identifier))
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (number_literal))))
+  (declaration
+    (primitive_type)
+    (function_declarator
+      (parenthesized_declarator
+        (ms_call_modifier)
+        (pointer_declarator
+          (identifier)))
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (number_literal)))))
