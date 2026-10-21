@@ -358,24 +358,40 @@
       "type": "PREC_DYNAMIC",
       "value": -1,
       "content": {
-        "type": "PREC_RIGHT",
-        "value": 0,
-        "content": {
-          "type": "SEQ",
-          "members": [
-            {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "identifier"
+          },
+          {
+            "type": "REPEAT1",
+            "content": {
               "type": "SYMBOL",
-              "name": "identifier"
-            },
-            {
-              "type": "REPEAT1",
-              "content": {
-                "type": "SYMBOL",
-                "name": "_preproc_include_token"
-              }
+              "name": "_preproc_include_segment"
             }
-          ]
-        }
+          }
+        ]
+      }
+    },
+    "_preproc_include_segment": {
+      "type": "PREC_DYNAMIC",
+      "value": -1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "comment"
+            }
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_preproc_include_token"
+          }
+        ]
       }
     },
     "_preproc_include_token": {
@@ -400,10 +416,6 @@
         {
           "type": "SYMBOL",
           "name": "system_lib_string"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "comment"
         },
         {
           "type": "SYMBOL",
@@ -13525,6 +13537,9 @@
     }
   ],
   "conflicts": [
+    [
+      "preproc_include_argument"
+    ],
     [
       "_preproc_include_token",
       "preproc_argument_list"
