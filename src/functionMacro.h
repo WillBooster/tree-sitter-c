@@ -43,7 +43,7 @@ static bool function_macro_trailing_argument_prefix(TSLexer *lexer);
 static bool function_macro_object_prefix(TSLexer *lexer);
 static bool function_macro_object_word(TSLexer *lexer, MacroName *name, bool escaped);
 static bool function_macro_scalar_type_keyword(const char *word);
-static bool function_macro_object_type_keyword(const char *word);
+static bool function_macro_object_prefix_keyword(const char *word);
 static bool function_macro_attribute_keyword(const char *word, bool trailing);
 static bool function_macro_keyword(const char *word);
 static bool function_macro_word_in(const char *word, const char *const *words, unsigned count);
@@ -93,7 +93,7 @@ static bool function_macro_object_prefix(TSLexer *lexer) {
     char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
     MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true};
     if (!function_macro_object_word(lexer, &name, escaped) ||
-        (name.ascii && (function_macro_object_type_keyword(word) || strcmp(word, pragma_word) == 0))) return false;
+        (name.ascii && (function_macro_object_prefix_keyword(word) || strcmp(word, pragma_word) == 0))) return false;
     escaped = false;
     if (!function_macro_tail_spacing(lexer, &escaped)) return false;
     name = (MacroName){.word = word, .capacity = sizeof(word) - 1, .ascii = true};
@@ -122,9 +122,9 @@ static bool function_macro_scalar_type_keyword(const char *word) {
         sizeof(function_macro_scalar_type_keywords) / sizeof(function_macro_scalar_type_keywords[0]));
 }
 
-static bool function_macro_object_type_keyword(const char *word) {
-    return function_macro_word_in(word, function_macro_object_type_keywords,
-        sizeof(function_macro_object_type_keywords) / sizeof(function_macro_object_type_keywords[0]));
+static bool function_macro_object_prefix_keyword(const char *word) {
+    return function_macro_word_in(word, function_macro_object_prefix_keywords,
+        sizeof(function_macro_object_prefix_keywords) / sizeof(function_macro_object_prefix_keywords[0]));
 }
 
 static bool function_macro_attribute_keyword(const char *word, bool trailing) {

@@ -42,8 +42,10 @@ const typeKeywords = new Set();
 const scalarTypeKeywords = new Set();
 for (const rule of ['primitive_type', 'sized_type_specifier']) collectKeywords(grammar.rules[rule], scalarTypeKeywords);
 /** @type {Set<string>} */
-const objectTypeKeywords = new Set(grammarKeywords.primitiveTypeKeywords);
-collectKeywords(grammar.rules.sized_type_specifier, objectTypeKeywords);
+const objectPrefixKeywords = new Set(grammarKeywords.primitiveTypeKeywords);
+for (const rule of ['sized_type_specifier', 'storage_class_specifier'])
+  collectKeywords(grammar.rules[rule], objectPrefixKeywords);
+for (const keyword of declarationModifiers) objectPrefixKeywords.add(keyword);
 collectTypeKeywords(grammar.rules._non_identifier_type_specifier, typeKeywords);
 const sortedKeywords = [...keywords].toSorted();
 const keywordTable = `#define FUNCTION_MACRO_KEYWORD_MAX_LENGTH ${Math.max(...sortedKeywords.map((word) => word.length))}
@@ -68,8 +70,8 @@ ${[...scalarTypeKeywords]
   .map((word) => `  ${JSON.stringify(word)},`)
   .join('\n')}
 };
-static const char *const function_macro_object_type_keywords[] = {
-${[...objectTypeKeywords]
+static const char *const function_macro_object_prefix_keywords[] = {
+${[...objectPrefixKeywords]
   .toSorted()
   .map((word) => `  ${JSON.stringify(word)},`)
   .join('\n')}

@@ -280,6 +280,10 @@ test('preserves post-type prototypes and pragma extras outside the object annota
   const parser = new Parser().setLanguage(await Language.load(wasmPath));
   const source = `#define ATTR(...)
 long int ATTR(1) f(void);
+int const ATTR(1) qualified(void);
+int volatile ATTR(1) volatile_value(void);
+int _Atomic ATTR(1) atomic_value(void);
+int extern ATTR(1) external_value(void);
 int value _Pragma("pack(1)");
 int second _Pragma("a") _Pragma("b");
 int after(void) { return 0; }
@@ -289,7 +293,7 @@ int after(void) { return 0; }
     expect(tree.rootNode.hasError).toBe(false);
     expect(
       tree.rootNode.descendantsOfType('function_declarator').map((node) => node.childForFieldName('declarator')?.text)
-    ).toEqual(['f', 'after']);
+    ).toEqual(['f', 'qualified', 'volatile_value', 'atomic_value', 'external_value', 'after']);
     expect(tree.rootNode.descendantsOfType('pragma_operator').map((node) => node.text)).toEqual([
       '_Pragma("pack(1)")',
       '_Pragma("a")',
@@ -297,10 +301,18 @@ int after(void) { return 0; }
     ]);
     expect(
       tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.childForFieldName('name')?.text)
-    ).toEqual(['ATTR']);
+    ).toEqual(['ATTR', 'ATTR', 'ATTR', 'ATTR', 'ATTR']);
     expect(
       tree.rootNode.descendantsOfType('declaration').map((node) => node.childForFieldName('declarator')?.text)
-    ).toEqual(['f(void)', 'value', 'second']);
+    ).toEqual([
+      'f(void)',
+      'qualified(void)',
+      'volatile_value(void)',
+      'atomic_value(void)',
+      'external_value(void)',
+      'value',
+      'second',
+    ]);
   } finally {
     tree.delete();
     parser.delete();
