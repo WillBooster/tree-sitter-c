@@ -5312,6 +5312,14 @@
                     "name": "attribute_specifier"
                   },
                   {
+                    "type": "PREC",
+                    "value": -1,
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "ms_call_modifier"
+                    }
+                  },
+                  {
                     "type": "SYMBOL",
                     "name": "macro_specifier"
                   },
@@ -6567,6 +6575,14 @@
                 {
                   "type": "SYMBOL",
                   "name": "attribute_specifier"
+                },
+                {
+                  "type": "PREC",
+                  "value": -1,
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "ms_call_modifier"
+                  }
                 },
                 {
                   "type": "SYMBOL",
@@ -8278,6 +8294,14 @@
                   "name": "attribute_specifier"
                 },
                 {
+                  "type": "PREC",
+                  "value": -1,
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "ms_call_modifier"
+                  }
+                },
+                {
                   "type": "SYMBOL",
                   "name": "macro_specifier"
                 },
@@ -8366,6 +8390,14 @@
                   {
                     "type": "SYMBOL",
                     "name": "attribute_specifier"
+                  },
+                  {
+                    "type": "PREC",
+                    "value": -1,
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "ms_call_modifier"
+                    }
                   },
                   {
                     "type": "SYMBOL",
@@ -8459,6 +8491,14 @@
                     "name": "attribute_specifier"
                   },
                   {
+                    "type": "PREC",
+                    "value": -1,
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "ms_call_modifier"
+                    }
+                  },
+                  {
                     "type": "SYMBOL",
                     "name": "macro_specifier"
                   },
@@ -8536,6 +8576,14 @@
                   {
                     "type": "SYMBOL",
                     "name": "attribute_specifier"
+                  },
+                  {
+                    "type": "PREC",
+                    "value": -1,
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "ms_call_modifier"
+                    }
                   }
                 ]
               }
