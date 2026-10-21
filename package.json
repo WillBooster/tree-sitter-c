@@ -23,6 +23,8 @@
     "*.wasm",
     "src/pragma.h",
     "src/identifier.h",
+    "src/keywords.h",
+    "src/functionMacro.h",
     "src/scanner.c"
   ],
   "scripts": {

@@ -546,6 +546,10 @@
         {
           "type": "system_lib_string",
           "named": true
+        },
+        {
+          "type": "type_descriptor",
+          "named": true
         }
       ]
     }
@@ -764,10 +768,31 @@
   {
     "type": "attribute_specifier",
     "named": true,
-    "fields": {},
+    "fields": {
+      "arguments": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "argument_list",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
     "children": {
       "multiple": false,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "argument_list",

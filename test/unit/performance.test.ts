@@ -22,12 +22,49 @@ test('uses a Wasm build built from the current parser', () => {
     'src/tree_sitter/parser.h',
     'src/pragma.h',
     'src/identifier.h',
+    'src/keywords.h',
+    'src/functionMacro.h',
   ].map((name) => fs.statSync(path.join(Root, name)).mtimeMs);
   expect(
     Math.max(generationInputMtime(Root), ...sources) > fs.statSync(WasmPath).mtimeMs,
     'generation inputs or src/ changed after the Wasm build was built; run `bun run build/ci`'
   ).toBe(false);
 });
+
+test('keeps nested ordinary calls approximately linear', { timeout: 60_000 }, () => {
+  const small = nestedCallSource(200);
+  const large = nestedCallSource(2000);
+  parseAverageCpuTime(large);
+  let smallFastest = Infinity;
+  let largeFastest = Infinity;
+  for (let run = 0; run < 5; run++) {
+    smallFastest = Math.min(smallFastest, parseAverageCpuTime(small));
+    largeFastest = Math.min(largeFastest, parseAverageCpuTime(large));
+  }
+  expect(largeFastest / smallFastest).toBeLessThan(18);
+});
+
+test.each(['leading', 'trailing'])(
+  'keeps flat %s annotation chains approximately linear',
+  { timeout: 60_000 },
+  (placement) => {
+    const source = (count: number): string => {
+      const attributes = Array.from({ length: count }, (_, index) => `A${index}(1)`).join(' ');
+      return placement === 'leading' ? `extern ${attributes} int f(void);` : `int f(void) ${attributes};`;
+    };
+    const small = source(100);
+    const large = source(1000);
+    const expectedError = placement === 'trailing';
+    parseAverageCpuTime(large, expectedError);
+    let smallFastest = Infinity;
+    let largeFastest = Infinity;
+    for (let run = 0; run < 5; run++) {
+      smallFastest = Math.min(smallFastest, parseAverageCpuTime(small, expectedError));
+      largeFastest = Math.min(largeFastest, parseAverageCpuTime(large, expectedError));
+    }
+    expect(largeFastest / smallFastest).toBeLessThan(18);
+  }
+);
 
 // Use thread CPU time: wall time includes competing tests, while process CPU time includes the engine's background
 // Wasm compilation and garbage collection. A tenfold input takes about 10x locally; 18 leaves a margin while excluding
@@ -96,7 +133,7 @@ function parseCpuTime(source: string, expectedError = true): number {
 }
 
 // Linux CPU accounting can report zero for a short parse. Accumulate enough CPU time before normalizing per parse.
-function parseAverageCpuTime(source: string): number {
+function parseAverageCpuTime(source: string, expectedError = false): number {
   const start = process.threadCpuUsage();
   let parses = 0;
   let elapsed = 0;
@@ -105,10 +142,14 @@ function parseAverageCpuTime(source: string): number {
     if (!tree) throw new Error('The parser returned no tree');
     const { hasError } = tree.rootNode;
     tree.delete();
-    expect(hasError).toBe(false);
+    expect(hasError).toBe(expectedError);
     parses++;
     const { system, user } = process.threadCpuUsage(start);
     elapsed = system + user;
   } while (elapsed < 20_000);
   return elapsed / parses;
+}
+
+function nestedCallSource(depth: number): string {
+  return `int call(int); void run(void) { ${'call('.repeat(depth)}0${')'.repeat(depth)}; }`;
 }

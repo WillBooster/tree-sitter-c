@@ -1,6 +1,8 @@
-#include "pragma.h"
+#include "functionMacro.h"
 
-enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME };
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_LIKE_IDENTIFIER, FUNCTION_ATTRIBUTE_CONTEXT };
+
+static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols);
 
 void *tree_sitter_c_external_scanner_create(void) {
     return NULL;
@@ -28,6 +30,14 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
         lexer->result_symbol = PREPROC_FUNCTION_NAME;
         return scan_function_macro_name(lexer, valid_symbols[PRAGMA_OPERATOR], PRAGMA_OPERATOR);
     }
+    if (valid_symbols[FUNCTION_LIKE_IDENTIFIER] && !valid_symbols[PREPROC_LPAREN]) {
+        lexer->result_symbol = FUNCTION_LIKE_IDENTIFIER;
+        return scan_function_attribute_name(lexer, valid_symbols[PRAGMA_OPERATOR], PRAGMA_OPERATOR, valid_symbols[FUNCTION_ATTRIBUTE_CONTEXT]);
+    }
+    return scan_preproc_tokens(lexer, valid_symbols);
+}
+
+static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols) {
     bool directive_text = !valid_symbols[PREPROC_ARG] && valid_symbols[PREPROC_DIRECTIVE_ARG];
     TSSymbol argument_symbol = directive_text ? PREPROC_DIRECTIVE_ARG : PREPROC_ARG;
     if (valid_symbols[PREPROC_LPAREN]) {

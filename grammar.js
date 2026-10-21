@@ -68,6 +68,13 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._macro_declaration_specifiers],
+      [$._macro_declaration_specifiers, $.type_definition, $.type_specifier],
+      [$._macro_declaration_specifiers, $.type_specifier, $.expression],
+      [$._macro_declaration_specifiers, $.type_specifier],
+      [$._macro_declaration_specifiers, $.type_definition, $._declaration_modifiers],
+      [$._macro_declaration_specifiers, $._declaration_modifiers, $._empty_declaration],
+      [$._macro_declaration_specifiers, $._declaration_modifiers],
       [$._preproc_include_token, $.preproc_argument_list],
       [$._preproc_include_path, $.preproc_include_argument],
       [$.compound_statement, $.initializer_list],
@@ -147,11 +154,15 @@ module.exports = Object.assign(
       sym('_preproc_lparen'),
       sym('_preproc_directive_arg'),
       sym('_preproc_function_name'),
+      sym('_function_like_identifier'),
+      // Restrict argument lookahead to annotation-name states; ordinary nested calls must stay linear.
+      sym('_function_attribute_context'),
     ],
 
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
 
     inline: ($) => [
+      $._identifier,
       $._non_identifier_type_specifier,
       $._unattributed_declarator,
       $._unattributed_field_declarator,
@@ -193,12 +204,13 @@ module.exports = Object.assign(
           alias($._old_style_function_definition, $.function_definition),
           $.linkage_specification,
           $.declaration,
+          alias(sym('_macro_modified_declaration'), $.declaration),
           $._top_level_statement,
           $.attributed_statement,
           $.type_definition,
           $._empty_declaration,
-          sym('preproc_if'),
-          sym('preproc_ifdef'),
+          alias(sym('preproc_if_in_header'), sym('preproc_if')),
+          alias(sym('preproc_ifdef_in_header'), sym('preproc_ifdef')),
           $.preproc_include,
           $.preproc_def,
           $.preproc_function_def,
@@ -252,16 +264,16 @@ module.exports = Object.assign(
         choice(
           $.string_literal,
           $.system_lib_string,
-          $.identifier,
+          $._identifier,
           alias($.preproc_call_expression, $.call_expression)
         ),
 
       preproc_include_argument: ($) =>
-        prec.dynamic(-1, prec.right(seq($.identifier, repeat1($._preproc_include_token)))),
+        prec.dynamic(-1, prec.right(seq($._identifier, repeat1($._preproc_include_token)))),
 
       _preproc_include_token: ($) =>
         choice(
-          $.identifier,
+          $._identifier,
           $.number_literal,
           $.char_literal,
           $.string_literal,
@@ -281,7 +293,7 @@ module.exports = Object.assign(
       preproc_def: ($) =>
         seq(
           preprocessor('define'),
-          field('name', $.identifier),
+          field('name', $._identifier),
           repeat(choice($.comment, $.pragma_operator)),
           optional(seq(field('value', $.preproc_arg), repeat(choice($.comment, $.pragma_operator)))),
           sym('_preproc_newline')
@@ -297,7 +309,7 @@ module.exports = Object.assign(
           sym('_preproc_newline')
         ),
 
-      preproc_params: ($) => seq(alias($._preproc_lparen, '('), commaSep(choice($.identifier, '...')), ')'),
+      preproc_params: ($) => seq(alias($._preproc_lparen, '('), commaSep(choice($._identifier, '...')), ')'),
 
       preproc_call: ($) =>
         seq(
@@ -311,6 +323,8 @@ module.exports = Object.assign(
           ),
           sym('_preproc_newline')
         ),
+
+      ...preprocIf('_in_header', () => sym('_top_level_item')),
 
       ...preprocIf('', () => sym('_block_item')),
       ...preprocIf('_in_single_case', () => sym('_single_case_body'), 0, true),
@@ -340,7 +354,7 @@ module.exports = Object.assign(
 
       _preproc_expression: ($) =>
         choice(
-          $.identifier,
+          $._identifier,
           alias($.preproc_call_expression, $.call_expression),
           $.number_literal,
           $.char_literal,
@@ -353,7 +367,7 @@ module.exports = Object.assign(
       preproc_parenthesized_expression: ($) => seq('(', $._preproc_expression, ')'),
 
       preproc_defined: ($) =>
-        choice(prec(PREC.CALL, seq('defined', '(', $.identifier, ')')), seq('defined', $.identifier)),
+        choice(prec(PREC.CALL, seq('defined', '(', $._identifier, ')')), seq('defined', $._identifier)),
 
       preproc_unary_expression: ($) =>
         prec.left(
@@ -364,7 +378,7 @@ module.exports = Object.assign(
       preproc_call_expression: ($) =>
         prec(
           PREC.CALL,
-          seq(field('function', $.identifier), field('arguments', alias($.preproc_argument_list, $.argument_list)))
+          seq(field('function', $._identifier), field('arguments', alias($.preproc_argument_list, $.argument_list)))
         ),
 
       preproc_argument_list: ($) =>
@@ -425,30 +439,30 @@ module.exports = Object.assign(
           )
         ),
 
-      declaration: ($) =>
-        seq(
-          choice(
-            $._declaration_specifiers,
-            prec.dynamic(
-              PREC.PAREN_DECLARATOR - 1,
-              seq(
-                repeat($._declaration_modifiers),
-                alias('auto', $.storage_class_specifier),
-                repeat($._declaration_modifiers)
-              )
-            )
+      declaration: ($) => declarationRule($, $._declaration_specifiers, true),
+
+      _macro_modified_declaration: ($) => declarationRule($, $._macro_declaration_specifiers, false),
+
+      _macro_declaration_specifiers: ($) => {
+        const modifier = choice($._declaration_modifiers, alias($._macro_attribute_suffix, $.attribute_specifier));
+        return choice(
+          seq(
+            choice($.storage_class_specifier, $.type_qualifier, $.ms_declspec_modifier),
+            repeat($._declaration_modifiers),
+            alias($._macro_attribute_specifier, $.attribute_specifier),
+            repeat(modifier),
+            field('type', $._non_identifier_type_specifier),
+            repeat(modifier)
           ),
-          commaSep1(
-            field(
-              'declarator',
-              choice(
-                seq(optional($.ms_call_modifier), $._declaration_declarator, optional($.gnu_asm_expression)),
-                $.init_declarator
-              )
-            )
-          ),
-          ';'
-        ),
+          seq(
+            repeat($._declaration_modifiers),
+            field('type', choice($._non_identifier_type_specifier, $._type_identifier)),
+            repeat($._declaration_modifiers),
+            alias($._macro_attribute_specifier, $.attribute_specifier),
+            repeat(modifier)
+          )
+        );
+      },
 
       type_definition: ($) =>
         seq(
@@ -492,12 +506,46 @@ module.exports = Object.assign(
 
       attribute_specifier: ($) => seq(choice('__attribute__', '__attribute'), '(', $.argument_list, ')'),
 
+      _macro_attribute_specifier: ($) =>
+        prec.dynamic(
+          -2,
+          seq(
+            field(
+              'name',
+              alias(choice(sym('_function_like_identifier'), sym('_function_attribute_context')), $.identifier)
+            ),
+            field('arguments', alias($._macro_attribute_argument_list, $.argument_list))
+          )
+        ),
+
+      _macro_attribute_suffix: ($) =>
+        prec.dynamic(
+          -2,
+          seq(
+            field('name', alias(sym('_function_like_identifier'), $.identifier)),
+            field('arguments', alias($._macro_attribute_argument_list, $.argument_list))
+          )
+        ),
+
+      _macro_attribute_argument_list: ($) => {
+        const argument = choice(
+          $.expression,
+          prec.dynamic(-1, $.type_descriptor),
+          alias($._preproc_number, $.number_literal)
+        );
+        return seq('(', optional(argument), repeat(seq(',', optional(argument))), ')');
+      },
+
       attribute: ($) =>
-        seq(optional(seq(field('prefix', $.identifier), '::')), field('name', $.identifier), optional($.argument_list)),
+        seq(
+          optional(seq(field('prefix', $._identifier), '::')),
+          field('name', $._identifier),
+          optional($.argument_list)
+        ),
 
       attribute_declaration: ($) => seq('[', '[', commaSep1($.attribute), ']', ']'),
 
-      ms_declspec_modifier: ($) => seq('__declspec', '(', repeat(seq($.identifier, optional($.argument_list))), ')'),
+      ms_declspec_modifier: ($) => seq('__declspec', '(', repeat(seq($._identifier, optional($.argument_list))), ')'),
 
       ms_based_modifier: ($) => seq('__based', $.argument_list),
 
@@ -532,7 +580,7 @@ module.exports = Object.assign(
           $.function_declarator,
           $.array_declarator,
           $.parenthesized_declarator,
-          $.identifier,
+          $._identifier,
           alias(VA_ARG_KEYWORDS, $.identifier)
         ),
 
@@ -543,7 +591,7 @@ module.exports = Object.assign(
           alias($._function_declaration_declarator, $.function_declarator),
           $.array_declarator,
           $.parenthesized_declarator,
-          $.identifier,
+          $._identifier,
           alias(VA_ARG_KEYWORDS, $.identifier)
         ),
 
@@ -661,7 +709,7 @@ module.exports = Object.assign(
             field('declarator', $._declarator),
             field('parameters', $.parameter_list),
             optional($.gnu_asm_expression),
-            repeat(choice($.attribute_specifier, $.identifier, alias($.preproc_call_expression, $.call_expression)))
+            repeat(choice($.attribute_specifier, $._identifier, alias($.preproc_call_expression, $.call_expression)))
           )
         ),
 
@@ -935,14 +983,14 @@ module.exports = Object.assign(
 
       bitfield_clause: ($) => seq(':', $.expression),
 
-      enumerator: ($) => seq(field('name', $.identifier), optional(seq('=', field('value', $.expression)))),
+      enumerator: ($) => seq(field('name', $._identifier), optional(seq('=', field('value', $.expression)))),
 
       variadic_parameter: () => '...',
 
       parameter_list: ($) =>
         seq('(', choice(commaSep(choice($.parameter_declaration, $.variadic_parameter)), $.compound_statement), ')'),
       _old_style_parameter_list: ($) =>
-        seq('(', commaSep1(choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier), $.variadic_parameter)), ')'),
+        seq('(', commaSep1(choice($._identifier, alias(VA_ARG_KEYWORDS, $.identifier), $.variadic_parameter)), ')'),
 
       parameter_declaration: ($) =>
         seq(
@@ -1185,7 +1233,7 @@ module.exports = Object.assign(
           $.call_expression,
           $.field_expression,
           $.compound_literal_expression,
-          $.identifier,
+          $._identifier,
           alias('thread_local', $.identifier),
           alias(VA_ARG_KEYWORDS, $.identifier),
           $.number_literal,
@@ -1220,7 +1268,7 @@ module.exports = Object.assign(
       _assignment_left_expression: ($) =>
         choice(
           alias(VA_ARG_KEYWORDS, $.identifier),
-          $.identifier,
+          $._identifier,
           $.call_expression,
           $.field_expression,
           $.pointer_expression,
@@ -1333,7 +1381,7 @@ module.exports = Object.assign(
       builtin_available_expression: ($) =>
         seq('__builtin_available', '(', commaSep1(choice($.platform_version, '*')), ')'),
 
-      platform_version: ($) => seq(field('platform', $.identifier), field('version', $.version_number)),
+      platform_version: ($) => seq(field('platform', $._identifier), field('version', $.version_number)),
 
       version_number: () => /\d+(\.\d+){0,2}/,
 
@@ -1371,7 +1419,7 @@ module.exports = Object.assign(
 
       gnu_asm_output_operand: ($) =>
         seq(
-          optional(seq('[', field('symbol', $.identifier), ']')),
+          optional(seq('[', field('symbol', $._identifier), ']')),
           field('constraint', $.string_literal),
           '(',
           field('value', $.expression),
@@ -1382,7 +1430,7 @@ module.exports = Object.assign(
 
       gnu_asm_input_operand: ($) =>
         seq(
-          optional(seq('[', field('symbol', $.identifier), ']')),
+          optional(seq('[', field('symbol', $._identifier), ']')),
           field('constraint', $.string_literal),
           '(',
           field('value', $.expression),
@@ -1391,7 +1439,7 @@ module.exports = Object.assign(
 
       gnu_asm_clobber_list: ($) => seq(':', commaSep(field('register', $._string))),
 
-      gnu_asm_goto_list: ($) => seq(':', commaSep(field('label', $.identifier))),
+      gnu_asm_goto_list: ($) => seq(':', commaSep(field('label', $._identifier))),
 
       extension_expression: ($) => seq('__extension__', $.expression),
 
@@ -1527,11 +1575,11 @@ module.exports = Object.assign(
         prec.right(
           seq(
             choice(
-              seq($.identifier, $.string_literal),
+              seq($._identifier, $.string_literal),
               seq($.string_literal, $.string_literal),
-              seq($.string_literal, $.identifier)
+              seq($.string_literal, $._identifier)
             ),
-            repeat(choice($.string_literal, $.identifier))
+            repeat(choice($.string_literal, $._identifier))
           )
         ),
 
@@ -1581,11 +1629,13 @@ module.exports = Object.assign(
       false: () => 'false',
       null: () => choice('NULL', 'nullptr'),
 
+      _identifier: ($) => choice($.identifier, alias(sym('_function_like_identifier'), $.identifier)),
+
       identifier: () =>
         /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/u,
-      _type_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('type_identifier')),
-      _field_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('field_identifier')),
-      _statement_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('statement_identifier')),
+      _type_identifier: ($) => alias(choice($._identifier, VA_ARG_KEYWORDS), sym('type_identifier')),
+      _field_identifier: ($) => alias(choice($._identifier, VA_ARG_KEYWORDS), sym('field_identifier')),
+      _statement_identifier: ($) => alias(choice($._identifier, VA_ARG_KEYWORDS), sym('statement_identifier')),
 
       _empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
 
@@ -1593,18 +1643,54 @@ module.exports = Object.assign(
         prec.dynamic(
           -1,
           seq(
-            field('name', choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier))),
+            field('name', choice($._identifier, alias(VA_ARG_KEYWORDS, $.identifier))),
             '(',
             field('type', $.type_descriptor),
             ')'
           )
         ),
 
+      _preproc_number: () =>
+        /(\d|\.\d)([\p{XID_Continue}.]|[eEpP][+-]|'[_a-zA-Z0-9]|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8})*/u,
+
       comment: () => token(choice(LINE_COMMENT, seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
     },
   }),
   { PREC, preprocIf, preprocessor, commaSep, commaSep1 }
 );
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'storage_class_specifier' | 'ms_call_modifier' | '_declaration_declarator' | 'gnu_asm_expression' | 'init_declarator' | '_declaration_modifiers'>} $
+ * @param {import('./types/treeSitterDsl').Rule} specifiers
+ * @param {boolean} allowAuto
+ */
+function declarationRule($, specifiers, allowAuto) {
+  return seq(
+    allowAuto
+      ? choice(
+          specifiers,
+          prec.dynamic(
+            PREC.PAREN_DECLARATOR - 1,
+            seq(
+              repeat($._declaration_modifiers),
+              alias('auto', $.storage_class_specifier),
+              repeat($._declaration_modifiers)
+            )
+          )
+        )
+      : specifiers,
+    commaSep1(
+      field(
+        'declarator',
+        choice(
+          seq(optional($.ms_call_modifier), $._declaration_declarator, optional($.gnu_asm_expression)),
+          $.init_declarator
+        )
+      )
+    ),
+    ';'
+  );
+}
 
 /**
  * @param {import('./types/treeSitterDsl').RuleOrLiteral} type
