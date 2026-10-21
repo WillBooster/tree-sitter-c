@@ -57,7 +57,7 @@ while IFS= read -r grammar; do
   script/tree-sitter generate "$grammar/grammar.js" --profile "$profile"
   bun script/generateIdentifierRanges.js
   if [[ ${1:-} == --build-wasm ]]; then
-    script/tree-sitter build --wasm --optimization z "$grammar"
+    script/tree-sitter build --wasm --optimization 2 "$grammar"
   fi
   backup=
   rm -rf "$workspace/src"
