@@ -1,0 +1,282 @@
+================================================================================
+Conditional object marker before a typed function
+================================================================================
+
+#define HEADER_MARKER
+#if ENABLE
+#ifdef ANNOTATE
+HEADER_MARKER
+#endif
+void timer(int code) {
+  (void)code;
+}
+#endif
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    name: (identifier))
+  (preproc_if
+    condition: (identifier)
+    (function_definition
+      (preproc_ifdef
+        name: (identifier)
+        (macro_specifier
+          name: (identifier)))
+      type: (primitive_type)
+      declarator: (function_declarator
+        declarator: (identifier)
+        parameters: (parameter_list
+          (parameter_declaration
+            type: (primitive_type)
+            declarator: (identifier))))
+      body: (compound_statement
+        (expression_statement
+          (cast_expression
+            type: (type_descriptor
+              type: (primitive_type))
+            value: (identifier))))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (number_literal)))))
+
+================================================================================
+Conditional object marker inside an old-style return pointer
+================================================================================
+
+#define HEADER_MARKER
+char *
+#ifdef OPTION
+HEADER_MARKER
+#endif
+lookup(value)
+const char *value;
+{
+  (void)value;
+  return 0;
+}
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    name: (identifier))
+  (function_definition
+    type: (primitive_type)
+    declarator: (pointer_declarator
+      (preproc_ifdef
+        name: (identifier)
+        (macro_specifier
+          name: (identifier)))
+      declarator: (function_declarator
+        declarator: (identifier)
+        parameters: (parameter_list
+          (identifier))))
+    (declaration
+      (type_qualifier)
+      type: (primitive_type)
+      declarator: (pointer_declarator
+        declarator: (identifier)))
+    body: (compound_statement
+      (expression_statement
+        (cast_expression
+          type: (type_descriptor
+            type: (primitive_type))
+          value: (identifier)))
+      (return_statement
+        (number_literal))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (number_literal)))))
+
+================================================================================
+Conditional object marker after an old-style return type
+================================================================================
+
+#define HEADER_MARKER
+#if ENABLE
+int
+#ifdef OPTION
+HEADER_MARKER
+#endif
+lookup(value)
+const char *value;
+{
+  (void)value;
+  return 0;
+}
+#endif
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    (identifier))
+  (preproc_if
+    (identifier)
+    (function_definition
+      (primitive_type)
+      (preproc_ifdef
+        (identifier)
+        (macro_specifier
+          (identifier)))
+      (function_declarator
+        (identifier)
+        (parameter_list
+          (identifier)))
+      (declaration
+        (type_qualifier)
+        (primitive_type)
+        (pointer_declarator
+          (identifier)))
+      (compound_statement
+        (expression_statement
+          (cast_expression
+            (type_descriptor
+              (primitive_type))
+            (identifier)))
+        (return_statement
+          (number_literal)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (number_literal)))))
+
+================================================================================
+Conditional object marker before a tag-only definition
+================================================================================
+
+#define PACKED
+#ifdef ANNOTATE
+PACKED
+#endif
+struct Record { int value; };
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def name: (identifier))
+  (preproc_ifdef
+    name: (identifier)
+    (macro_specifier name: (identifier)))
+  (struct_specifier
+    name: (type_identifier)
+    body: (field_declaration_list
+      (field_declaration
+        type: (primitive_type)
+        declarator: (field_identifier))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration type: (primitive_type))))
+    body: (compound_statement
+      (return_statement (number_literal)))))
+
+================================================================================
+Conditional object marker between typedef and its type
+================================================================================
+
+#define MARK
+#define A
+typedef
+#ifdef A
+MARK
+#endif
+int T;
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit (preproc_def name: (identifier)) (preproc_def name: (identifier)) (type_definition (preproc_ifdef name: (identifier) (macro_specifier name: (identifier))) type: (primitive_type) declarator: (type_identifier)) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (number_literal)))))
+
+================================================================================
+Conditional object marker before a prototype
+================================================================================
+
+#define M
+extern int
+#ifdef X
+M
+#endif
+f(void);
+int g(void);
+int h(int a);
+void i(void) { }
+
+--------------------------------------------------------------------------------
+
+(translation_unit (preproc_def name: (identifier)) (declaration (storage_class_specifier) type: (primitive_type) (preproc_ifdef name: (identifier) (macro_specifier name: (identifier))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type) declarator: (identifier))))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement)))
+
+================================================================================
+Conditional object marker after an alias return type
+================================================================================
+
+#define ATTR
+typedef int foo_t;
+static foo_t
+#ifdef X
+ATTR
+#endif
+f(void) { return 0; }
+int after(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_def
+    name: (identifier))
+  (type_definition
+    type: (primitive_type)
+    declarator: (type_identifier))
+  (function_definition
+    (storage_class_specifier)
+    type: (type_identifier)
+    (preproc_ifdef
+      name: (identifier)
+      (macro_specifier
+        name: (identifier)))
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (number_literal))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (number_literal)))))

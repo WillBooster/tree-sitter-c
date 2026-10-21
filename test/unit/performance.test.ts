@@ -24,6 +24,7 @@ test('uses a Wasm build built from the current parser', () => {
     'src/identifier.h',
     'src/keywords.h',
     'src/functionMacro.h',
+    'src/conditionalMacro.h',
   ].map((name) => fs.statSync(path.join(Root, name)).mtimeMs);
   expect(
     Math.max(generationInputMtime(Root), ...sources) > fs.statSync(WasmPath).mtimeMs,

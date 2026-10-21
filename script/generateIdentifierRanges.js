@@ -43,7 +43,7 @@ const scalarTypeKeywords = new Set();
 collectKeywords(grammar.rules.primitive_type, scalarTypeKeywords);
 /** @type {Set<string>} */
 const objectPrefixKeywords = new Set(grammarKeywords.primitiveTypeKeywords);
-for (const rule of ['sized_type_specifier', 'storage_class_specifier'])
+for (const rule of ['sized_type_specifier', 'storage_class_specifier', 'type_definition'])
   collectKeywords(grammar.rules[rule], objectPrefixKeywords);
 for (const keyword of declarationModifiers) objectPrefixKeywords.add(keyword);
 collectTypeKeywords(grammar.rules._non_identifier_type_specifier, typeKeywords);

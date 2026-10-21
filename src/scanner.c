@@ -1,6 +1,6 @@
-#include "functionMacro.h"
+#include "conditionalMacro.h"
 
-enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START };
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF };
 
 static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols);
 
@@ -33,6 +33,16 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     if (valid_symbols[PREPROC_LPAREN] || valid_symbols[PREPROC_NEWLINE] ||
         valid_symbols[PREPROC_ARG] || valid_symbols[PREPROC_DIRECTIVE_ARG]) {
         return scan_preproc_tokens(lexer, valid_symbols);
+    }
+    bool leading = valid_symbols[LEADING_CONDITIONAL_MARKER_IFDEF] || valid_symbols[LEADING_CONDITIONAL_MARKER_IFNDEF];
+    bool conditional = leading || valid_symbols[CONDITIONAL_MARKER_IFDEF] || valid_symbols[CONDITIONAL_MARKER_IFNDEF];
+    if (conditional) {
+        while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
+        const ConditionalMacroSymbols symbols = {
+            .ifdef = CONDITIONAL_MARKER_IFDEF, .ifndef = CONDITIONAL_MARKER_IFNDEF,
+            .leading_ifdef = LEADING_CONDITIONAL_MARKER_IFDEF, .leading_ifndef = LEADING_CONDITIONAL_MARKER_IFNDEF,
+        };
+        if (lexer->lookahead == '#') return scan_conditional_macro(lexer, &symbols, valid_symbols);
     }
     static const TSSymbol attribute_tokens[] = {
         FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX,

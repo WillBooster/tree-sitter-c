@@ -58,10 +58,16 @@ parser.setLanguage(await Language.load(c));
 
 The package also ships `grammar.js`, scanner sources under `src/`, the queries in `queries/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
-The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, and `functionMacro.h`.
+The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, `functionMacro.h`, and
+`conditionalMacro.h`.
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
 Keep preprocessor argument/newline handling ahead of annotation lookahead.
+Port `_conditional_marker_ifdef`, `_conditional_marker_ifndef`, `_leading_conditional_marker_ifdef`, and
+`_leading_conditional_marker_ifndef` with `scan_conditional_macro`. The leading pair checks a following type prefix;
+when both contexts are valid, choose the leading role if its type proof succeeds, otherwise use the valid
+post-type role. Each token consumes only its opening directive keyword; the directive body, closing directive and following prefix are lookahead. Keep this dispatch ahead of
+the function-annotation guards and return immediately after a failed directive scan.
 The hidden `_function_attribute_start`, `_post_type_function_attribute_start`, and
 `_post_type_function_attribute_suffix` guards look ahead before the ordinary identifier token;
 keep them outside the name field so identifier leaves and ordinary C lexing retain their shape.
@@ -86,6 +92,22 @@ overrides when extending C. The annotation declarator uses `function_declarator`
 The separate `_trailing_macro_modified_declaration` route uses public declaration specifiers and
 `_trailing_macro_object_declarator` / `_trailing_macro_pointer_declarator`; adapt these header rules when
 overriding declaration or declarator behavior.
+
+Conditional declaration markers support an `#ifdef` or `#ifndef` block containing one marker identifier,
+followed by `#endif` and a declaration prefix. Comments, blank lines and line splices in trivia are accepted.
+Leading markers require a builtin type, or a type alias followed by another identifier or `*`; declaration
+modifiers alone do not establish a type. Known grouped modifiers, pragma extras and bracket attributes are
+checked once before the type. Groups with unquoted braces, semicolons or directives need separate support.
+EOF, another directive and adjacent marker blocks retain ordinary preprocessor parsing. The scanner does not infer whether a conditional identifier expands to a type or annotation.
+
+Normal and old-style pointer declarators and typedef type prefixes also accept conditional markers. Post-type
+markers use `_conditional_declaration`, `_conditional_function_definition`, and
+`_conditional_old_style_function_definition`; adapt these header rules when overriding declarations or function
+definitions. The conditional remains a direct `preproc_ifdef` child of its annotated declaration or pointer,
+with its physical directive range. Tag-only declarations retain their top-level tag node without inventing a
+declarator. The marker identifier has the ordinary `macro_specifier.name` field. A containing function or field starts at its first annotation.
+Other conditional forms, multiple-marker bodies, adjacent marker blocks, implicit-int prefixes and body-bearing
+modifier groups need separate annotation support.
 
 Trailing object annotations support one complete `primitive_type` token, plain pointer stars and an identifier,
 for example `int *value ATTR((1));`. The first argument token after initial parentheses must be numeric,

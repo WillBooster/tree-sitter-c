@@ -264,6 +264,7 @@ static const char *const function_macro_object_prefix_keywords[] = {
   "signed",
   "static",
   "thread_local",
+  "typedef",
   "unsigned",
   "void",
   "volatile",
