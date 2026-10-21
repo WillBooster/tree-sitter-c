@@ -11,6 +11,9 @@
 const { grammar, alias, choice, field, optional, prec, repeat, repeat1, seq, sym, token } =
   /** @type {typeof globalThis & typeof import('./types/treeSitterDsl')} */ (globalThis);
 
+// oxlint-disable-next-line unicorn/prefer-module -- Tree-sitter loads this grammar as CommonJS.
+const { primitiveTypeKeywords } = require('./src/grammarKeywords.js');
+
 const PREC = {
   PAREN_DECLARATOR: -10,
   ASSIGNMENT: -2,
@@ -829,12 +832,7 @@ module.exports = Object.assign(
       primitive_type: () =>
         token(
           choice(
-            'bool',
-            'char',
-            'int',
-            'float',
-            'double',
-            'void',
+            ...primitiveTypeKeywords,
             'size_t',
             'ssize_t',
             'ptrdiff_t',

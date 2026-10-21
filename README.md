@@ -72,6 +72,7 @@ Keep the shared first-word dispatch so a failed lookahead never falls back from 
 First prototype guards check the prototype tail; post-type continuation guards inspect only their own argument group.
 Regenerate Unicode and keyword tables from the derived grammar's metadata.
 The generation source is `script/generateIdentifierRanges.js` in this repository.
+The primitive keyword data shared by grammar generation and object-prefix classification is in `src/grammarKeywords.js`.
 The `_preproc_function_name` token ends before splices used to determine adjacency, so the `_preproc_lparen`
 scanner must skip those splices again to reach `(`.
 

@@ -12,6 +12,7 @@ test.each([
   ['int *deprecated_value', '"use replacement"', '*deprecated_value'],
   ['int versioned', '7.56.0', 'versioned'],
   ['int empty_slots', ', 1, ,', 'empty_slots'],
+  ['int fractional', '.5', 'fractional'],
 ])(
   'retains the declarator and following declarations after a trailing annotation: %s',
   async (prefix, argument, declarator) => {
@@ -246,3 +247,89 @@ test.each(['Δ', String.raw`\u03B1`])('keeps the physical annotation name as an 
     parser.delete();
   }
 });
+
+test.each([
+  ['defined', 'ATTR'],
+  ['size_t', 'ATTR'],
+  ['value', 'size_t'],
+  ['value', 'NULL'],
+  ['value', 'offsetof'],
+])('accepts contextual words in object and annotation positions: %s %s', async (object, annotation) => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = `#define ${annotation}(...)\nint ${object} ${annotation}(1);\nint after(void) { return 0; }\n`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const declaration = tree.rootNode.descendantsOfType('declaration')[0]!;
+    expect(declaration.childForFieldName('declarator')?.text).toBe(object);
+    const attribute = declaration.descendantsOfType('attribute_specifier')[0]!;
+    expect(attribute.childForFieldName('name')?.text).toBe(annotation);
+    expect(attribute.childForFieldName('name')?.childCount).toBe(0);
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      'int after(void) { return 0; }',
+    ]);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('preserves post-type prototypes and pragma extras outside the object annotation route', async () => {
+  await Parser.init();
+  const parser = new Parser().setLanguage(await Language.load(wasmPath));
+  const source = `#define ATTR(...)
+long int ATTR(1) f(void);
+int value _Pragma("pack(1)");
+int second _Pragma("a") _Pragma("b");
+int after(void) { return 0; }
+`;
+  const tree = parser.parse(source)!;
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(
+      tree.rootNode.descendantsOfType('function_declarator').map((node) => node.childForFieldName('declarator')?.text)
+    ).toEqual(['f', 'after']);
+    expect(tree.rootNode.descendantsOfType('pragma_operator').map((node) => node.text)).toEqual([
+      '_Pragma("pack(1)")',
+      '_Pragma("a")',
+      '_Pragma("b")',
+    ]);
+    expect(
+      tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.childForFieldName('name')?.text)
+    ).toEqual(['ATTR']);
+    expect(
+      tree.rootNode.descendantsOfType('declaration').map((node) => node.childForFieldName('declarator')?.text)
+    ).toEqual(['f(void)', 'value', 'second']);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each(['\\\n', '\\\r\n'])(
+  'accepts a physical continuation after first and subsequent annotation names: %j',
+  async (splice) => {
+    await Parser.init();
+    const parser = new Parser().setLanguage(await Language.load(wasmPath));
+    const source = `#define ATTR(...)\nint *first ATTR${splice}((1));\nint *second ATTR(1) ATTR${splice}((1));\nint after(void) { return 0; }\n`;
+    const tree = parser.parse(source)!;
+    try {
+      expect(tree.rootNode.hasError).toBe(false);
+      expect(
+        tree.rootNode.descendantsOfType('declaration').map((node) => node.childForFieldName('declarator')?.text)
+      ).toEqual(['*first', '*second']);
+      expect(tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.text)).toEqual([
+        `ATTR${splice}((1))`,
+        'ATTR(1)',
+        `ATTR${splice}((1))`,
+      ]);
+      expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+        'int after(void) { return 0; }',
+      ]);
+    } finally {
+      tree.delete();
+      parser.delete();
+    }
+  }
+);

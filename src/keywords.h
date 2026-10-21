@@ -225,6 +225,21 @@ static const char *const function_macro_scalar_type_keywords[] = {
   "unsigned",
   "void",
 };
+static const char *const function_macro_object_type_keywords[] = {
+  "_Complex",
+  "_Imaginary",
+  "__complex__",
+  "bool",
+  "char",
+  "double",
+  "float",
+  "int",
+  "long",
+  "short",
+  "signed",
+  "unsigned",
+  "void",
+};
 static const char *const function_macro_declaration_modifiers[] = {
   "_Alignas",
   "_Atomic",
