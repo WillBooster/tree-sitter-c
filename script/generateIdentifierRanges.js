@@ -5,6 +5,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import grammarKeywords from '../src/grammarKeywords.cjs';
+
 const root = fileURLToPath(new URL('..', import.meta.url));
 const parser = await readFile(path.join(root, 'src/parser.c'), 'utf8');
 const grammar = JSON.parse(await readFile(path.join(root, 'src/grammar.json'), 'utf8'));
@@ -36,6 +38,14 @@ for (const rule of [
   collectKeywords(grammar.rules[rule], declarationModifiers);
 /** @type {Set<string>} */
 const typeKeywords = new Set();
+/** @type {Set<string>} */
+const scalarTypeKeywords = new Set();
+collectKeywords(grammar.rules.primitive_type, scalarTypeKeywords);
+/** @type {Set<string>} */
+const objectPrefixKeywords = new Set(grammarKeywords.primitiveTypeKeywords);
+for (const rule of ['sized_type_specifier', 'storage_class_specifier'])
+  collectKeywords(grammar.rules[rule], objectPrefixKeywords);
+for (const keyword of declarationModifiers) objectPrefixKeywords.add(keyword);
 collectTypeKeywords(grammar.rules._non_identifier_type_specifier, typeKeywords);
 const sortedKeywords = [...keywords].toSorted();
 const keywordTable = `#define FUNCTION_MACRO_KEYWORD_MAX_LENGTH ${Math.max(...sortedKeywords.map((word) => word.length))}
@@ -50,6 +60,18 @@ ${[...groupModifiers]
 };
 static const char *const function_macro_type_keywords[] = {
 ${[...typeKeywords]
+  .toSorted()
+  .map((word) => `  ${JSON.stringify(word)},`)
+  .join('\n')}
+};
+static const char *const function_macro_scalar_type_keywords[] = {
+${[...scalarTypeKeywords]
+  .toSorted()
+  .map((word) => `  ${JSON.stringify(word)},`)
+  .join('\n')}
+};
+static const char *const function_macro_object_prefix_keywords[] = {
+${[...objectPrefixKeywords]
   .toSorted()
   .map((word) => `  ${JSON.stringify(word)},`)
   .join('\n')}

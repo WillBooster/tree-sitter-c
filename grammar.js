@@ -11,6 +11,9 @@
 const { grammar, alias, choice, field, optional, prec, repeat, repeat1, seq, sym, token } =
   /** @type {typeof globalThis & typeof import('./types/treeSitterDsl')} */ (globalThis);
 
+// oxlint-disable-next-line unicorn/prefer-module -- Tree-sitter loads this grammar as CommonJS.
+const { primitiveTypeKeywords } = require('./src/grammarKeywords.cjs');
+
 const PREC = {
   PAREN_DECLARATOR: -10,
   ASSIGNMENT: -2,
@@ -158,6 +161,8 @@ module.exports = Object.assign(
       sym('_function_attribute_start'),
       sym('_post_type_function_attribute_start'),
       sym('_post_type_function_attribute_suffix'),
+      sym('_trailing_macro_attribute_name'),
+      sym('_trailing_object_declaration_start'),
     ],
 
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
@@ -205,6 +210,7 @@ module.exports = Object.assign(
           $.linkage_specification,
           $.declaration,
           alias(sym('_macro_modified_declaration'), $.declaration),
+          alias(sym('_trailing_macro_modified_declaration'), $.declaration),
           $._top_level_statement,
           $.attributed_statement,
           $.type_definition,
@@ -431,6 +437,20 @@ module.exports = Object.assign(
       _macro_modified_declaration: ($) =>
         declarationRule($, $._macro_declaration_specifiers, false, $._macro_declaration_declarator),
 
+      _trailing_macro_modified_declaration: ($) =>
+        seq(
+          sym('_trailing_object_declaration_start'),
+          $._declaration_specifiers,
+          field('declarator', $._trailing_macro_object_declarator),
+          repeat1(alias($._trailing_macro_attribute_specifier, $.attribute_specifier)),
+          ';'
+        ),
+
+      _trailing_macro_object_declarator: ($) =>
+        choice($.identifier, alias($._trailing_macro_pointer_declarator, $.pointer_declarator)),
+
+      _trailing_macro_pointer_declarator: ($) => pointerDeclaratorRule($, $._trailing_macro_object_declarator),
+
       _macro_declaration_specifiers: ($) => {
         const modifier = choice($._declaration_modifiers, alias($._macro_attribute_suffix, $.attribute_specifier));
         const postModifier = choice(
@@ -503,6 +523,8 @@ module.exports = Object.assign(
       _post_type_macro_attribute_specifier: ($) => macroAttributeRule($, 'post-type'),
 
       _macro_attribute_suffix: ($) => macroAttributeRule($, 'continuation'),
+
+      _trailing_macro_attribute_specifier: ($) => macroAttributeRule($, 'trailing'),
 
       _post_type_macro_attribute_suffix: ($) => macroAttributeRule($, 'post-type-continuation'),
 
@@ -607,21 +629,7 @@ module.exports = Object.assign(
       attributed_field_declarator: ($) => seq($._unattributed_field_declarator, repeat1($.attribute_declaration)),
       attributed_type_declarator: ($) => seq($._unattributed_type_declarator, repeat1($.attribute_declaration)),
 
-      pointer_declarator: ($) =>
-        prec.dynamic(
-          1,
-          prec.right(
-            seq(
-              optional($.ms_based_modifier),
-              optional(prec.dynamic(2, $.ms_call_modifier)),
-              '*',
-              repeat($.attribute_declaration),
-              repeat($.ms_pointer_modifier),
-              repeat(choice($.type_qualifier, $.attribute_specifier)),
-              field('declarator', $._declarator)
-            )
-          )
-        ),
+      pointer_declarator: ($) => pointerDeclaratorRule($, $._declarator),
       pointer_field_declarator: ($) =>
         prec.dynamic(
           1,
@@ -824,12 +832,7 @@ module.exports = Object.assign(
       primitive_type: () =>
         token(
           choice(
-            'bool',
-            'char',
-            'int',
-            'float',
-            'double',
-            'void',
+            ...primitiveTypeKeywords,
             'size_t',
             'ssize_t',
             'ptrdiff_t',
@@ -1623,6 +1626,27 @@ module.exports = Object.assign(
 );
 
 /**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'ms_based_modifier' | 'ms_call_modifier' | 'attribute_declaration' | 'ms_pointer_modifier' | 'type_qualifier' | 'attribute_specifier'>} $
+ * @param {import('./types/treeSitterDsl').Rule} declarator
+ */
+function pointerDeclaratorRule($, declarator) {
+  return prec.dynamic(
+    1,
+    prec.right(
+      seq(
+        optional($.ms_based_modifier),
+        optional(prec.dynamic(2, $.ms_call_modifier)),
+        '*',
+        repeat($.attribute_declaration),
+        repeat($.ms_pointer_modifier),
+        repeat(choice($.type_qualifier, $.attribute_specifier)),
+        field('declarator', declarator)
+      )
+    )
+  );
+}
+
+/**
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'storage_class_specifier' | 'ms_call_modifier' | '_declaration_declarator' | 'gnu_asm_expression' | 'init_declarator' | '_declaration_modifiers'>} $
  * @param {import('./types/treeSitterDsl').Rule} specifiers
  * @param {boolean} allowAuto
@@ -1679,7 +1703,12 @@ function blockItemRule($, header) {
     alias($._old_style_function_definition, $.function_definition),
     $.linkage_specification,
     $.declaration,
-    ...(header ? [alias($._macro_modified_declaration, $.declaration)] : []),
+    ...(header
+      ? [
+          alias($._macro_modified_declaration, $.declaration),
+          alias(sym('_trailing_macro_modified_declaration'), $.declaration),
+        ]
+      : []),
     $.statement,
     $.type_definition,
     $._empty_declaration,
@@ -1694,11 +1723,11 @@ function blockItemRule($, header) {
 
 /**
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'identifier' | 'argument_list' | '_macro_attribute_argument_list'>} $
- * @param {'leading' | 'post-type' | 'continuation' | 'post-type-continuation'} context
+ * @param {'leading' | 'post-type' | 'continuation' | 'post-type-continuation' | 'trailing'} context
  */
 function macroAttributeRule($, context) {
   const guard =
-    context === 'continuation'
+    context === 'continuation' || context === 'trailing'
       ? []
       : [
           sym(
@@ -1713,7 +1742,7 @@ function macroAttributeRule($, context) {
     -2,
     seq(
       ...guard,
-      field('name', $.identifier),
+      field('name', context === 'trailing' ? alias(sym('_trailing_macro_attribute_name'), $.identifier) : $.identifier),
       field('arguments', alias($._macro_attribute_argument_list, $.argument_list))
     )
   );

@@ -1,0 +1,43 @@
+==================
+Trailing object annotations retain callback and following function
+==================
+
+#define ATTR(...)
+int *value ATTR((1));
+typedef void (*saved_t)(int);
+int after(void) { return 0; }
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params))
+  (declaration
+    (primitive_type)
+    (pointer_declarator
+      (identifier))
+    (attribute_specifier
+      (identifier)
+      (argument_list
+        (parenthesized_expression
+          (number_literal)))))
+  (type_definition
+    (primitive_type)
+    (function_declarator
+      (parenthesized_declarator
+        (pointer_declarator
+          (type_identifier)))
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (number_literal)))))

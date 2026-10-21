@@ -16,6 +16,7 @@ test('regenerates scanner tables without existing headers or a scanner', { timeo
       'script/generateIdentifierRanges.js',
       'src/parser.c',
       'src/grammar.json',
+      'src/grammarKeywords.cjs',
       'src/tree_sitter/parser.h',
     ]) {
       await cp(path.join(root, file), path.join(directory, file));

@@ -44,7 +44,7 @@ test('keeps nested ordinary calls approximately linear', { timeout: 60_000 }, ()
   expect(largeFastest / smallFastest).toBeLessThan(18);
 });
 
-test.each(['leading', 'post-type', 'trailing'])(
+test.each(['leading', 'post-type', 'trailing', 'object'])(
   'keeps flat %s annotation chains approximately linear',
   { timeout: 60_000 },
   (placement) => {
@@ -52,7 +52,7 @@ test.each(['leading', 'post-type', 'trailing'])(
       const attributes = Array.from({ length: count }, (_, index) => `A${index}(1)`).join(' ');
       if (placement === 'leading') return `extern ${attributes} int f(void);`;
       if (placement === 'post-type') return `int ${attributes} f(void);`;
-      return `int f(void) ${attributes};`;
+      return placement === 'object' ? `int value ${attributes};` : `int f(void) ${attributes};`;
     };
     const small = source(100);
     const large = source(1000);
@@ -120,6 +120,10 @@ test.each([
 );
 
 test.each([
+  'int\n',
+  'int value ATTR(\n',
+  'int *value ATTR(((\n',
+  'int value ATTR((1)\n',
   'extern FOO("a" int f(void);\n',
   'extern FOO({ "a" int f(void);\n}\n',
   'extern FOO((struct T){ "a" int f(void);\n}\n',
