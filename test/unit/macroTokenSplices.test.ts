@@ -388,6 +388,26 @@ test('preserves declarations and trailing comments after quotes cross physical n
   }
 });
 
+test('keeps scalar keywords and escaped prefixes in annotation expressions', () => {
+  const parser = createParser();
+  try {
+    for (const argument of ['(1) + int', String.raw`(1) + int\u00e9`, String.raw`(1) + int\U000000e9`, '"text" int']) {
+      const source = `#define ATTR(...)\nextern ATTR(${argument}) int after(void);`;
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(false);
+        const attribute = tree.rootNode.descendantsOfType('attribute_specifier')[0]!;
+        expect(attribute.childForFieldName('arguments')?.text).toBe(`(${argument})`);
+        expect(tree.rootNode.descendantsOfType('function_declarator')[0]?.text).toBe('after(void)');
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
 function createParser(): Parser {
   const parser = new Parser();
   parser.setLanguage(language);

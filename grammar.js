@@ -137,9 +137,7 @@ module.exports = Object.assign(
       [$.type_definition, $._type_declarator],
       [$.type_definition, $.sized_type_specifier],
       [$.type_definition, $._sized_bit_int_specifier],
-      [$.attributed_statement],
       [$.case_statement],
-      [$._single_attributed_statement],
       [$._statement_declaration_modifiers, $._case_body_attributed_statement, $._case_label_attributes],
       [$._statement_declaration_modifiers, $.attributed_statement, $.case_statement],
       [$.enum_specifier],
@@ -213,7 +211,9 @@ module.exports = Object.assign(
       $.statement,
       $._single_noncompound_statement,
       $._non_case_statement,
+      $._unattributed_non_case_statement,
       $._single_non_case_statement,
+      $._single_unattributed_non_case_statement,
       $._case_body_statement,
       $._case_body_unattributed_statement,
       $._case_label_tail,
@@ -1061,11 +1061,13 @@ module.exports = Object.assign(
           repeat($.attribute_specifier)
         ),
 
-      attributed_statement: ($) => seq(repeat1($.attribute_declaration), alias($._non_case_statement, $.statement)),
+      attributed_statement: ($) =>
+        seq(repeat1($.attribute_declaration), alias($._unattributed_non_case_statement, $.statement)),
 
       statement: ($) => choice($.case_statement, alias($._non_case_statement, $.statement)),
 
-      _non_case_statement: ($) => choice($.attributed_statement, $._unattributed_non_case_statement),
+      _non_case_statement: ($) =>
+        choice($.attributed_statement, alias($._unattributed_non_case_statement, $.statement)),
 
       _unattributed_non_case_statement: ($) => choice($.labeled_statement, $._unlabeled_non_case_statement),
 
@@ -1138,6 +1140,12 @@ module.exports = Object.assign(
 
       _single_non_case_statement: ($) =>
         choice(
+          alias($._single_unattributed_non_case_statement, $.statement),
+          alias($._single_attributed_statement, $.attributed_statement)
+        ),
+
+      _single_unattributed_non_case_statement: ($) =>
+        choice(
           $.expression_statement,
           $.switch_statement,
           $.return_statement,
@@ -1150,8 +1158,7 @@ module.exports = Object.assign(
           $.if_statement,
           $.while_statement,
           $.do_statement,
-          $.for_statement,
-          alias($._single_attributed_statement, $.attributed_statement)
+          $.for_statement
         ),
 
       _single_case_statement: ($) =>
@@ -1189,7 +1196,7 @@ module.exports = Object.assign(
       _single_attributed_statement: ($) =>
         seq(
           repeat1($.attribute_declaration),
-          choice($.compound_statement, alias($._single_non_case_statement, $.statement))
+          choice($.compound_statement, alias($._single_unattributed_non_case_statement, $.statement))
         ),
 
       case_statement: ($) =>

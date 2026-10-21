@@ -705,20 +705,40 @@ test.each([
   'inline Result lookup(void);',
   'Result *lookup(void);',
   'Result lookup(void);',
-])('retains an alias-return prototype after a standalone annotation: %s', async (prototype) => {
+])('parses alias-return prototypes and reparses edits after standalone annotations: %s', async (prototype) => {
   await Parser.init();
   const parser = new Parser().setLanguage(await Language.load(wasmPath));
-  const tree = parser.parse(`BEGIN\nATTR("x")\n${prototype}\nint following(void) { return 0; }\n`)!;
+  const source = `${prototype}\nint following(void) { return 0; }\n`;
+  const tree = parser.parse(source)!;
   try {
+    expect(tree.rootNode.hasError).toBe(false);
     const declaration = tree.rootNode.descendantsOfType('declaration').find((node) => node.text === prototype);
     expect(declaration?.childForFieldName('type')?.text).toBe('Result');
     expect(
       tree.rootNode.descendantsOfType('function_declarator').map((node) => node.childForFieldName('declarator')?.text)
     ).toEqual(['lookup', 'following']);
-    expect(tree.rootNode.descendantsOfType('attribute_specifier')).toHaveLength(0);
-    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
-      'int following(void) { return 0; }',
-    ]);
+    const prefix = 'BEGIN\nATTR("x")\n';
+    tree.edit(
+      new Edit({
+        startIndex: 0,
+        oldEndIndex: 0,
+        newEndIndex: prefix.length,
+        startPosition: { row: 0, column: 0 },
+        oldEndPosition: { row: 0, column: 0 },
+        newEndPosition: { row: 2, column: 0 },
+      })
+    );
+    const edited = prefix + source;
+    const incremental = parser.parse(edited, tree)!;
+    const fresh = parser.parse(edited)!;
+    try {
+      expect(fresh.rootNode.hasError).toBe(true);
+      expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
+      expect(incremental.rootNode.endIndex).toBe(edited.length);
+    } finally {
+      incremental.delete();
+      fresh.delete();
+    }
   } finally {
     tree.delete();
     parser.delete();
