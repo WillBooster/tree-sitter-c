@@ -10893,7 +10893,7 @@
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
-            "name": "_non_case_statement"
+            "name": "_unattributed_non_case_statement"
           },
           "named": true,
           "value": "statement"
@@ -10926,8 +10926,13 @@
           "name": "attributed_statement"
         },
         {
-          "type": "SYMBOL",
-          "name": "_unattributed_non_case_statement"
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_unattributed_non_case_statement"
+          },
+          "named": true,
+          "value": "statement"
         }
       ]
     },
@@ -11281,6 +11286,29 @@
       "type": "CHOICE",
       "members": [
         {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_single_unattributed_non_case_statement"
+          },
+          "named": true,
+          "value": "statement"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_single_attributed_statement"
+          },
+          "named": true,
+          "value": "attributed_statement"
+        }
+      ]
+    },
+    "_single_unattributed_non_case_statement": {
+      "type": "CHOICE",
+      "members": [
+        {
           "type": "SYMBOL",
           "name": "expression_statement"
         },
@@ -11336,15 +11364,6 @@
         {
           "type": "SYMBOL",
           "name": "for_statement"
-        },
-        {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_single_attributed_statement"
-          },
-          "named": true,
-          "value": "attributed_statement"
         }
       ]
     },
@@ -11540,7 +11559,7 @@
               "type": "ALIAS",
               "content": {
                 "type": "SYMBOL",
-                "name": "_single_non_case_statement"
+                "name": "_single_unattributed_non_case_statement"
               },
               "named": true,
               "value": "statement"
@@ -16913,13 +16932,7 @@
       "_sized_bit_int_specifier"
     ],
     [
-      "attributed_statement"
-    ],
-    [
       "case_statement"
-    ],
-    [
-      "_single_attributed_statement"
     ],
     [
       "_statement_declaration_modifiers",
@@ -17129,7 +17142,9 @@
     "statement",
     "_single_noncompound_statement",
     "_non_case_statement",
+    "_unattributed_non_case_statement",
     "_single_non_case_statement",
+    "_single_unattributed_non_case_statement",
     "_case_body_statement",
     "_case_body_unattributed_statement",
     "_case_label_tail",

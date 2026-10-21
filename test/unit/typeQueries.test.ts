@@ -163,16 +163,20 @@ void other(void);`;
   const tree = parser.parse(source)!;
   const query = new Query(
     language,
-    '(declaration type: (macro_type_specifier name: (identifier) @macro) declarator: (identifier) @name) (declaration type: (type_identifier) @parameters_macro declarator: (parenthesized_declarator) @parameters)'
+    '(declaration type: (macro_type_specifier name: (identifier) @macro) declarator: (identifier) @name)'
   );
   try {
     expect(tree.rootNode.hasError).toBe(true);
     expect(query.captures(tree.rootNode).map(({ name, node }) => [name, node.text])).toEqual([
       ['macro', 'API_TYPE'],
       ['name', 'read_value'],
-      ['parameters_macro', 'PARAMS'],
-      ['parameters', '((\n  CONST Reader *r,\n  struct Value *v ))'],
     ]);
+    expect(
+      tree.rootNode.namedChildren
+        .filter((node) => node.type === 'declaration')
+        .map((node) => node.childForFieldName('declarator')?.text)
+        .slice(-2)
+    ).toEqual(['after', 'other(void)']);
   } finally {
     query.delete();
     tree.delete();
