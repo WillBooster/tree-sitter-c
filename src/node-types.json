@@ -1218,10 +1218,6 @@
           "named": true
         },
         {
-          "type": "macro_specifier",
-          "named": true
-        },
-        {
           "type": "ms_declspec_modifier",
           "named": true
         },
@@ -1451,11 +1447,55 @@
       "required": false,
       "types": [
         {
+          "type": "attributed_statement",
+          "named": true
+        },
+        {
+          "type": "break_statement",
+          "named": true
+        },
+        {
+          "type": "case_statement",
+          "named": true
+        },
+        {
+          "type": "compound_statement",
+          "named": true
+        },
+        {
+          "type": "continue_statement",
+          "named": true
+        },
+        {
           "type": "declaration",
           "named": true
         },
         {
+          "type": "do_statement",
+          "named": true
+        },
+        {
+          "type": "expression_statement",
+          "named": true
+        },
+        {
+          "type": "for_statement",
+          "named": true
+        },
+        {
           "type": "function_definition",
+          "named": true
+        },
+        {
+          "type": "goto_statement",
+          "named": true
+        },
+        {
+          "type": "if_statement",
+          "named": true
+        },
+        {
+          "type": "labeled_statement",
           "named": true
         },
         {
@@ -1495,7 +1535,11 @@
           "named": true
         },
         {
-          "type": "statement",
+          "type": "return_statement",
+          "named": true
+        },
+        {
+          "type": "switch_statement",
           "named": true
         },
         {
@@ -1504,6 +1548,10 @@
         },
         {
           "type": "type_specifier",
+          "named": true
+        },
+        {
+          "type": "while_statement",
           "named": true
         }
       ]

@@ -95,6 +95,7 @@ examples/curl/lib/vtls/openssl.c
 examples/curl/lib/vtls/schannel.c
 examples/curl/lib/vtls/vtls.c
 examples/curl/lib/vtls/wolfssl.c
+examples/curl/projects/OS400/os400sys.c
 examples/curl/projects/vms/curl_crtl_init.c
 examples/curl/src/config2setopts.c
 examples/curl/src/tool_cb_hdr.c
