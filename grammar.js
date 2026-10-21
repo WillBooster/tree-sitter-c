@@ -68,6 +68,18 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._preproc_include_token, $.preproc_argument_list],
+      [$._preproc_include_path, $.preproc_include_argument],
+      [$.compound_statement, $.initializer_list],
+      [$.comma_expression, $._initializer_element],
+      [$.comma_expression, $.initializer_pair],
+      [$._block_item, $._initializer_directive],
+      [sym('preproc_if'), sym('preproc_if_in_initializer_list')],
+      [sym('preproc_ifdef'), sym('preproc_ifdef_in_initializer_list')],
+      [sym('preproc_else'), sym('preproc_else_in_initializer_list')],
+      [sym('preproc_elif'), sym('preproc_elif_in_initializer_list')],
+      [sym('preproc_elifdef'), sym('preproc_elifdef_in_initializer_list')],
+
       [$.type_specifier, $.expression, $.va_arg_expression, $.macro_type_specifier],
       [$.va_arg_expression, $.expression],
       [$.type_definition, $._declaration_modifiers],
@@ -231,17 +243,39 @@ module.exports = Object.assign(
       preproc_include: ($) =>
         seq(
           preprocessor('include'),
-          field(
-            'path',
-            choice(
-              $.string_literal,
-              $.system_lib_string,
-              $.identifier,
-              alias($.preproc_call_expression, $.call_expression)
-            )
-          ),
+          field('path', choice($._preproc_include_path, $.preproc_include_argument)),
           repeat(choice($.comment, $.pragma_operator)),
           sym('_preproc_newline')
+        ),
+
+      _preproc_include_path: ($) =>
+        choice(
+          $.string_literal,
+          $.system_lib_string,
+          $.identifier,
+          alias($.preproc_call_expression, $.call_expression)
+        ),
+
+      preproc_include_argument: ($) =>
+        prec.dynamic(-1, prec.right(seq($.identifier, repeat1($._preproc_include_token)))),
+
+      _preproc_include_token: ($) =>
+        choice(
+          $.identifier,
+          $.number_literal,
+          $.char_literal,
+          $.string_literal,
+          $.system_lib_string,
+          $.comment,
+          $.pragma_operator,
+          ...BINARY_OPERATORS.map(([operator]) => operator),
+          '!',
+          '~',
+          '(',
+          ')',
+          ',',
+          'defined',
+          token(prec(-3, /\S/))
         ),
 
       preproc_def: ($) =>
@@ -1361,12 +1395,17 @@ module.exports = Object.assign(
 
       extension_expression: ($) => seq('__extension__', $.expression),
 
-      // Compound statements, designated initializers, and a trailing comma parse macro arguments, e.g.
-      // MYFORLOOP(1, 10, i, { foo(i); bar(i); }) and PARAMS(.foo = foo, .bar = { bar, 1 },)
       argument_list: ($) =>
         seq(
           '(',
-          optional(seq(commaSep1(choice($.expression, $.compound_statement, $.initializer_pair)), optional(','))),
+          optional(
+            seq(
+              commaSep1(
+                choice($.expression, $.compound_statement, $.initializer_pair, prec.dynamic(-1, $.initializer_list))
+              ),
+              optional(',')
+            )
+          ),
           ')'
         ),
 
@@ -1422,28 +1461,13 @@ module.exports = Object.assign(
           alias(sym('preproc_ifdef_in_initializer_list'), sym('preproc_ifdef')),
           $.preproc_def,
           $.preproc_function_def,
-          alias($._initializer_preproc_call, $.preproc_call)
+          $.preproc_include,
+          $.preproc_call
         ),
 
       _initializer_element: ($) => choice($.initializer_pair, $.expression, $.initializer_list),
 
       _initializer_branch: ($) => choice(seq(',', optional($._initializer_sequence)), $._initializer_sequence),
-
-      _initializer_preproc_call: ($) =>
-        seq(
-          field(
-            'directive',
-            alias(token(/#[ \t]*(embed|include|undef|error|warning|line|pragma)/), $.preproc_directive)
-          ),
-          repeat(choice($.comment, $.pragma_operator)),
-          optional(
-            seq(
-              field('argument', alias($._preproc_directive_arg, $.preproc_arg)),
-              repeat(choice($.comment, $.pragma_operator))
-            )
-          ),
-          alias(sym('_preproc_newline'), '\n')
-        ),
 
       ...preprocIf('_in_initializer_list', () => sym('_initializer_branch'), 0, false),
 

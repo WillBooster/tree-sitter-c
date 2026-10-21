@@ -70,7 +70,7 @@ fuzzed with, at version 7.0.5 or later. No other runtime loads the parser:
 ```toml
 [dependencies]
 tree-sitter = { package = "willbooster-tree-sitter", version = "7.0.5" }
-tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "7" }
+tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "9" }
 ```
 
 ```rust
