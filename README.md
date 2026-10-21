@@ -58,10 +58,15 @@ parser.setLanguage(await Language.load(c));
 
 The package also ships `grammar.js`, scanner sources under `src/`, the queries in `queries/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
-The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, and `functionMacro.h`.
+The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, `functionMacro.h`, and
+`conditionalMacro.h`.
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
 Keep preprocessor argument/newline handling ahead of annotation lookahead.
+Port the appended `_conditional_marker_ifdef` and `_conditional_marker_ifndef` tokens and
+`scan_conditional_macro` when using conditional declaration markers. Each token consumes only its opening
+directive keyword; its remaining directive, marker and closing-directive checks are lookahead.
+Keep this dispatch ahead of the function-annotation guards and return immediately after a failed directive scan.
 The hidden `_function_attribute_start`, `_post_type_function_attribute_start`, and
 `_post_type_function_attribute_suffix` guards look ahead before the ordinary identifier token;
 keep them outside the name field so identifier leaves and ordinary C lexing retain their shape.
@@ -86,6 +91,16 @@ overrides when extending C. The annotation declarator uses `function_declarator`
 The separate `_trailing_macro_modified_declaration` route uses public declaration specifiers and
 `_trailing_macro_object_declarator` / `_trailing_macro_pointer_declarator`; adapt these header rules when
 overriding declaration or declarator behavior.
+
+Conditional declaration markers support an `#ifdef` or `#ifndef` block containing one marker identifier,
+followed by `#endif`. Comments, blank lines and line splices in trivia are accepted. Existing `macro_specifier`
+positions accept these blocks, including leading declaration markers and normal or old-style pointer modifiers.
+Function definitions also accept them after the return type through `_conditional_function_definition` and
+`_conditional_old_style_function_definition`; adapt these header rules when overriding function definitions.
+The conditional remains a `preproc_ifdef` node. At existing marker positions it is wrapped in a `macro_specifier`;
+that wrapper has a conditional child instead of a required `name` field. A containing function or field starts at
+its first annotation. The scanner checks the physical directive shape before accepting the opening keyword, so a conditional containing declarations retains ordinary preprocessor parsing.
+Other conditional forms, multiple-marker bodies and post-type object markers need separate annotation support.
 
 Trailing object annotations support one complete `primitive_type` token, plain pointer stars and an identifier,
 for example `int *value ATTR((1));`. The first argument token after initial parentheses must be numeric,

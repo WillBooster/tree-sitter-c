@@ -71,6 +71,7 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._declaration_modifiers, $._empty_declaration],
       [$._statement_declaration, $._statement_declaration_modifiers],
       [$.declaration, $._declaration_modifiers],
       [$._statement_declaration, $._statement_type_definition, $._statement_declaration_modifiers],
@@ -186,6 +187,8 @@ module.exports = Object.assign(
       sym('_post_type_function_attribute_suffix'),
       sym('_trailing_macro_attribute_name'),
       sym('_trailing_object_declaration_start'),
+      sym('_conditional_marker_ifdef'),
+      sym('_conditional_marker_ifndef'),
     ],
 
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
@@ -231,6 +234,8 @@ module.exports = Object.assign(
         choice(
           $.function_definition,
           alias($._old_style_function_definition, $.function_definition),
+          alias(sym('_conditional_function_definition'), $.function_definition),
+          alias(sym('_conditional_old_style_function_definition'), $.function_definition),
           $.linkage_specification,
           $.declaration,
           alias(sym('_macro_modified_declaration'), $.declaration),
@@ -268,6 +273,8 @@ module.exports = Object.assign(
         choice(
           $.function_definition,
           alias($._old_style_function_definition, $.function_definition),
+          alias(sym('_conditional_function_definition'), $.function_definition),
+          alias(sym('_conditional_old_style_function_definition'), $.function_definition),
           $.linkage_specification,
           $.declaration,
           alias(sym('_macro_modified_declaration'), $.declaration),
@@ -474,6 +481,19 @@ module.exports = Object.assign(
               field('declarator', alias($._old_style_declarator, $._declarator))
             )
           )
+        ),
+
+      _conditional_function_definition: ($) =>
+        functionDefinitionRule($, sym('_conditional_function_specifiers'), false),
+      _conditional_old_style_function_definition: ($) =>
+        functionDefinitionRule($, sym('_conditional_function_specifiers'), true),
+      _conditional_function_specifiers: ($) =>
+        seq(
+          repeat($._declaration_modifiers),
+          field('type', $.type_specifier),
+          repeat($._non_macro_declaration_modifiers),
+          $._conditional_macro_specifier,
+          repeat(choice($._non_macro_declaration_modifiers, $._conditional_macro_specifier))
         ),
 
       declaration: ($) => declarationRule($, $._declaration_specifiers, $._declaration_modifiers),
@@ -1683,7 +1703,20 @@ module.exports = Object.assign(
       _empty_declaration: ($) => seq(repeat(choice($.ms_declspec_modifier, $.macro_specifier)), $.type_specifier, ';'),
       _statement_empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
 
-      macro_specifier: ($) => prec.dynamic(-2, field('name', $.identifier)),
+      macro_specifier: ($) => prec.dynamic(-2, choice(field('name', $.identifier), $._conditional_macro_specifier)),
+
+      _conditional_macro_specifier: () => alias(sym('_marker_preproc_ifdef'), sym('preproc_ifdef')),
+
+      _marker_preproc_ifdef: ($) =>
+        seq(
+          choice(
+            alias(sym('_conditional_marker_ifdef'), '#ifdef'),
+            alias(sym('_conditional_marker_ifndef'), '#ifndef')
+          ),
+          field('name', $.identifier),
+          $.macro_specifier,
+          preprocessor('endif')
+        ),
 
       macro_type_specifier: ($) =>
         prec.dynamic(
