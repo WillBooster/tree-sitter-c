@@ -150,6 +150,8 @@ module.exports = Object.assign(
       [$.parameter_list, $._old_style_parameter_list],
       [$.function_declarator, $._function_declaration_declarator],
       [$.pointer_declarator],
+      [$.pointer_declarator, $._initialized_declarator],
+      [$._initialized_pointer_declarator],
       [$.pointer_declarator, $.abstract_pointer_declarator],
       [$.pointer_field_declarator],
       [$.pointer_type_declarator],
@@ -225,6 +227,8 @@ module.exports = Object.assign(
       $.type_specifier,
       $._declarator,
       $._old_style_declarator,
+      $._initialized_declarator,
+      $._initialized_parenthesized_content,
       $._field_declarator,
       $._type_declarator,
       $._abstract_declarator,
@@ -870,7 +874,29 @@ module.exports = Object.assign(
         ),
 
       init_declarator: ($) =>
-        seq(field('declarator', $._declarator), '=', field('value', choice($.initializer_list, $.expression))),
+        seq(
+          field('declarator', alias($._initialized_declarator, $._declarator)),
+          '=',
+          field('value', choice($.initializer_list, $.expression))
+        ),
+
+      _initialized_declarator: ($) =>
+        choice(
+          $._declarator,
+          alias($._initialized_parenthesized_declarator, $.parenthesized_declarator),
+          alias($._initialized_pointer_declarator, $.pointer_declarator)
+        ),
+
+      _initialized_parenthesized_declarator: ($) =>
+        parenthesizedDeclaratorRule($, alias($._initialized_parenthesized_content, $._declarator)),
+
+      _initialized_parenthesized_content: ($) =>
+        choice(
+          alias($._initialized_pointer_declarator, $.pointer_declarator),
+          alias($._initialized_parenthesized_declarator, $.parenthesized_declarator)
+        ),
+
+      _initialized_pointer_declarator: ($) => pointerDeclaratorRule($, alias($._initialized_declarator, $._declarator)),
 
       compound_statement: ($) => seq('{', repeat($._block_item), '}'),
 
