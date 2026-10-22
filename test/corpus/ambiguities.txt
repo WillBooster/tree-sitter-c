@@ -272,3 +272,223 @@ DEFINE_SOMETHING(THING_B, "this is a thing b", "thanks");
           (string_content))
         (string_literal
           (string_content))))))
+
+================================================================================
+Initialized parenthesized pointers alongside lvalue assignments
+================================================================================
+
+#define SLOT(pointer) (*(pointer))
+typedef double Scalar;
+struct Holder { Scalar *value; };
+Scalar *get(void);
+Scalar *selectValue(Scalar value);
+struct Holder *selectHolder(Scalar value);
+void consume(Scalar value);
+void example(Scalar in[], struct Holder *holder) {
+  Scalar (*pointer) = in;
+  Scalar (((*nested))) = in;
+  Scalar *(*pointerToPointer) = &pointer;
+  Scalar (*const qualified) = in;
+  Scalar (*p) = in, (*q) = in;
+  (*pointer) = 1;
+  (holder->value) = in;
+  holder->value[0] = 2;
+  *get() = 3;
+  selectValue(*pointer)[0] = 4;
+  selectHolder(*pointer)->value = in;
+  SLOT(pointer) = 5;
+  SLOT(pointer) += 1;
+  consume((*pointer));
+  consume(*get());
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (type_definition
+    (primitive_type)
+    (type_identifier))
+  (struct_specifier
+    (type_identifier)
+    (field_declaration_list
+      (field_declaration
+        (type_identifier)
+        (pointer_declarator
+          (field_identifier)))))
+  (declaration
+    (type_identifier)
+    (pointer_declarator
+      (function_declarator
+        (identifier)
+        (parameter_list
+          (parameter_declaration
+            (primitive_type))))))
+  (declaration
+    (type_identifier)
+    (pointer_declarator
+      (function_declarator
+        (identifier)
+        (parameter_list
+          (parameter_declaration
+            (type_identifier)
+            (identifier))))))
+  (declaration
+    (struct_specifier
+      (type_identifier))
+    (pointer_declarator
+      (function_declarator
+        (identifier)
+        (parameter_list
+          (parameter_declaration
+            (type_identifier)
+            (identifier))))))
+  (declaration
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (type_identifier)
+          (identifier)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (type_identifier)
+          (array_declarator
+            (identifier)))
+        (parameter_declaration
+          (struct_specifier
+            (type_identifier))
+          (pointer_declarator
+            (identifier)))))
+    (compound_statement
+      (declaration
+        (type_identifier)
+        (init_declarator
+          (parenthesized_declarator
+            (pointer_declarator
+              (identifier)))
+          (identifier)))
+      (declaration
+        (type_identifier)
+        (init_declarator
+          (parenthesized_declarator
+            (parenthesized_declarator
+              (parenthesized_declarator
+                (pointer_declarator
+                  (identifier)))))
+          (identifier)))
+      (declaration
+        (type_identifier)
+        (init_declarator
+          (pointer_declarator
+            (parenthesized_declarator
+              (pointer_declarator
+                (identifier))))
+          (pointer_expression
+            (identifier))))
+      (declaration
+        (type_identifier)
+        (init_declarator
+          (parenthesized_declarator
+            (pointer_declarator
+              (type_qualifier)
+              (identifier)))
+          (identifier)))
+      (declaration
+        (type_identifier)
+        (init_declarator
+          (parenthesized_declarator
+            (pointer_declarator
+              (identifier)))
+          (identifier))
+        (init_declarator
+          (parenthesized_declarator
+            (pointer_declarator
+              (identifier)))
+          (identifier)))
+      (expression_statement
+        (assignment_expression
+          (parenthesized_expression
+            (pointer_expression
+              (identifier)))
+          (number_literal)))
+      (expression_statement
+        (assignment_expression
+          (parenthesized_expression
+            (field_expression
+              (identifier)
+              (field_identifier)))
+          (identifier)))
+      (expression_statement
+        (assignment_expression
+          (subscript_expression
+            (field_expression
+              (identifier)
+              (field_identifier))
+            (number_literal))
+          (number_literal)))
+      (expression_statement
+        (assignment_expression
+          (pointer_expression
+            (call_expression
+              (identifier)
+              (argument_list)))
+          (number_literal)))
+      (expression_statement
+        (assignment_expression
+          (subscript_expression
+            (call_expression
+              (identifier)
+              (argument_list
+                (pointer_expression
+                  (identifier))))
+            (number_literal))
+          (number_literal)))
+      (expression_statement
+        (assignment_expression
+          (field_expression
+            (call_expression
+              (identifier)
+              (argument_list
+                (pointer_expression
+                  (identifier))))
+            (field_identifier))
+          (identifier)))
+      (expression_statement
+        (assignment_expression
+          (call_expression
+            (identifier)
+            (argument_list
+              (identifier)))
+          (number_literal)))
+      (expression_statement
+        (assignment_expression
+          (call_expression
+            (identifier)
+            (argument_list
+              (identifier)))
+          (number_literal)))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (parenthesized_expression
+              (pointer_expression
+                (identifier))))))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (pointer_expression
+              (call_expression
+                (identifier)
+                (argument_list)))))))))
