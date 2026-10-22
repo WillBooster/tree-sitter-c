@@ -194,6 +194,9 @@ module.exports = Object.assign(
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
 
     inline: ($) => [
+      $._unattributed_non_case_statement,
+      $._single_unattributed_non_case_statement,
+      $._unlabeled_non_case_statement,
       $._non_identifier_type_specifier,
       $._non_macro_declaration_modifiers,
       $._unattributed_declarator,
@@ -211,9 +214,9 @@ module.exports = Object.assign(
       $.statement,
       $._single_noncompound_statement,
       $._non_case_statement,
-      $._unattributed_non_case_statement,
+      $._attributed_body_statement,
       $._single_non_case_statement,
-      $._single_unattributed_non_case_statement,
+      $._single_attributed_body_statement,
       $._case_body_statement,
       $._case_body_unattributed_statement,
       $._case_label_tail,
@@ -1080,12 +1083,13 @@ module.exports = Object.assign(
         ),
 
       attributed_statement: ($) =>
-        seq(repeat1($.attribute_declaration), alias($._unattributed_non_case_statement, $.statement)),
+        seq(repeat1($.attribute_declaration), alias($._attributed_body_statement, $.statement)),
+
+      _attributed_body_statement: ($) => $._unattributed_non_case_statement,
 
       statement: ($) => choice($.case_statement, alias($._non_case_statement, $.statement)),
 
-      _non_case_statement: ($) =>
-        choice($.attributed_statement, alias($._unattributed_non_case_statement, $.statement)),
+      _non_case_statement: ($) => choice($.attributed_statement, $._unattributed_non_case_statement),
 
       _unattributed_non_case_statement: ($) => choice($.labeled_statement, $._unlabeled_non_case_statement),
 
@@ -1158,7 +1162,7 @@ module.exports = Object.assign(
 
       _single_non_case_statement: ($) =>
         choice(
-          alias($._single_unattributed_non_case_statement, $.statement),
+          $._single_unattributed_non_case_statement,
           alias($._single_attributed_statement, $.attributed_statement)
         ),
 
@@ -1214,8 +1218,10 @@ module.exports = Object.assign(
       _single_attributed_statement: ($) =>
         seq(
           repeat1($.attribute_declaration),
-          choice($.compound_statement, alias($._single_unattributed_non_case_statement, $.statement))
+          choice($.compound_statement, alias($._single_attributed_body_statement, $.statement))
         ),
+
+      _single_attributed_body_statement: ($) => $._single_unattributed_non_case_statement,
 
       case_statement: ($) =>
         prec.dynamic(

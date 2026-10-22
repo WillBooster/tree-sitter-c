@@ -10893,12 +10893,16 @@
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
-            "name": "_unattributed_non_case_statement"
+            "name": "_attributed_body_statement"
           },
           "named": true,
           "value": "statement"
         }
       ]
+    },
+    "_attributed_body_statement": {
+      "type": "SYMBOL",
+      "name": "_unattributed_non_case_statement"
     },
     "statement": {
       "type": "CHOICE",
@@ -10926,13 +10930,8 @@
           "name": "attributed_statement"
         },
         {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_unattributed_non_case_statement"
-          },
-          "named": true,
-          "value": "statement"
+          "type": "SYMBOL",
+          "name": "_unattributed_non_case_statement"
         }
       ]
     },
@@ -11286,13 +11285,8 @@
       "type": "CHOICE",
       "members": [
         {
-          "type": "ALIAS",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_single_unattributed_non_case_statement"
-          },
-          "named": true,
-          "value": "statement"
+          "type": "SYMBOL",
+          "name": "_single_unattributed_non_case_statement"
         },
         {
           "type": "ALIAS",
@@ -11559,7 +11553,7 @@
               "type": "ALIAS",
               "content": {
                 "type": "SYMBOL",
-                "name": "_single_unattributed_non_case_statement"
+                "name": "_single_attributed_body_statement"
               },
               "named": true,
               "value": "statement"
@@ -11567,6 +11561,10 @@
           ]
         }
       ]
+    },
+    "_single_attributed_body_statement": {
+      "type": "SYMBOL",
+      "name": "_single_unattributed_non_case_statement"
     },
     "case_statement": {
       "type": "PREC_DYNAMIC",
@@ -17126,6 +17124,9 @@
     }
   ],
   "inline": [
+    "_unattributed_non_case_statement",
+    "_single_unattributed_non_case_statement",
+    "_unlabeled_non_case_statement",
     "_non_identifier_type_specifier",
     "_non_macro_declaration_modifiers",
     "_unattributed_declarator",
@@ -17142,9 +17143,9 @@
     "statement",
     "_single_noncompound_statement",
     "_non_case_statement",
-    "_unattributed_non_case_statement",
+    "_attributed_body_statement",
     "_single_non_case_statement",
-    "_single_unattributed_non_case_statement",
+    "_single_attributed_body_statement",
     "_case_body_statement",
     "_case_body_unattributed_statement",
     "_case_label_tail",
