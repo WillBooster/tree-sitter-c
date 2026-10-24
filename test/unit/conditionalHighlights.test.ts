@@ -1,9 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { Edit, Language, type Node, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
-
-import { Edit, Language, Parser, Query, type Node, type Tree } from '@willbooster/web-tree-sitter';
 
 import treeSitterJson from '../../tree-sitter.json';
 

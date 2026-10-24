@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Edit, Language, Parser, type Node } from '@willbooster/web-tree-sitter';
+import { Edit, Language, type Node, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 const root = path.resolve(import.meta.dirname, '../..');

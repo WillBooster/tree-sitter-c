@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { Edit, Language, Parser, type Node, type Point, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Edit, Language, type Node, Parser, type Point, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 await Parser.init();
