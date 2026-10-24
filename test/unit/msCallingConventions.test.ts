@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-import { Edit, Language, Parser, Query, type Node } from '@willbooster/web-tree-sitter';
+import { Edit, Language, type Node, Parser, Query } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 test('keeps pointer calling-convention captures independent of surrounding declarations', async () => {
