@@ -16771,6 +16771,13 @@
           "name": "type_specifier"
         },
         {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "type_qualifier"
+          }
+        },
+        {
           "type": "STRING",
           "value": ";"
         }
@@ -16789,6 +16796,13 @@
         {
           "type": "SYMBOL",
           "name": "type_specifier"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "type_qualifier"
+          }
         },
         {
           "type": "STRING",
@@ -17041,6 +17055,11 @@
   "conflicts": [
     [
       "_declaration_modifiers",
+      "_empty_declaration"
+    ],
+    [
+      "_conditional_function_specifiers",
+      "_declaration_specifiers",
       "_empty_declaration"
     ],
     [

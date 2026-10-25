@@ -72,6 +72,7 @@ module.exports = Object.assign(
 
     conflicts: ($) => [
       [$._declaration_modifiers, $._empty_declaration],
+      [$._conditional_function_specifiers, $._declaration_specifiers, $._empty_declaration],
       [$._statement_declaration, $._statement_declaration_modifiers],
       [$.declaration, $._declaration_modifiers],
       [$._statement_declaration, $._statement_type_definition, $._statement_declaration_modifiers],
@@ -1786,9 +1787,11 @@ module.exports = Object.assign(
         seq(
           repeat(choice($.ms_declspec_modifier, $.macro_specifier, $._leading_conditional_macro_specifier)),
           $.type_specifier,
+          repeat($.type_qualifier),
           ';'
         ),
-      _statement_empty_declaration: ($) => seq(repeat($.ms_declspec_modifier), $.type_specifier, ';'),
+      _statement_empty_declaration: ($) =>
+        seq(repeat($.ms_declspec_modifier), $.type_specifier, repeat($.type_qualifier), ';'),
 
       macro_specifier: ($) => prec.dynamic(-2, field('name', $.identifier)),
 
