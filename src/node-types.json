@@ -4003,6 +4003,10 @@
       "required": false,
       "types": [
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "type_qualifier",
           "named": true
         }

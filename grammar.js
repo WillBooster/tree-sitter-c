@@ -88,6 +88,18 @@ module.exports = Object.assign(
       [$.macro_specifier, $._declarator, $.attributed_declarator],
       [$.macro_specifier, $.sized_type_specifier],
       [$.macro_specifier, $.type_specifier, $.sized_type_specifier],
+      [$._macro_declaration_specifiers, $.type_specifier, $.sized_type_specifier],
+      [$.type_definition, $._macro_declaration_specifiers, $.type_specifier, $.sized_type_specifier],
+      [$._macro_declaration_specifiers, $.type_specifier, $.sized_type_specifier, $.macro_specifier],
+      [$._macro_declaration_specifiers, $.type_specifier, $._sized_bit_int_specifier],
+      [$.type_definition, $._macro_declaration_specifiers, $.type_specifier, $._sized_bit_int_specifier],
+      [$._statement_type_definition, $.type_specifier, $.sized_type_specifier],
+      [$._statement_type_definition, $.type_specifier, $._sized_bit_int_specifier],
+      [$._macro_declaration_specifiers, $.sized_type_specifier],
+      [$.type_definition, $._macro_declaration_specifiers, $.sized_type_specifier],
+      [$.type_definition, $.type_specifier, $.sized_type_specifier],
+      [$.type_definition, $.type_specifier, $._sized_bit_int_specifier],
+      [$._type_declarator, $.sized_type_specifier],
       [$.macro_specifier, $.expression],
       [$.macro_specifier, $.type_specifier],
       [$._macro_declaration_specifiers, $.type_definition, $.type_specifier],
@@ -132,7 +144,6 @@ module.exports = Object.assign(
       [$.sized_type_specifier],
       [$._sized_bit_int_specifier],
       [$.sized_type_specifier, $._sized_bit_int_specifier],
-      [$._type_declarator, $.sized_type_specifier, $._sized_bit_int_specifier],
       [$.type_qualifier, $.atomic_type_specifier],
       [$.type_definition, $._type_declarator],
       [$.type_definition, $.sized_type_specifier],
@@ -707,6 +718,7 @@ module.exports = Object.assign(
           alias($.array_type_declarator, $.array_declarator),
           alias($.parenthesized_type_declarator, $.parenthesized_declarator),
           $._type_identifier,
+          alias('thread_local', sym('type_identifier')),
           alias(choice('signed', 'unsigned', 'long', 'short'), $.primitive_type),
           $.primitive_type
         ),
@@ -965,7 +977,7 @@ module.exports = Object.assign(
       bit_int_specifier: ($) => seq('_BitInt', '(', $.expression, ')'),
 
       sized_type_specifier: ($) =>
-        sizedTypeSpecifier(optional(choice(prec.dynamic(-3, $._type_identifier), $.primitive_type))),
+        sizedTypeSpecifier(choice(prec.dynamic(-3, $._type_identifier), $.primitive_type), true),
 
       _sized_bit_int_specifier: ($) => sizedTypeSpecifier($.bit_int_specifier),
 
@@ -1984,12 +1996,16 @@ function macroAttributeArgument($) {
 
 /**
  * @param {import('./types/treeSitterDsl').RuleOrLiteral} type
+ * @param {boolean} allowImplicitType
  */
-function sizedTypeSpecifier(type) {
+function sizedTypeSpecifier(type, allowImplicitType = false) {
   const modifier = choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__');
+  const interleaved = repeat(choice(sym('type_qualifier'), sym('storage_class_specifier')));
+  const modifiers = repeat(seq(interleaved, modifier));
+  const typedTail = seq(interleaved, field('type', type), modifiers);
   return choice(
-    seq(repeat(modifier), field('type', type), repeat1(modifier)),
-    seq(repeat1(modifier), repeat(sym('type_qualifier')), field('type', type), repeat(modifier))
+    seq(field('type', type), repeat1(seq(interleaved, modifier))),
+    seq(modifier, modifiers, allowImplicitType ? optional(typedTail) : typedTail)
   );
 }
 
