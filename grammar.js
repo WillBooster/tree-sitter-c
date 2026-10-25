@@ -71,12 +71,41 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [
+        $._conditional_function_specifiers,
+        $._declaration_specifiers,
+        $._empty_declaration,
+        $._statement_empty_declaration,
+      ],
+      [$._empty_declaration, $._statement_empty_declaration],
+      [
+        $.declaration,
+        $.type_definition,
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._statement_empty_declaration,
+      ],
+      [$._macro_declaration_specifiers, $._declaration_modifiers, $._empty_declaration, $._statement_empty_declaration],
+      [$._conditional_function_specifiers, $._declaration_specifiers, $._statement_empty_declaration],
+      [$._macro_declaration_specifiers, $._declaration_modifiers, $._statement_empty_declaration],
+      [$.macro_specifier, $._type_name_specifier],
+      [$._type_name_specifier, $.expression, $.va_arg_expression, $.macro_type_specifier],
+      [$._type_name_specifier, $.expression],
+      [$._type_name_specifier, $.expression, $.macro_type_specifier],
+      [$._type_name_specifier, $.macro_type_specifier],
+      [$._type_name_specifier, $._sized_type_name],
+      [$._type_name_specifier, $._sized_bit_int_type_name],
+      [$._sized_type_name],
+      [$._sized_bit_int_type_name],
+      [$._sized_type_name, $._sized_bit_int_type_name],
+      [$.storage_class_specifier, $._type_name_specifier],
+      [$._compound_literal_storage_class_specifier, $._type_name_specifier],
+      [$._field_declaration_specifiers],
       [$._sized_type_identifier, $._enum_underlying_type],
       [$.type_specifier, $._sized_type_identifier, $.macro_specifier],
       [$.type_specifier, $._sized_type_identifier],
       [$._sized_type_identifier, $.macro_specifier],
       [$._declaration_modifiers, $._empty_declaration],
-      [$._conditional_function_specifiers, $._declaration_specifiers, $._empty_declaration],
       [$._statement_declaration, $._statement_declaration_modifiers],
       [$.declaration, $._declaration_modifiers],
       [$._statement_declaration, $._statement_type_definition, $._statement_declaration_modifiers],
@@ -85,13 +114,6 @@ module.exports = Object.assign(
         $._statement_type_definition,
         $._statement_declaration_modifiers,
         $._statement_empty_declaration,
-      ],
-      [
-        $.declaration,
-        $.type_definition,
-        $._macro_declaration_specifiers,
-        $._declaration_modifiers,
-        $._empty_declaration,
       ],
       [$.type_definition, $.type_specifier],
       [$.type_definition, $._macro_declaration_specifiers],
@@ -120,7 +142,6 @@ module.exports = Object.assign(
       [$._macro_declaration_specifiers, $.type_specifier, $.expression],
       [$._macro_declaration_specifiers, $.type_specifier],
       [$._macro_declaration_specifiers, $._declaration_modifiers],
-      [$._macro_declaration_specifiers, $._declaration_modifiers, $._empty_declaration],
       [$.preproc_include_argument],
       [$._preproc_include_token, $.preproc_argument_list],
       [$._preproc_include_path, $.preproc_include_argument],
@@ -147,7 +168,6 @@ module.exports = Object.assign(
       [$._statement_declaration_modifiers, $._statement_empty_declaration],
       [$.declaration, $.storage_class_specifier],
       [$._statement_declaration, $.storage_class_specifier],
-      [$.sized_type_specifier, $._enum_underlying_type],
       [$.type_specifier, $._declarator],
       [$.type_specifier, $._declarator, $.macro_type_specifier],
       [$.type_specifier, $.expression],
@@ -196,7 +216,6 @@ module.exports = Object.assign(
       [$.attributed_type_declarator, $._type_declarator],
       [$._declaration_modifiers, $._field_declaration_list_item],
       [$._declaration_specifiers],
-      [$._compound_literal_storage_class_specifier, $.type_specifier],
       [$._compound_literal_constexpr_specifier, $.type_qualifier],
     ],
 
@@ -250,6 +269,7 @@ module.exports = Object.assign(
       $._case_label_statement,
       $._case_label_chain_statement,
       $.type_specifier,
+      $._type_name_specifier,
       $._declarator,
       $._old_style_declarator,
       $._initialized_declarator,
@@ -630,6 +650,13 @@ module.exports = Object.assign(
           repeat($._non_macro_declaration_modifiers)
         ),
 
+      _field_declaration_specifiers: ($) =>
+        seq(
+          repeat($._declaration_modifiers),
+          field('type', alias($._type_name_specifier, $.type_specifier)),
+          repeat($._non_macro_declaration_modifiers)
+        ),
+
       _statement_declaration_specifiers: ($) =>
         seq(
           repeat($._statement_declaration_modifiers),
@@ -958,26 +985,16 @@ module.exports = Object.assign(
 
       alignas_qualifier: ($) => seq(choice('alignas', '_Alignas'), '(', choice($.expression, $.type_descriptor), ')'),
 
-      type_specifier: ($) =>
-        choice(
-          $._non_identifier_type_specifier,
-          $.macro_type_specifier,
-          $._type_identifier,
-          prec.dynamic(-1, alias('thread_local', sym('type_identifier')))
-        ),
+      type_specifier: ($) => typeSpecifier($, $.sized_type_specifier, $._sized_bit_int_specifier),
+
+      _type_name_specifier: ($) => typeSpecifier($, $._sized_type_name, $._sized_bit_int_type_name),
 
       _non_identifier_type_specifier: ($) =>
-        choice(
-          $.struct_specifier,
-          $.union_specifier,
-          $.enum_specifier,
-          $.typeof_specifier,
-          $.bit_int_specifier,
-          $.atomic_type_specifier,
-          $.sized_type_specifier,
-          alias($._sized_bit_int_specifier, $.sized_type_specifier),
-          $.primitive_type
-        ),
+        nonIdentifierTypeSpecifier($, $.sized_type_specifier, $._sized_bit_int_specifier),
+
+      _sized_type_name: ($) => sizedTypeSpecifier($.primitive_type, true, $._sized_type_identifier, false),
+
+      _sized_bit_int_type_name: ($) => sizedTypeSpecifier($.bit_int_specifier, false, undefined, false),
 
       typeof_specifier: ($) =>
         seq(
@@ -1036,7 +1053,12 @@ module.exports = Object.assign(
             repeat($.type_qualifier),
             field(
               'underlying_type',
-              choice($.primitive_type, $.sized_type_specifier, $.typeof_specifier, $._type_identifier)
+              choice(
+                $.primitive_type,
+                alias($._sized_type_name, $.sized_type_specifier),
+                $.typeof_specifier,
+                $._type_identifier
+              )
             ),
             repeat($.type_qualifier)
           )
@@ -1107,7 +1129,12 @@ module.exports = Object.assign(
         ),
 
       field_declaration: ($) =>
-        seq($._declaration_specifiers, optional($._field_declaration_declarator), optional($.attribute_specifier), ';'),
+        seq(
+          $._field_declaration_specifiers,
+          optional($._field_declaration_declarator),
+          optional($.attribute_specifier),
+          ';'
+        ),
       _field_declaration_declarator: ($) =>
         commaSep1(
           choice(seq(field('declarator', $._field_declarator), optional($.bitfield_clause)), $.bitfield_clause)
@@ -1474,7 +1501,7 @@ module.exports = Object.assign(
       type_descriptor: ($) =>
         seq(
           repeat($.type_qualifier),
-          field('type', $.type_specifier),
+          field('type', alias($._type_name_specifier, $.type_specifier)),
           repeat($.type_qualifier),
           field('declarator', optional($._abstract_declarator))
         ),
@@ -1797,20 +1824,14 @@ module.exports = Object.assign(
       _statement_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('statement_identifier')),
 
       _empty_declaration: ($) =>
-        seq(
-          choice(
+        choice(
+          seq(
             repeat(choice($.ms_declspec_modifier, $.macro_specifier, $._leading_conditional_macro_specifier)),
-            repeat1(
-              choice(
-                $.ms_declspec_modifier,
-                prec.dynamic(-1, $.storage_class_specifier),
-                prec.dynamic(-1, $.type_qualifier)
-              )
-            )
+            $.type_specifier,
+            repeat($.type_qualifier),
+            ';'
           ),
-          $.type_specifier,
-          repeat($.type_qualifier),
-          ';'
+          $._statement_empty_declaration
         ),
 
       _statement_empty_declaration: ($) =>
@@ -1823,7 +1844,7 @@ module.exports = Object.assign(
             )
           ),
           $.type_specifier,
-          repeat($.type_qualifier),
+          repeat(choice($.type_qualifier, prec.dynamic(-1, $.storage_class_specifier))),
           ';'
         ),
 
@@ -2032,14 +2053,50 @@ function macroAttributeArgument($) {
 }
 
 /**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'struct_specifier' | 'union_specifier' | 'enum_specifier' | 'typeof_specifier' | 'bit_int_specifier' | 'atomic_type_specifier' | 'primitive_type' | 'macro_type_specifier' | '_type_identifier'>} $
+ * @param {import('./types/treeSitterDsl').RuleOrLiteral} sized
+ * @param {import('./types/treeSitterDsl').RuleOrLiteral} bitInt
+ */
+function typeSpecifier($, sized, bitInt) {
+  return choice(
+    nonIdentifierTypeSpecifier($, sized, bitInt),
+    $.macro_type_specifier,
+    $._type_identifier,
+    prec.dynamic(-1, alias('thread_local', sym('type_identifier')))
+  );
+}
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'struct_specifier' | 'union_specifier' | 'enum_specifier' | 'typeof_specifier' | 'bit_int_specifier' | 'atomic_type_specifier' | 'primitive_type'>} $
+ * @param {import('./types/treeSitterDsl').RuleOrLiteral} sized
+ * @param {import('./types/treeSitterDsl').RuleOrLiteral} bitInt
+ */
+function nonIdentifierTypeSpecifier($, sized, bitInt) {
+  return choice(
+    $.struct_specifier,
+    $.union_specifier,
+    $.enum_specifier,
+    $.typeof_specifier,
+    $.bit_int_specifier,
+    $.atomic_type_specifier,
+    alias(sized, sym('sized_type_specifier')),
+    alias(bitInt, sym('sized_type_specifier')),
+    $.primitive_type
+  );
+}
+
+/**
  * @param {import('./types/treeSitterDsl').RuleOrLiteral} knownType
  * @param {boolean} allowImplicitType
  * @param {import('./types/treeSitterDsl').RuleOrLiteral} [opaqueType]
+ * @param {boolean} allowStorage
  */
-function sizedTypeSpecifier(knownType, allowImplicitType = false, opaqueType) {
+function sizedTypeSpecifier(knownType, allowImplicitType = false, opaqueType, allowStorage = true) {
   const type = opaqueType === undefined ? knownType : choice(opaqueType, knownType);
   const modifier = choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__');
-  const interleaved = repeat(choice(sym('type_qualifier'), sym('storage_class_specifier')));
+  const interleaved = repeat(
+    allowStorage ? choice(sym('type_qualifier'), sym('storage_class_specifier')) : sym('type_qualifier')
+  );
   const modifiers = repeat(seq(interleaved, modifier));
   const typedTail = seq(interleaved, field('type', type), modifiers);
   return choice(
