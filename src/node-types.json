@@ -1279,6 +1279,10 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "type_definition",
           "named": true
         },
@@ -1389,7 +1393,7 @@
     "fields": {
       "declarator": {
         "multiple": true,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "array_declarator",
@@ -1576,6 +1580,10 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "switch_statement",
           "named": true
         },
@@ -1696,6 +1704,10 @@
         },
         {
           "type": "attribute_specifier",
+          "named": true
+        },
+        {
+          "type": "type_qualifier",
           "named": true
         }
       ]
@@ -3264,6 +3276,10 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "type_definition",
           "named": true
         },
@@ -3384,6 +3400,10 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "type_definition",
           "named": true
         },
@@ -3472,6 +3492,10 @@
         },
         {
           "type": "statement",
+          "named": true
+        },
+        {
+          "type": "storage_class_specifier",
           "named": true
         },
         {
@@ -3673,6 +3697,10 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "type_definition",
           "named": true
         },
@@ -3790,6 +3818,10 @@
         },
         {
           "type": "statement",
+          "named": true
+        },
+        {
+          "type": "storage_class_specifier",
           "named": true
         },
         {
@@ -4331,6 +4363,10 @@
         },
         {
           "type": "return_statement",
+          "named": true
+        },
+        {
+          "type": "storage_class_specifier",
           "named": true
         },
         {

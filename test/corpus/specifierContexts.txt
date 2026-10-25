@@ -1,0 +1,138 @@
+================================================================================
+Qualified enum underlying types retain both named and anonymous bodies
+================================================================================
+
+enum Sized : unsigned const { A };
+enum Multiple : unsigned long volatile { B };
+enum Primitive : int const { C };
+enum TypeOf : typeof(1) const { D };
+enum : unsigned const { E };
+enum Prefix : const unsigned { F };
+int after;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (enum_specifier
+    (type_identifier)
+    (sized_type_specifier)
+    (type_qualifier)
+    (enumerator_list
+      (enumerator
+        (identifier))))
+  (enum_specifier
+    (type_identifier)
+    (sized_type_specifier)
+    (type_qualifier)
+    (enumerator_list
+      (enumerator
+        (identifier))))
+  (enum_specifier
+    (type_identifier)
+    (primitive_type)
+    (type_qualifier)
+    (enumerator_list
+      (enumerator
+        (identifier))))
+  (enum_specifier
+    (type_identifier)
+    (typeof_specifier
+      (number_literal))
+    (type_qualifier)
+    (enumerator_list
+      (enumerator
+        (identifier))))
+  (enum_specifier
+    (sized_type_specifier)
+    (type_qualifier)
+    (enumerator_list
+      (enumerator
+        (identifier))))
+  (enum_specifier
+    (type_identifier)
+    (type_qualifier)
+    (sized_type_specifier)
+    (enumerator_list
+      (enumerator
+        (identifier))))
+  (declaration
+    (primitive_type)
+    (identifier)))
+
+================================================================================
+Declarator-free specifiers preserve loop and field boundaries
+================================================================================
+
+static long const;
+const static unsigned;
+struct Bits { unsigned const : 3; unsigned const named : 2; int x; };
+void f(void) {
+  static long const;
+  int y;
+  const static unsigned;
+  for (long const;;) {}
+  for (unsigned int const;;) {}
+  int z;
+}
+int after;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (storage_class_specifier)
+  (sized_type_specifier)
+  (type_qualifier)
+  (type_qualifier)
+  (storage_class_specifier)
+  (sized_type_specifier)
+  (struct_specifier
+    (type_identifier)
+    (field_declaration_list
+      (field_declaration
+        (sized_type_specifier)
+        (type_qualifier)
+        (bitfield_clause
+          (number_literal)))
+      (field_declaration
+        (sized_type_specifier)
+        (type_qualifier)
+        (field_identifier)
+        (bitfield_clause
+          (number_literal)))
+      (field_declaration
+        (primitive_type)
+        (field_identifier))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (storage_class_specifier)
+      (sized_type_specifier)
+      (type_qualifier)
+      (declaration
+        (primitive_type)
+        (identifier))
+      (type_qualifier)
+      (storage_class_specifier)
+      (sized_type_specifier)
+      (for_statement
+        (declaration
+          (sized_type_specifier)
+          (type_qualifier))
+        (compound_statement))
+      (for_statement
+        (declaration
+          (sized_type_specifier
+            (primitive_type))
+          (type_qualifier))
+        (compound_statement))
+      (declaration
+        (primitive_type)
+        (identifier))))
+  (declaration
+    (primitive_type)
+    (identifier)))

@@ -76,7 +76,19 @@ module.exports = Object.assign(
       [$._statement_declaration, $._statement_declaration_modifiers],
       [$.declaration, $._declaration_modifiers],
       [$._statement_declaration, $._statement_type_definition, $._statement_declaration_modifiers],
-      [$.declaration, $.type_definition, $._macro_declaration_specifiers, $._declaration_modifiers],
+      [
+        $._statement_declaration,
+        $._statement_type_definition,
+        $._statement_declaration_modifiers,
+        $._statement_empty_declaration,
+      ],
+      [
+        $.declaration,
+        $.type_definition,
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._empty_declaration,
+      ],
       [$.type_definition, $.type_specifier],
       [$.type_definition, $._macro_declaration_specifiers],
       [$._macro_declaration_specifiers, $._declaration_modifiers, $.attributed_statement, $.case_statement],
@@ -106,8 +118,8 @@ module.exports = Object.assign(
       [$._macro_declaration_specifiers, $.type_definition, $.type_specifier],
       [$._macro_declaration_specifiers, $.type_specifier, $.expression],
       [$._macro_declaration_specifiers, $.type_specifier],
-      [$._macro_declaration_specifiers, $._declaration_modifiers, $._empty_declaration],
       [$._macro_declaration_specifiers, $._declaration_modifiers],
+      [$._macro_declaration_specifiers, $._declaration_modifiers, $._empty_declaration],
       [$.preproc_include_argument],
       [$._preproc_include_token, $.preproc_argument_list],
       [$._preproc_include_path, $.preproc_include_argument],
@@ -125,16 +137,16 @@ module.exports = Object.assign(
       [$.va_arg_expression, $.expression],
       [$.type_definition, $._declaration_modifiers],
       [$._statement_type_definition, $._statement_declaration_modifiers],
-      [$.type_definition, $._declaration_modifiers, $._empty_declaration],
       [$._statement_type_definition, $.type_specifier],
       [$.type_definition, $.type_qualifier, $.extension_expression],
       [$._statement_type_definition, $.type_qualifier, $.extension_expression],
       [$.type_definition, $.type_qualifier],
+      [$.type_definition, $._declaration_modifiers, $._empty_declaration],
       [$._statement_type_definition, $.type_qualifier],
       [$._statement_declaration_modifiers, $._statement_empty_declaration],
       [$.declaration, $.storage_class_specifier],
       [$._statement_declaration, $.storage_class_specifier],
-      [$.sized_type_specifier, $.enum_specifier],
+      [$.sized_type_specifier, $._enum_underlying_type],
       [$.type_specifier, $._declarator],
       [$.type_specifier, $._declarator, $.macro_type_specifier],
       [$.type_specifier, $.expression],
@@ -1007,31 +1019,25 @@ module.exports = Object.assign(
           choice(
             seq(
               field('name', $._type_identifier),
-              optional(
-                seq(
-                  ':',
-                  field(
-                    'underlying_type',
-                    choice($.primitive_type, $.sized_type_specifier, $.typeof_specifier, $._type_identifier)
-                  )
-                )
-              ),
+              optional($._enum_underlying_type),
               field('body', optional($.enumerator_list))
             ),
-            seq(
-              optional(
-                seq(
-                  ':',
-                  field(
-                    'underlying_type',
-                    choice($.primitive_type, $.sized_type_specifier, $.typeof_specifier, $._type_identifier)
-                  )
-                )
-              ),
-              field('body', $.enumerator_list)
-            )
+            seq(optional($._enum_underlying_type), field('body', $.enumerator_list))
           ),
           optional($.attribute_specifier)
+        ),
+
+      _enum_underlying_type: ($) =>
+        prec.right(
+          seq(
+            ':',
+            repeat($.type_qualifier),
+            field(
+              'underlying_type',
+              choice($.primitive_type, $.sized_type_specifier, $.typeof_specifier, $._type_identifier)
+            ),
+            repeat($.type_qualifier)
+          )
         ),
 
       enumerator_list: ($) =>
@@ -1101,7 +1107,9 @@ module.exports = Object.assign(
       field_declaration: ($) =>
         seq($._declaration_specifiers, optional($._field_declaration_declarator), optional($.attribute_specifier), ';'),
       _field_declaration_declarator: ($) =>
-        commaSep1(seq(field('declarator', $._field_declarator), optional($.bitfield_clause))),
+        commaSep1(
+          choice(seq(field('declarator', $._field_declarator), optional($.bitfield_clause)), $.bitfield_clause)
+        ),
 
       bitfield_clause: ($) => seq(':', $.expression),
 
@@ -1328,12 +1336,15 @@ module.exports = Object.assign(
         seq(
           choice(
             field('initializer', alias($._statement_declaration, $.declaration)),
+            field('initializer', alias($._for_empty_declaration, $.declaration)),
             seq(field('initializer', optional(choice($.expression, $.comma_expression))), ';')
           ),
           field('condition', optional(choice($.expression, $.comma_expression))),
           ';',
           field('update', optional(choice($.expression, $.comma_expression)))
         ),
+
+      _for_empty_declaration: ($) => seq($._statement_declaration_specifiers, ';'),
 
       return_statement: ($) => seq('return', optional(choice($.expression, $.comma_expression)), ';'),
 
@@ -1785,13 +1796,32 @@ module.exports = Object.assign(
 
       _empty_declaration: ($) =>
         seq(
-          repeat(choice($.ms_declspec_modifier, $.macro_specifier, $._leading_conditional_macro_specifier)),
+          repeat(
+            choice(
+              $.ms_declspec_modifier,
+              $.macro_specifier,
+              $._leading_conditional_macro_specifier,
+              prec.dynamic(-1, $.storage_class_specifier),
+              prec.dynamic(-1, $.type_qualifier)
+            )
+          ),
           $.type_specifier,
           repeat($.type_qualifier),
           ';'
         ),
       _statement_empty_declaration: ($) =>
-        seq(repeat($.ms_declspec_modifier), $.type_specifier, repeat($.type_qualifier), ';'),
+        seq(
+          repeat(
+            choice(
+              $.ms_declspec_modifier,
+              prec.dynamic(-1, $.storage_class_specifier),
+              prec.dynamic(-1, $.type_qualifier)
+            )
+          ),
+          $.type_specifier,
+          repeat($.type_qualifier),
+          ';'
+        ),
 
       macro_specifier: ($) => prec.dynamic(-2, field('name', $.identifier)),
 
