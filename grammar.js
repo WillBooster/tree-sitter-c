@@ -71,6 +71,10 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._sized_type_identifier, $._enum_underlying_type],
+      [$.type_specifier, $._sized_type_identifier, $.macro_specifier],
+      [$.type_specifier, $._sized_type_identifier],
+      [$._sized_type_identifier, $.macro_specifier],
       [$._declaration_modifiers, $._empty_declaration],
       [$._conditional_function_specifiers, $._declaration_specifiers, $._empty_declaration],
       [$._statement_declaration, $._statement_declaration_modifiers],
@@ -99,11 +103,8 @@ module.exports = Object.assign(
       [$.macro_specifier, $._declarator],
       [$.macro_specifier, $._declarator, $.attributed_declarator, $.type_specifier],
       [$.macro_specifier, $._declarator, $.attributed_declarator],
-      [$.macro_specifier, $.sized_type_specifier],
-      [$.macro_specifier, $.type_specifier, $.sized_type_specifier],
       [$._macro_declaration_specifiers, $.type_specifier, $.sized_type_specifier],
       [$.type_definition, $._macro_declaration_specifiers, $.type_specifier, $.sized_type_specifier],
-      [$._macro_declaration_specifiers, $.type_specifier, $.sized_type_specifier, $.macro_specifier],
       [$._macro_declaration_specifiers, $.type_specifier, $._sized_bit_int_specifier],
       [$.type_definition, $._macro_declaration_specifiers, $.type_specifier, $._sized_bit_int_specifier],
       [$._statement_type_definition, $.type_specifier, $.sized_type_specifier],
@@ -989,8 +990,9 @@ module.exports = Object.assign(
 
       bit_int_specifier: ($) => seq('_BitInt', '(', $.expression, ')'),
 
-      sized_type_specifier: ($) =>
-        sizedTypeSpecifier(choice(prec.dynamic(-3, $._type_identifier), $.primitive_type), true),
+      sized_type_specifier: ($) => sizedTypeSpecifier($.primitive_type, true, $._sized_type_identifier),
+
+      _sized_type_identifier: ($) => prec.dynamic(-3, $._type_identifier),
 
       _sized_bit_int_specifier: ($) => sizedTypeSpecifier($.bit_int_specifier),
 
@@ -1796,19 +1798,21 @@ module.exports = Object.assign(
 
       _empty_declaration: ($) =>
         seq(
-          repeat(
-            choice(
-              $.ms_declspec_modifier,
-              $.macro_specifier,
-              $._leading_conditional_macro_specifier,
-              prec.dynamic(-1, $.storage_class_specifier),
-              prec.dynamic(-1, $.type_qualifier)
+          choice(
+            repeat(choice($.ms_declspec_modifier, $.macro_specifier, $._leading_conditional_macro_specifier)),
+            repeat1(
+              choice(
+                $.ms_declspec_modifier,
+                prec.dynamic(-1, $.storage_class_specifier),
+                prec.dynamic(-1, $.type_qualifier)
+              )
             )
           ),
           $.type_specifier,
           repeat($.type_qualifier),
           ';'
         ),
+
       _statement_empty_declaration: ($) =>
         seq(
           repeat(
@@ -2028,16 +2032,19 @@ function macroAttributeArgument($) {
 }
 
 /**
- * @param {import('./types/treeSitterDsl').RuleOrLiteral} type
+ * @param {import('./types/treeSitterDsl').RuleOrLiteral} knownType
  * @param {boolean} allowImplicitType
+ * @param {import('./types/treeSitterDsl').RuleOrLiteral} [opaqueType]
  */
-function sizedTypeSpecifier(type, allowImplicitType = false) {
+function sizedTypeSpecifier(knownType, allowImplicitType = false, opaqueType) {
+  const type = opaqueType === undefined ? knownType : choice(opaqueType, knownType);
   const modifier = choice('signed', 'unsigned', 'long', 'short', '_Complex', '_Imaginary', '__complex__');
   const interleaved = repeat(choice(sym('type_qualifier'), sym('storage_class_specifier')));
   const modifiers = repeat(seq(interleaved, modifier));
   const typedTail = seq(interleaved, field('type', type), modifiers);
   return choice(
-    seq(field('type', type), repeat1(seq(interleaved, modifier))),
+    seq(field('type', knownType), repeat1(seq(interleaved, modifier))),
+    ...(opaqueType === undefined ? [] : [seq(field('type', opaqueType), modifier, modifiers)]),
     seq(modifier, modifiers, allowImplicitType ? optional(typedTail) : typedTail)
   );
 }

@@ -1,0 +1,53 @@
+================================================================================
+Macro prefixes retain explicit primitive types during call recovery
+================================================================================
+
+FOO()
+A B C const char x;
+int after;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (ERROR
+    (call_expression
+      function: (identifier)
+      arguments: (argument_list)))
+  (declaration
+    (macro_specifier
+      name: (identifier))
+    (macro_specifier
+      name: (identifier))
+    (macro_specifier
+      name: (identifier))
+    (type_qualifier)
+    type: (primitive_type)
+    declarator: (identifier))
+  (declaration
+    type: (primitive_type)
+    declarator: (identifier)))
+
+================================================================================
+Macro prefixes retain implicit sized types during call recovery
+================================================================================
+
+FOO()
+A long const value;
+int after;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (ERROR
+    (call_expression
+      function: (identifier)
+      arguments: (argument_list)))
+  (declaration
+    (macro_specifier
+      name: (identifier))
+    type: (sized_type_specifier)
+    (type_qualifier)
+    declarator: (identifier))
+  (declaration
+    type: (primitive_type)
+    declarator: (identifier)))

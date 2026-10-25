@@ -9727,25 +9727,115 @@
               "type": "FIELD",
               "name": "type",
               "content": {
-                "type": "CHOICE",
-                "members": [
-                  {
-                    "type": "PREC_DYNAMIC",
-                    "value": -3,
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_type_identifier"
-                    }
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "primitive_type"
-                  }
-                ]
+                "type": "SYMBOL",
+                "name": "primitive_type"
               }
             },
             {
               "type": "REPEAT1",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "REPEAT",
+                    "content": {
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "type_qualifier"
+                        },
+                        {
+                          "type": "SYMBOL",
+                          "name": "storage_class_specifier"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "signed"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "unsigned"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "long"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "short"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "_Complex"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "_Imaginary"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "__complex__"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "type",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_sized_type_identifier"
+              }
+            },
+            {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": "signed"
+                },
+                {
+                  "type": "STRING",
+                  "value": "unsigned"
+                },
+                {
+                  "type": "STRING",
+                  "value": "long"
+                },
+                {
+                  "type": "STRING",
+                  "value": "short"
+                },
+                {
+                  "type": "STRING",
+                  "value": "_Complex"
+                },
+                {
+                  "type": "STRING",
+                  "value": "_Imaginary"
+                },
+                {
+                  "type": "STRING",
+                  "value": "__complex__"
+                }
+              ]
+            },
+            {
+              "type": "REPEAT",
               "content": {
                 "type": "SEQ",
                 "members": [
@@ -9925,12 +10015,8 @@
                         "type": "CHOICE",
                         "members": [
                           {
-                            "type": "PREC_DYNAMIC",
-                            "value": -3,
-                            "content": {
-                              "type": "SYMBOL",
-                              "name": "_type_identifier"
-                            }
+                            "type": "SYMBOL",
+                            "name": "_sized_type_identifier"
                           },
                           {
                             "type": "SYMBOL",
@@ -10006,6 +10092,14 @@
           ]
         }
       ]
+    },
+    "_sized_type_identifier": {
+      "type": "PREC_DYNAMIC",
+      "value": -3,
+      "content": {
+        "type": "SYMBOL",
+        "name": "_type_identifier"
+      }
     },
     "_sized_bit_int_specifier": {
       "type": "CHOICE",
@@ -16787,40 +16881,57 @@
       "type": "SEQ",
       "members": [
         {
-          "type": "REPEAT",
-          "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "ms_declspec_modifier"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "macro_specifier"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "_leading_conditional_macro_specifier"
-              },
-              {
-                "type": "PREC_DYNAMIC",
-                "value": -1,
-                "content": {
-                  "type": "SYMBOL",
-                  "name": "storage_class_specifier"
-                }
-              },
-              {
-                "type": "PREC_DYNAMIC",
-                "value": -1,
-                "content": {
-                  "type": "SYMBOL",
-                  "name": "type_qualifier"
-                }
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "REPEAT",
+              "content": {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "ms_declspec_modifier"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "macro_specifier"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "_leading_conditional_macro_specifier"
+                  }
+                ]
               }
-            ]
-          }
+            },
+            {
+              "type": "REPEAT1",
+              "content": {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "ms_declspec_modifier"
+                  },
+                  {
+                    "type": "PREC_DYNAMIC",
+                    "value": -1,
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "storage_class_specifier"
+                    }
+                  },
+                  {
+                    "type": "PREC_DYNAMIC",
+                    "value": -1,
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "type_qualifier"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
         },
         {
           "type": "SYMBOL",
@@ -17131,6 +17242,23 @@
   ],
   "conflicts": [
     [
+      "_sized_type_identifier",
+      "_enum_underlying_type"
+    ],
+    [
+      "type_specifier",
+      "_sized_type_identifier",
+      "macro_specifier"
+    ],
+    [
+      "type_specifier",
+      "_sized_type_identifier"
+    ],
+    [
+      "_sized_type_identifier",
+      "macro_specifier"
+    ],
+    [
       "_declaration_modifiers",
       "_empty_declaration"
     ],
@@ -17214,15 +17342,6 @@
       "attributed_declarator"
     ],
     [
-      "macro_specifier",
-      "sized_type_specifier"
-    ],
-    [
-      "macro_specifier",
-      "type_specifier",
-      "sized_type_specifier"
-    ],
-    [
       "_macro_declaration_specifiers",
       "type_specifier",
       "sized_type_specifier"
@@ -17232,12 +17351,6 @@
       "_macro_declaration_specifiers",
       "type_specifier",
       "sized_type_specifier"
-    ],
-    [
-      "_macro_declaration_specifiers",
-      "type_specifier",
-      "sized_type_specifier",
-      "macro_specifier"
     ],
     [
       "_macro_declaration_specifiers",
