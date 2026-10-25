@@ -1344,7 +1344,7 @@ module.exports = Object.assign(
           field('update', optional(choice($.expression, $.comma_expression)))
         ),
 
-      _for_empty_declaration: ($) => seq($._statement_declaration_specifiers, ';'),
+      _for_empty_declaration: ($) => prec.dynamic(-1, seq($._statement_declaration_specifiers, ';')),
 
       return_statement: ($) => seq('return', optional(choice($.expression, $.comma_expression)), ';'),
 

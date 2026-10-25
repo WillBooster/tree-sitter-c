@@ -21,6 +21,13 @@ void contexts(void) {
   for (long const;;) { break; }
   for (unsigned int const;;) { break; }
   for (long const value = 0; value < 1;) { break; }
+  int n = 2;
+  int i = 0;
+  for (n; n > 0; n--) {}
+  for (i; i < 3; i++) {}
+  for (n + 1; n > 0; n--) {}
+  for ((n); n > 0; n--) {}
+  for (parameter(y); y > 0; y--) {}
   unsigned const ordinary = 1;
   (void)(unsigned const)ordinary;
   (void)sizeof(long const);

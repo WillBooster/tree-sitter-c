@@ -136,3 +136,89 @@ int after;
   (declaration
     (primitive_type)
     (identifier)))
+
+================================================================================
+For expression initializers retain expression roles
+================================================================================
+
+void tick(int n);
+void f(int n) {
+  int i = 0;
+  for (n; n > 0; n--) {}
+  for (i; i < 3; i++) {}
+  for (n + 1; n > 0; n--) {}
+  for ((n); n > 0; n--) {}
+  for (tick(n); n > 0; n--) {}
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (declaration
+        (primitive_type)
+        (init_declarator
+          (identifier)
+          (number_literal)))
+      (for_statement
+        (identifier)
+        (binary_expression
+          (identifier)
+          (number_literal))
+        (update_expression
+          (identifier))
+        (compound_statement))
+      (for_statement
+        (identifier)
+        (binary_expression
+          (identifier)
+          (number_literal))
+        (update_expression
+          (identifier))
+        (compound_statement))
+      (for_statement
+        (binary_expression
+          (identifier)
+          (number_literal))
+        (binary_expression
+          (identifier)
+          (number_literal))
+        (update_expression
+          (identifier))
+        (compound_statement))
+      (for_statement
+        (parenthesized_expression
+          (identifier))
+        (binary_expression
+          (identifier)
+          (number_literal))
+        (update_expression
+          (identifier))
+        (compound_statement))
+      (for_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (identifier)))
+        (binary_expression
+          (identifier)
+          (number_literal))
+        (update_expression
+          (identifier))
+        (compound_statement)))))
