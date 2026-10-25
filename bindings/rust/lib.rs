@@ -15,9 +15,9 @@
 //! ```
 //!
 //! The parser carries the ABI number of the WillBooster/tree-sitter generator, so it loads only with the
-//! `willbooster-tree-sitter` runtime, version 14.0.0 or later within 14.x; other tree-sitter runtimes reject it.
+//! `willbooster-tree-sitter` runtime, version 15.0.0 or later within 15.x; other tree-sitter runtimes reject it.
 //!
-//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/14/tree_sitter/struct.Parser.html
+//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/15.0.0/tree_sitter/struct.Parser.html
 //! [tree-sitter]: https://tree-sitter.github.io/
 
 use tree_sitter_language::LanguageFn;
