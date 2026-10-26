@@ -1,0 +1,77 @@
+================================================================================
+Braced annotation arguments retain prototypes and following definitions
+================================================================================
+
+extern CHECK((int[]){1, 2}) int array(void);
+int CHECK((int){1}) post(void);
+extern CHECK(1) CHECK((int[]){1, 2}) int chained(void);
+int following(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (storage_class_specifier)
+    (attribute_specifier
+      name: (identifier)
+      arguments: (argument_list
+        (compound_literal_expression
+          type: (type_descriptor
+            type: (primitive_type)
+            declarator: (abstract_array_declarator))
+          value: (initializer_list
+            (number_literal)
+            (number_literal)))))
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)))))
+  (declaration
+    type: (primitive_type)
+    (attribute_specifier
+      name: (identifier)
+      arguments: (argument_list
+        (compound_literal_expression
+          type: (type_descriptor
+            type: (primitive_type))
+          value: (initializer_list
+            (number_literal)))))
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)))))
+  (declaration
+    (storage_class_specifier)
+    (attribute_specifier
+      name: (identifier)
+      arguments: (argument_list
+        (number_literal)))
+    (attribute_specifier
+      name: (identifier)
+      arguments: (argument_list
+        (compound_literal_expression
+          type: (type_descriptor
+            type: (primitive_type)
+            declarator: (abstract_array_declarator))
+          value: (initializer_list
+            (number_literal)
+            (number_literal)))))
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)))))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type))))
+    body: (compound_statement
+      (return_statement
+        (number_literal)))))

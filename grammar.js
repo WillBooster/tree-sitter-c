@@ -71,6 +71,33 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._macro_attribute_argument_list, $.macro_type_specifier],
+      [$._macro_attribute_specifier, $.type_specifier, $.macro_type_specifier],
+      [$.declaration, $._declaration_modifiers, $._guarded_type_specifiers],
+      [$._declaration_modifiers, $._guarded_type_specifiers],
+      [
+        $.declaration,
+        $.type_definition,
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._statement_empty_declaration,
+      ],
+      [
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._empty_declaration,
+        $._statement_empty_declaration,
+      ],
+      [$._macro_declaration_specifiers, $._declaration_modifiers, $._guarded_type_specifiers],
+      [
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._statement_empty_declaration,
+      ],
+
       [
         $._conditional_function_specifiers,
         $._declaration_specifiers,
@@ -511,9 +538,11 @@ module.exports = Object.assign(
         );
       },
 
-      function_definition: ($) => functionDefinitionRule($, $._declaration_specifiers, false),
+      function_definition: ($) =>
+        functionDefinitionRule($, choice($._declaration_specifiers, $._guarded_type_specifiers), false),
       _statement_function_definition: ($) => functionDefinitionRule($, $._statement_declaration_specifiers, false),
-      _old_style_function_definition: ($) => functionDefinitionRule($, $._declaration_specifiers, true),
+      _old_style_function_definition: ($) =>
+        functionDefinitionRule($, choice($._declaration_specifiers, $._guarded_type_specifiers), true),
       _statement_old_style_function_definition: ($) =>
         functionDefinitionRule($, $._statement_declaration_specifiers, true),
 
@@ -560,7 +589,8 @@ module.exports = Object.assign(
           repeat(choice($._non_macro_declaration_modifiers, $._conditional_macro_specifier))
         ),
 
-      declaration: ($) => declarationRule($, $._declaration_specifiers, $._declaration_modifiers),
+      declaration: ($) =>
+        declarationRule($, choice($._declaration_specifiers, $._guarded_type_specifiers), $._declaration_modifiers),
       _statement_declaration: ($) =>
         declarationRule($, $._statement_declaration_specifiers, $._statement_declaration_modifiers),
 
@@ -648,6 +678,15 @@ module.exports = Object.assign(
           repeat($._declaration_modifiers),
           field('type', $.type_specifier),
           repeat($._non_macro_declaration_modifiers)
+        ),
+
+      _guarded_type_specifiers: ($) =>
+        seq(
+          choice($.storage_class_specifier, $.type_qualifier, $.ms_declspec_modifier),
+          repeat($._non_macro_declaration_modifiers),
+          sym('_function_attribute_start'),
+          field('type', $.type_specifier),
+          repeat(choice($._non_macro_declaration_modifiers, $._conditional_macro_specifier))
         ),
 
       _field_declaration_specifiers: ($) =>

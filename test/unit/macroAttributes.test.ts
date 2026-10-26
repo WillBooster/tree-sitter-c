@@ -61,6 +61,13 @@ test('keeps macro type specifiers and ordinary calls distinct from declaration m
   const source = `TYPE(int) global;
 struct Holder { TYPE(int) field; };
 void consume(TYPE(int));
+extern TYPE(struct { int member; }) braced_type;
+TYPE(struct { int member; }) definition(void) { for (;;) {} }
+extern TYPE(struct { int member; })
+#ifdef FLAG
+MARK
+#endif
+conditional(void) { for (;;) {} }
 void run(int a, int b, int c, int d) {
   callback(1, 2);
   compare(a < b, c > d);
@@ -71,8 +78,14 @@ void run(int a, int b, int c, int d) {
     expect(tree.rootNode.descendantsOfType('macro_type_specifier').map((node) => node.text)).toEqual([
       'TYPE(int)',
       'TYPE(int)',
+      'TYPE(struct { int member; })',
+      'TYPE(struct { int member; })',
+      'TYPE(struct { int member; })',
     ]);
     expect(tree.rootNode.descendantsOfType('attribute_specifier')).toHaveLength(0);
+    expect(
+      tree.rootNode.descendantsOfType('function_definition').map((node) => node.childForFieldName('declarator')?.text)
+    ).toEqual(['definition(void)', 'conditional(void)', 'run(int a, int b, int c, int d)']);
     expect(tree.rootNode.descendantsOfType('call_expression').map((node) => node.text)).toEqual([
       'callback(1, 2)',
       'compare(a < b, c > d)',
@@ -533,6 +546,7 @@ test('keeps native modifier captures and following function ranges', { timeout: 
         'test/fixtures/macroAttributes.c',
         'test/fixtures/statementMacroCases.c',
         'test/fixtures/macroParameterDefinition.c',
+        'test/fixtures/bracedMacroAttributes.c',
       ],
       {
         cwd: root,
@@ -553,9 +567,33 @@ test('keeps native modifier captures and following function ranges', { timeout: 
       'DEPRECATED',
       'CHECK_TYPES',
       'EMPTY',
+      ...Array.from({ length: 10 }, () => 'ANNOTATE'),
     ]);
-    expect(capturedText('prototype')).toEqual(['sprintf', 'vsprintf', 'snprintf', 'append', 'typed', 'empty_args']);
-    expect(capturedText('functionName')).toEqual(['following', 'run', 'following', 'last', 'discard', 'following']);
+    expect(capturedText('prototype')).toEqual([
+      'sprintf',
+      'vsprintf',
+      'snprintf',
+      'append',
+      'typed',
+      'empty_args',
+      'array_argument',
+      'aggregate_argument',
+      'post_type',
+      'nested_argument',
+      'statement_argument',
+      'inline_type',
+      'chained',
+      'repeated',
+    ]);
+    expect(capturedText('functionName')).toEqual([
+      'following',
+      'run',
+      'following',
+      'last',
+      'discard',
+      'following',
+      'following',
+    ]);
     expect(result.stdout).toContain(' - function, start: (1, 0), end: (11, 1)');
     expect(result.stdout).toContain(' - function, start: (12, 0), end: (12, 31)');
     expect(result.stdout).toContain(' - function, start: (13, 0), end: (13, 26)');
@@ -796,7 +834,7 @@ const bracedAnnotationArguments = [
 ];
 
 test.each(bracedAnnotationArguments)(
-  'retains following declarations around an unsupported braced annotation: %s',
+  'parses braced annotation arguments and retains following declarations: %s',
   async (argument) => {
     await Parser.init();
     const language = await Language.load(wasmPath);
@@ -831,6 +869,16 @@ saved_t after(void) { return 0; }
           node.endIndex - offset,
         ]);
     try {
+      expect(tree.rootNode.hasError).toBe(false);
+      const attribute = tree.rootNode
+        .descendantsOfType('attribute_specifier')
+        .find((node) => node.childForFieldName('name')?.text === 'CHECK');
+      expect([attribute?.text, attribute?.startIndex, attribute?.endIndex]).toEqual([
+        `CHECK(${argument})`,
+        'extern '.length,
+        'extern '.length + `CHECK(${argument})`.length,
+      ]);
+      expect(attribute?.childForFieldName('arguments')?.text).toBe(`(${argument})`);
       const expected = captures(control.rootNode, 0);
       expect(expected.map(([name, text]) => [name, text])).toEqual([
         ['typedef.type', 'int'],
@@ -923,6 +971,74 @@ void empty(void) { (void)({}); }
         .map((node) => node.childForFieldName('type')?.text)
     ).toEqual(['struct Pair', 'int']);
   } finally {
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('parses braced annotation arguments with public fields and declaration boundaries', async () => {
+  await Parser.init();
+  const language = await Language.load(wasmPath);
+  const parser = new Parser().setLanguage(language);
+  const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/bracedMacroAttributes.c'), 'utf8');
+  const tree = parser.parse(source)!;
+  const tags = new Query(language, fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8'));
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const declarations = tree.rootNode.namedChildren.filter((node) => node.type === 'declaration');
+    expect(
+      declarations.map((node) => [node.childForFieldName('type')?.text, node.childForFieldName('declarator')?.text])
+    ).toEqual([
+      ['int', 'array_argument(void)'],
+      ['int', 'aggregate_argument(void)'],
+      ['int', 'post_type(void)'],
+      ['int', 'nested_argument(void)'],
+      ['int', 'statement_argument(void)'],
+      ['int', 'inline_type(void)'],
+      ['int', 'chained(void)'],
+      ['int', 'repeated(void)'],
+    ]);
+    const attributes = tree.rootNode
+      .descendantsOfType('attribute_specifier')
+      .filter((node) => node.childForFieldName('name')?.text === 'ANNOTATE');
+    expect(attributes.map((node) => node.childForFieldName('arguments')?.text)).toEqual([
+      '((int[]){1, 2})',
+      '((struct Pair){.left = 1, .right = 2})',
+      '((Word){1})',
+      '(WRAP((int[]){1, 2}), "};#")',
+      '(({ int value = 1; value; }))',
+      '(struct Inline { int member; })',
+      '(1)',
+      '((int[]){1, 2})',
+      '((int[]){1, 2})',
+      '((struct Pair){1, 2})',
+    ]);
+    for (const attribute of attributes) {
+      expect(attribute.text).toBe(source.slice(attribute.startIndex, attribute.endIndex));
+      expect(attribute.childForFieldName('name')?.type).toBe('identifier');
+      expect(attribute.childForFieldName('arguments')?.type).toBe('argument_list');
+    }
+    expect(
+      tags
+        .captures(tree.rootNode)
+        .filter(({ name }) => name === 'definition.function')
+        .map(({ node }) => node.text)
+    ).toEqual([
+      'array_argument(void)',
+      'aggregate_argument(void)',
+      'post_type(void)',
+      'nested_argument(void)',
+      'statement_argument(void)',
+      'inline_type(void)',
+      'chained(void)',
+      'repeated(void)',
+      'following(void)',
+    ]);
+    expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+      'int following(void) { return 0; }',
+    ]);
+  } finally {
+    tags.delete();
     tree.delete();
     parser.delete();
   }

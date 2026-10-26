@@ -5040,8 +5040,17 @@
           ]
         },
         {
-          "type": "SYMBOL",
-          "name": "_declaration_specifiers"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_declaration_specifiers"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "_guarded_type_specifiers"
+            }
+          ]
         },
         {
           "type": "CHOICE",
@@ -5138,8 +5147,17 @@
           ]
         },
         {
-          "type": "SYMBOL",
-          "name": "_declaration_specifiers"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_declaration_specifiers"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "_guarded_type_specifiers"
+            }
+          ]
         },
         {
           "type": "FIELD",
@@ -5505,8 +5523,17 @@
                 "type": "CHOICE",
                 "members": [
                   {
-                    "type": "SYMBOL",
-                    "name": "_declaration_specifiers"
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "_declaration_specifiers"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "_guarded_type_specifiers"
+                      }
+                    ]
                   },
                   {
                     "type": "PREC_DYNAMIC",
@@ -6907,6 +6934,63 @@
           "content": {
             "type": "SYMBOL",
             "name": "_non_macro_declaration_modifiers"
+          }
+        }
+      ]
+    },
+    "_guarded_type_specifiers": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "storage_class_specifier"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "type_qualifier"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "ms_declspec_modifier"
+            }
+          ]
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_non_macro_declaration_modifiers"
+          }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_function_attribute_start"
+        },
+        {
+          "type": "FIELD",
+          "name": "type",
+          "content": {
+            "type": "SYMBOL",
+            "name": "type_specifier"
+          }
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "_non_macro_declaration_modifiers"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_conditional_macro_specifier"
+              }
+            ]
           }
         }
       ]
@@ -17952,6 +18036,50 @@
     }
   ],
   "conflicts": [
+    [
+      "_macro_attribute_argument_list",
+      "macro_type_specifier"
+    ],
+    [
+      "_macro_attribute_specifier",
+      "type_specifier",
+      "macro_type_specifier"
+    ],
+    [
+      "declaration",
+      "_declaration_modifiers",
+      "_guarded_type_specifiers"
+    ],
+    [
+      "_declaration_modifiers",
+      "_guarded_type_specifiers"
+    ],
+    [
+      "declaration",
+      "type_definition",
+      "_macro_declaration_specifiers",
+      "_declaration_modifiers",
+      "_guarded_type_specifiers",
+      "_statement_empty_declaration"
+    ],
+    [
+      "_macro_declaration_specifiers",
+      "_declaration_modifiers",
+      "_guarded_type_specifiers",
+      "_empty_declaration",
+      "_statement_empty_declaration"
+    ],
+    [
+      "_macro_declaration_specifiers",
+      "_declaration_modifiers",
+      "_guarded_type_specifiers"
+    ],
+    [
+      "_macro_declaration_specifiers",
+      "_declaration_modifiers",
+      "_guarded_type_specifiers",
+      "_statement_empty_declaration"
+    ],
     [
       "_conditional_function_specifiers",
       "_declaration_specifiers",
