@@ -1191,9 +1191,58 @@ test('preserves braced parameter types and macro-prefixed opaque types through e
 
 const guardedBoundaryFixtures: Array<{
   file: string;
-  structures: Array<[string, string, string[], string | undefined]>;
+  structures: Array<[string, string | undefined, string[], string | undefined]>;
   macroTypes: string[];
+  nextDeclaration?: string;
 }> = [
+  {
+    file: 'bracedDeclarationBoundaries.c',
+    nextDeclaration: 'int next;',
+    structures: [
+      ['function_definition', 'int', ['post_body(void)'], '{ return 0; }'],
+      ['function_definition', 'int', ['typed_body(void)'], '{ return 0; }'],
+      ['function_definition', 'int', ['leading_body(void)'], '{ return 0; }'],
+      ['function_definition', 'int', ['statement_body(void)'], '{ return 0; }'],
+      ['function_definition', 'int', ['chain_body(void)'], '{ return 0; }'],
+      ['declaration', undefined, [], undefined],
+      ['declaration', 'int', ['next'], undefined],
+      ['declaration', undefined, [], undefined],
+      ['declaration', 'int', ['after_pair(void)'], undefined],
+      ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
+    ],
+    macroTypes: [],
+  },
+  {
+    file: 'bracedMarkerTypes.c',
+    structures: [
+      ['declaration', 'TYPE(struct { int member; })', ['single'], undefined],
+      ['declaration', 'TYPE(union { int member; })', ['several'], undefined],
+      ['declaration', 'TYPE(enum { ONE })', ['enumeration'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['*pointer'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['qualified'], undefined],
+      ['declaration', 'TYPE(int)', ['unbraced'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['spaced'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['pragma_before'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['pragma_between'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['pragma_later'], undefined],
+      ['declaration', 'Word', ['expression'], undefined],
+      ['declaration', 'Word', ['typed_annotation'], undefined],
+      ['declaration', 'int', ['next(void)'], undefined],
+      ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
+    ],
+    macroTypes: [
+      'struct { int member; }',
+      'union { int member; }',
+      'enum { ONE }',
+      'struct { int member; }',
+      'struct { int member; }',
+      'int',
+      'struct { int member; }',
+      'struct { int member; }',
+      'struct { int member; }',
+      'struct { int member; }',
+    ],
+  },
   {
     file: 'bracedCallingConventions.c',
     structures: [
@@ -1270,16 +1319,17 @@ test.each(guardedBoundaryFixtures)(
           .captures(tree.rootNode)
           .filter(({ name }) => name === 'boundary.type')
           .map(({ node }) => node.text)
-      ).toEqual(fixture.structures.map(([, type]) => type));
+      ).toEqual(fixture.structures.map(([, type]) => type).filter((type) => type !== undefined));
       expect(
         query
           .captures(tree.rootNode)
           .filter(({ name }) => name === 'boundary.macrotype')
           .map(({ node }) => node.text)
       ).toEqual(tree.rootNode.descendantsOfType('macro_type_specifier').map((node) => node.text));
-      expect(structures.find((node) => node.childForFieldName('declarator')?.text === 'next(void)')?.text).toBe(
-        'int next(void);'
-      );
+      expect(
+        structures.find((node) => ['next', 'next(void)'].includes(node.childForFieldName('declarator')?.text ?? ''))
+          ?.text
+      ).toBe(fixture.nextDeclaration ?? 'int next(void);');
       expect(structures.at(-1)?.text).toBe('int following(void) { return 0; }');
       verifyGuardedGroupEdits(parser, tree, query, source);
     } finally {

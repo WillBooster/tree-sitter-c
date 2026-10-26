@@ -71,6 +71,40 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._declaration_modifiers, $._marked_macro_type_specifiers],
+      [$.declaration, $._macro_declaration_specifiers, $._declaration_modifiers],
+      [$.declaration, $._macro_declaration_specifiers, $._declaration_modifiers, $._guarded_type_specifiers],
+      [$._macro_only_declaration, $._macro_declaration_specifiers, $._declaration_modifiers],
+      [
+        $.declaration,
+        $.type_definition,
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._statement_empty_declaration,
+      ],
+      [
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._empty_declaration,
+        $._statement_empty_declaration,
+      ],
+      [
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+      ],
+      [
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._statement_empty_declaration,
+      ],
       [$._macro_attribute_specifier, $.type_specifier, $.macro_type_specifier],
       [$._macro_attribute_argument_list, $._variadic_macro_type_specifier],
       [$.type_specifier, $.macro_type_specifier, $._variadic_macro_type_specifier],
@@ -267,6 +301,7 @@ module.exports = Object.assign(
       sym('_leading_conditional_marker_ifdef'),
       sym('_leading_conditional_marker_ifndef'),
       sym('_braced_function_attribute_start'),
+      sym('_braced_macro_type_start'),
     ],
 
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
@@ -303,6 +338,7 @@ module.exports = Object.assign(
       $.type_specifier,
       $._type_name_specifier,
       $._guarded_type_specifier,
+      $._guarded_macro_type_specifier,
       $._declarator,
       $._old_style_declarator,
       $._initialized_declarator,
@@ -326,6 +362,7 @@ module.exports = Object.assign(
           $.linkage_specification,
           $.declaration,
           alias(sym('_macro_modified_declaration'), $.declaration),
+          alias(sym('_macro_only_declaration'), $.declaration),
           alias(sym('_trailing_macro_modified_declaration'), $.declaration),
           alias(sym('_conditional_declaration'), $.declaration),
           $._top_level_statement,
@@ -366,6 +403,7 @@ module.exports = Object.assign(
           $.linkage_specification,
           $.declaration,
           alias(sym('_macro_modified_declaration'), $.declaration),
+          alias(sym('_macro_only_declaration'), $.declaration),
           alias(sym('_trailing_macro_modified_declaration'), $.declaration),
           alias(sym('_conditional_declaration'), $.declaration),
           $.statement,
@@ -545,10 +583,28 @@ module.exports = Object.assign(
       },
 
       function_definition: ($) =>
-        functionDefinitionRule($, choice($._declaration_specifiers, $._guarded_type_specifiers), false),
+        functionDefinitionRule(
+          $,
+          choice(
+            $._declaration_specifiers,
+            $._guarded_type_specifiers,
+            $._marked_macro_type_specifiers,
+            $._macro_declaration_specifiers
+          ),
+          false
+        ),
       _statement_function_definition: ($) => functionDefinitionRule($, $._statement_declaration_specifiers, false),
       _old_style_function_definition: ($) =>
-        functionDefinitionRule($, choice($._declaration_specifiers, $._guarded_type_specifiers), true),
+        functionDefinitionRule(
+          $,
+          choice(
+            $._declaration_specifiers,
+            $._guarded_type_specifiers,
+            $._marked_macro_type_specifiers,
+            $._macro_declaration_specifiers
+          ),
+          true
+        ),
       _statement_old_style_function_definition: ($) =>
         functionDefinitionRule($, $._statement_declaration_specifiers, true),
 
@@ -596,7 +652,11 @@ module.exports = Object.assign(
         ),
 
       declaration: ($) =>
-        declarationRule($, choice($._declaration_specifiers, $._guarded_type_specifiers), $._declaration_modifiers),
+        declarationRule(
+          $,
+          choice($._declaration_specifiers, $._guarded_type_specifiers, $._marked_macro_type_specifiers),
+          $._declaration_modifiers
+        ),
       _statement_declaration: ($) =>
         declarationRule($, $._statement_declaration_specifiers, $._statement_declaration_modifiers),
 
@@ -611,6 +671,15 @@ module.exports = Object.assign(
           false,
           $._macro_declaration_declarator,
           choice(sym('_post_type_function_attribute_suffix'), sym('_braced_function_attribute_start'))
+        ),
+
+      _macro_only_declaration: ($) =>
+        seq(
+          choice($.storage_class_specifier, $.type_qualifier, $.ms_declspec_modifier),
+          repeat($._non_macro_declaration_modifiers),
+          alias($._macro_attribute_specifier, $.attribute_specifier),
+          repeat(choice($._non_macro_declaration_modifiers, alias($._macro_attribute_suffix, $.attribute_specifier))),
+          ';'
         ),
 
       _conditional_declaration: ($) =>
@@ -704,6 +773,27 @@ module.exports = Object.assign(
             repeat(choice($._non_macro_declaration_modifiers, $._conditional_macro_specifier))
           )
         ),
+
+      _marked_macro_type_specifiers: ($) =>
+        seq(
+          sym('_braced_macro_type_start'),
+          choice(
+            prec.dynamic(
+              2,
+              seq(
+                repeat1($.macro_specifier),
+                optional(sym('_braced_function_attribute_start')),
+                field('type', alias($._guarded_macro_type_specifier, $.type_specifier)),
+                repeat($._non_macro_declaration_modifiers)
+              )
+            ),
+            $._declaration_specifiers,
+            $._guarded_type_specifiers,
+            $._macro_declaration_specifiers
+          )
+        ),
+
+      _guarded_macro_type_specifier: ($) => $.macro_type_specifier,
 
       _guarded_type_specifier: ($) =>
         choice($.type_specifier, alias($._variadic_macro_type_specifier, $.macro_type_specifier)),

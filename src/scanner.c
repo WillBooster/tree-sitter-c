@@ -1,6 +1,6 @@
 #include "conditionalMacro.h"
 
-enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF, BRACED_FUNCTION_ATTRIBUTE_START };
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF, BRACED_FUNCTION_ATTRIBUTE_START, BRACED_MACRO_TYPE_START };
 
 static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols);
 
@@ -45,7 +45,7 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
         if (lexer->lookahead == '#') return scan_conditional_macro(lexer, &symbols, valid_symbols);
     }
     static const TSSymbol attribute_tokens[] = {
-        FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX,
+        FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, POST_TYPE_FUNCTION_ATTRIBUTE_START,
         TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, BRACED_FUNCTION_ATTRIBUTE_START,
     };
     const MacroAttributeSymbols symbols = {
@@ -56,6 +56,10 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
         .braced_start = BRACED_FUNCTION_ATTRIBUTE_START,
         .allow_braced_start = valid_symbols[BRACED_FUNCTION_ATTRIBUTE_START],
     };
+    if (valid_symbols[BRACED_MACRO_TYPE_START]) {
+        lexer->result_symbol = BRACED_MACRO_TYPE_START;
+        return scan_braced_macro_type_start(lexer, &symbols, NULL, 0);
+    }
     for (unsigned i = 0; i < sizeof(attribute_tokens) / sizeof(attribute_tokens[0]); i++) {
         TSSymbol token = attribute_tokens[i];
         if (!valid_symbols[token]) continue;
