@@ -5065,6 +5065,18 @@
           ]
         },
         {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_post_type_function_attribute_start"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
           "type": "FIELD",
           "name": "declarator",
           "content": {
@@ -5107,6 +5119,18 @@
             {
               "type": "SYMBOL",
               "name": "ms_call_modifier"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_post_type_function_attribute_start"
             },
             {
               "type": "BLANK"
@@ -5160,6 +5184,18 @@
           ]
         },
         {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_post_type_function_attribute_start"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
           "type": "FIELD",
           "name": "declarator",
           "content": {
@@ -5207,6 +5243,18 @@
         {
           "type": "SYMBOL",
           "name": "_statement_declaration_specifiers"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_post_type_function_attribute_start"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         },
         {
           "type": "FIELD",
@@ -5397,6 +5445,18 @@
           ]
         },
         {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_post_type_function_attribute_start"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
           "type": "FIELD",
           "name": "declarator",
           "content": {
@@ -5432,6 +5492,18 @@
         {
           "type": "SYMBOL",
           "name": "_conditional_function_specifiers"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_post_type_function_attribute_start"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         },
         {
           "type": "FIELD",
@@ -5574,50 +5646,67 @@
               "type": "SEQ",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "declarator",
-                  "content": {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SEQ",
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_post_type_function_attribute_start"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "FIELD",
+                      "name": "declarator",
+                      "content": {
+                        "type": "CHOICE",
                         "members": [
                           {
-                            "type": "CHOICE",
+                            "type": "SEQ",
                             "members": [
                               {
-                                "type": "SYMBOL",
-                                "name": "ms_call_modifier"
+                                "type": "CHOICE",
+                                "members": [
+                                  {
+                                    "type": "SYMBOL",
+                                    "name": "ms_call_modifier"
+                                  },
+                                  {
+                                    "type": "BLANK"
+                                  }
+                                ]
                               },
                               {
-                                "type": "BLANK"
+                                "type": "SYMBOL",
+                                "name": "_declaration_declarator"
+                              },
+                              {
+                                "type": "CHOICE",
+                                "members": [
+                                  {
+                                    "type": "SYMBOL",
+                                    "name": "gnu_asm_expression"
+                                  },
+                                  {
+                                    "type": "BLANK"
+                                  }
+                                ]
                               }
                             ]
                           },
                           {
                             "type": "SYMBOL",
-                            "name": "_declaration_declarator"
-                          },
-                          {
-                            "type": "CHOICE",
-                            "members": [
-                              {
-                                "type": "SYMBOL",
-                                "name": "gnu_asm_expression"
-                              },
-                              {
-                                "type": "BLANK"
-                              }
-                            ]
+                            "name": "init_declarator"
                           }
                         ]
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "init_declarator"
                       }
-                    ]
-                  }
+                    }
+                  ]
                 },
                 {
                   "type": "REPEAT",
@@ -5629,50 +5718,67 @@
                         "value": ","
                       },
                       {
-                        "type": "FIELD",
-                        "name": "declarator",
-                        "content": {
-                          "type": "CHOICE",
-                          "members": [
-                            {
-                              "type": "SEQ",
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "CHOICE",
+                            "members": [
+                              {
+                                "type": "SYMBOL",
+                                "name": "_post_type_function_attribute_start"
+                              },
+                              {
+                                "type": "BLANK"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "FIELD",
+                            "name": "declarator",
+                            "content": {
+                              "type": "CHOICE",
                               "members": [
                                 {
-                                  "type": "CHOICE",
+                                  "type": "SEQ",
                                   "members": [
                                     {
-                                      "type": "SYMBOL",
-                                      "name": "ms_call_modifier"
+                                      "type": "CHOICE",
+                                      "members": [
+                                        {
+                                          "type": "SYMBOL",
+                                          "name": "ms_call_modifier"
+                                        },
+                                        {
+                                          "type": "BLANK"
+                                        }
+                                      ]
                                     },
                                     {
-                                      "type": "BLANK"
+                                      "type": "SYMBOL",
+                                      "name": "_declaration_declarator"
+                                    },
+                                    {
+                                      "type": "CHOICE",
+                                      "members": [
+                                        {
+                                          "type": "SYMBOL",
+                                          "name": "gnu_asm_expression"
+                                        },
+                                        {
+                                          "type": "BLANK"
+                                        }
+                                      ]
                                     }
                                   ]
                                 },
                                 {
                                   "type": "SYMBOL",
-                                  "name": "_declaration_declarator"
-                                },
-                                {
-                                  "type": "CHOICE",
-                                  "members": [
-                                    {
-                                      "type": "SYMBOL",
-                                      "name": "gnu_asm_expression"
-                                    },
-                                    {
-                                      "type": "BLANK"
-                                    }
-                                  ]
+                                  "name": "init_declarator"
                                 }
                               ]
-                            },
-                            {
-                              "type": "SYMBOL",
-                              "name": "init_declarator"
                             }
-                          ]
-                        }
+                          }
+                        ]
                       }
                     ]
                   }
@@ -5809,50 +5915,67 @@
               "type": "SEQ",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "declarator",
-                  "content": {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SEQ",
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_post_type_function_attribute_start"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "FIELD",
+                      "name": "declarator",
+                      "content": {
+                        "type": "CHOICE",
                         "members": [
                           {
-                            "type": "CHOICE",
+                            "type": "SEQ",
                             "members": [
                               {
-                                "type": "SYMBOL",
-                                "name": "ms_call_modifier"
+                                "type": "CHOICE",
+                                "members": [
+                                  {
+                                    "type": "SYMBOL",
+                                    "name": "ms_call_modifier"
+                                  },
+                                  {
+                                    "type": "BLANK"
+                                  }
+                                ]
                               },
                               {
-                                "type": "BLANK"
+                                "type": "SYMBOL",
+                                "name": "_declaration_declarator"
+                              },
+                              {
+                                "type": "CHOICE",
+                                "members": [
+                                  {
+                                    "type": "SYMBOL",
+                                    "name": "gnu_asm_expression"
+                                  },
+                                  {
+                                    "type": "BLANK"
+                                  }
+                                ]
                               }
                             ]
                           },
                           {
                             "type": "SYMBOL",
-                            "name": "_declaration_declarator"
-                          },
-                          {
-                            "type": "CHOICE",
-                            "members": [
-                              {
-                                "type": "SYMBOL",
-                                "name": "gnu_asm_expression"
-                              },
-                              {
-                                "type": "BLANK"
-                              }
-                            ]
+                            "name": "init_declarator"
                           }
                         ]
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "init_declarator"
                       }
-                    ]
-                  }
+                    }
+                  ]
                 },
                 {
                   "type": "REPEAT",
@@ -5864,50 +5987,67 @@
                         "value": ","
                       },
                       {
-                        "type": "FIELD",
-                        "name": "declarator",
-                        "content": {
-                          "type": "CHOICE",
-                          "members": [
-                            {
-                              "type": "SEQ",
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "CHOICE",
+                            "members": [
+                              {
+                                "type": "SYMBOL",
+                                "name": "_post_type_function_attribute_start"
+                              },
+                              {
+                                "type": "BLANK"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "FIELD",
+                            "name": "declarator",
+                            "content": {
+                              "type": "CHOICE",
                               "members": [
                                 {
-                                  "type": "CHOICE",
+                                  "type": "SEQ",
                                   "members": [
                                     {
-                                      "type": "SYMBOL",
-                                      "name": "ms_call_modifier"
+                                      "type": "CHOICE",
+                                      "members": [
+                                        {
+                                          "type": "SYMBOL",
+                                          "name": "ms_call_modifier"
+                                        },
+                                        {
+                                          "type": "BLANK"
+                                        }
+                                      ]
                                     },
                                     {
-                                      "type": "BLANK"
+                                      "type": "SYMBOL",
+                                      "name": "_declaration_declarator"
+                                    },
+                                    {
+                                      "type": "CHOICE",
+                                      "members": [
+                                        {
+                                          "type": "SYMBOL",
+                                          "name": "gnu_asm_expression"
+                                        },
+                                        {
+                                          "type": "BLANK"
+                                        }
+                                      ]
                                     }
                                   ]
                                 },
                                 {
                                   "type": "SYMBOL",
-                                  "name": "_declaration_declarator"
-                                },
-                                {
-                                  "type": "CHOICE",
-                                  "members": [
-                                    {
-                                      "type": "SYMBOL",
-                                      "name": "gnu_asm_expression"
-                                    },
-                                    {
-                                      "type": "BLANK"
-                                    }
-                                  ]
+                                  "name": "init_declarator"
                                 }
                               ]
-                            },
-                            {
-                              "type": "SYMBOL",
-                              "name": "init_declarator"
                             }
-                          ]
-                        }
+                          }
+                        ]
                       }
                     ]
                   }
@@ -6239,50 +6379,67 @@
               "type": "SEQ",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "declarator",
-                  "content": {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SEQ",
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_post_type_function_attribute_suffix"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "FIELD",
+                      "name": "declarator",
+                      "content": {
+                        "type": "CHOICE",
                         "members": [
                           {
-                            "type": "CHOICE",
+                            "type": "SEQ",
                             "members": [
                               {
-                                "type": "SYMBOL",
-                                "name": "ms_call_modifier"
+                                "type": "CHOICE",
+                                "members": [
+                                  {
+                                    "type": "SYMBOL",
+                                    "name": "ms_call_modifier"
+                                  },
+                                  {
+                                    "type": "BLANK"
+                                  }
+                                ]
                               },
                               {
-                                "type": "BLANK"
+                                "type": "SYMBOL",
+                                "name": "_macro_declaration_declarator"
+                              },
+                              {
+                                "type": "CHOICE",
+                                "members": [
+                                  {
+                                    "type": "SYMBOL",
+                                    "name": "gnu_asm_expression"
+                                  },
+                                  {
+                                    "type": "BLANK"
+                                  }
+                                ]
                               }
                             ]
                           },
                           {
                             "type": "SYMBOL",
-                            "name": "_macro_declaration_declarator"
-                          },
-                          {
-                            "type": "CHOICE",
-                            "members": [
-                              {
-                                "type": "SYMBOL",
-                                "name": "gnu_asm_expression"
-                              },
-                              {
-                                "type": "BLANK"
-                              }
-                            ]
+                            "name": "init_declarator"
                           }
                         ]
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "init_declarator"
                       }
-                    ]
-                  }
+                    }
+                  ]
                 },
                 {
                   "type": "REPEAT",
@@ -6294,50 +6451,67 @@
                         "value": ","
                       },
                       {
-                        "type": "FIELD",
-                        "name": "declarator",
-                        "content": {
-                          "type": "CHOICE",
-                          "members": [
-                            {
-                              "type": "SEQ",
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "CHOICE",
+                            "members": [
+                              {
+                                "type": "SYMBOL",
+                                "name": "_post_type_function_attribute_suffix"
+                              },
+                              {
+                                "type": "BLANK"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "FIELD",
+                            "name": "declarator",
+                            "content": {
+                              "type": "CHOICE",
                               "members": [
                                 {
-                                  "type": "CHOICE",
+                                  "type": "SEQ",
                                   "members": [
                                     {
-                                      "type": "SYMBOL",
-                                      "name": "ms_call_modifier"
+                                      "type": "CHOICE",
+                                      "members": [
+                                        {
+                                          "type": "SYMBOL",
+                                          "name": "ms_call_modifier"
+                                        },
+                                        {
+                                          "type": "BLANK"
+                                        }
+                                      ]
                                     },
                                     {
-                                      "type": "BLANK"
+                                      "type": "SYMBOL",
+                                      "name": "_macro_declaration_declarator"
+                                    },
+                                    {
+                                      "type": "CHOICE",
+                                      "members": [
+                                        {
+                                          "type": "SYMBOL",
+                                          "name": "gnu_asm_expression"
+                                        },
+                                        {
+                                          "type": "BLANK"
+                                        }
+                                      ]
                                     }
                                   ]
                                 },
                                 {
                                   "type": "SYMBOL",
-                                  "name": "_macro_declaration_declarator"
-                                },
-                                {
-                                  "type": "CHOICE",
-                                  "members": [
-                                    {
-                                      "type": "SYMBOL",
-                                      "name": "gnu_asm_expression"
-                                    },
-                                    {
-                                      "type": "BLANK"
-                                    }
-                                  ]
+                                  "name": "init_declarator"
                                 }
                               ]
-                            },
-                            {
-                              "type": "SYMBOL",
-                              "name": "init_declarator"
                             }
-                          ]
-                        }
+                          }
+                        ]
                       }
                     ]
                   }
@@ -6370,50 +6544,67 @@
               "type": "SEQ",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "declarator",
-                  "content": {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SEQ",
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_post_type_function_attribute_start"
+                        },
+                        {
+                          "type": "BLANK"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "FIELD",
+                      "name": "declarator",
+                      "content": {
+                        "type": "CHOICE",
                         "members": [
                           {
-                            "type": "CHOICE",
+                            "type": "SEQ",
                             "members": [
                               {
-                                "type": "SYMBOL",
-                                "name": "ms_call_modifier"
+                                "type": "CHOICE",
+                                "members": [
+                                  {
+                                    "type": "SYMBOL",
+                                    "name": "ms_call_modifier"
+                                  },
+                                  {
+                                    "type": "BLANK"
+                                  }
+                                ]
                               },
                               {
-                                "type": "BLANK"
+                                "type": "SYMBOL",
+                                "name": "_declaration_declarator"
+                              },
+                              {
+                                "type": "CHOICE",
+                                "members": [
+                                  {
+                                    "type": "SYMBOL",
+                                    "name": "gnu_asm_expression"
+                                  },
+                                  {
+                                    "type": "BLANK"
+                                  }
+                                ]
                               }
                             ]
                           },
                           {
                             "type": "SYMBOL",
-                            "name": "_declaration_declarator"
-                          },
-                          {
-                            "type": "CHOICE",
-                            "members": [
-                              {
-                                "type": "SYMBOL",
-                                "name": "gnu_asm_expression"
-                              },
-                              {
-                                "type": "BLANK"
-                              }
-                            ]
+                            "name": "init_declarator"
                           }
                         ]
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "init_declarator"
                       }
-                    ]
-                  }
+                    }
+                  ]
                 },
                 {
                   "type": "REPEAT",
@@ -6425,50 +6616,67 @@
                         "value": ","
                       },
                       {
-                        "type": "FIELD",
-                        "name": "declarator",
-                        "content": {
-                          "type": "CHOICE",
-                          "members": [
-                            {
-                              "type": "SEQ",
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "CHOICE",
+                            "members": [
+                              {
+                                "type": "SYMBOL",
+                                "name": "_post_type_function_attribute_start"
+                              },
+                              {
+                                "type": "BLANK"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "FIELD",
+                            "name": "declarator",
+                            "content": {
+                              "type": "CHOICE",
                               "members": [
                                 {
-                                  "type": "CHOICE",
+                                  "type": "SEQ",
                                   "members": [
                                     {
-                                      "type": "SYMBOL",
-                                      "name": "ms_call_modifier"
+                                      "type": "CHOICE",
+                                      "members": [
+                                        {
+                                          "type": "SYMBOL",
+                                          "name": "ms_call_modifier"
+                                        },
+                                        {
+                                          "type": "BLANK"
+                                        }
+                                      ]
                                     },
                                     {
-                                      "type": "BLANK"
+                                      "type": "SYMBOL",
+                                      "name": "_declaration_declarator"
+                                    },
+                                    {
+                                      "type": "CHOICE",
+                                      "members": [
+                                        {
+                                          "type": "SYMBOL",
+                                          "name": "gnu_asm_expression"
+                                        },
+                                        {
+                                          "type": "BLANK"
+                                        }
+                                      ]
                                     }
                                   ]
                                 },
                                 {
                                   "type": "SYMBOL",
-                                  "name": "_declaration_declarator"
-                                },
-                                {
-                                  "type": "CHOICE",
-                                  "members": [
-                                    {
-                                      "type": "SYMBOL",
-                                      "name": "gnu_asm_expression"
-                                    },
-                                    {
-                                      "type": "BLANK"
-                                    }
-                                  ]
+                                  "name": "init_declarator"
                                 }
                               ]
-                            },
-                            {
-                              "type": "SYMBOL",
-                              "name": "init_declarator"
                             }
-                          ]
-                        }
+                          }
+                        ]
                       }
                     ]
                   }
@@ -6939,61 +7147,72 @@
       ]
     },
     "_guarded_type_specifiers": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "CHOICE",
-          "members": [
-            {
+      "type": "PREC_DYNAMIC",
+      "value": 1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "REPEAT",
+            "content": {
               "type": "SYMBOL",
-              "name": "storage_class_specifier"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "type_qualifier"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "ms_declspec_modifier"
+              "name": "_declaration_modifiers"
             }
-          ]
-        },
-        {
-          "type": "REPEAT",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_non_macro_declaration_modifiers"
-          }
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_function_attribute_start"
-        },
-        {
-          "type": "FIELD",
-          "name": "type",
-          "content": {
-            "type": "SYMBOL",
-            "name": "type_specifier"
-          }
-        },
-        {
-          "type": "REPEAT",
-          "content": {
+          },
+          {
             "type": "CHOICE",
             "members": [
               {
                 "type": "SYMBOL",
-                "name": "_non_macro_declaration_modifiers"
+                "name": "storage_class_specifier"
               },
               {
                 "type": "SYMBOL",
-                "name": "_conditional_macro_specifier"
+                "name": "type_qualifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "ms_declspec_modifier"
               }
             ]
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_declaration_modifiers"
+            }
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_function_attribute_start"
+          },
+          {
+            "type": "FIELD",
+            "name": "type",
+            "content": {
+              "type": "SYMBOL",
+              "name": "type_specifier"
+            }
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_non_macro_declaration_modifiers"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_conditional_macro_specifier"
+                }
+              ]
+            }
           }
-        }
-      ]
+        ]
+      }
     },
     "_field_declaration_specifiers": {
       "type": "SEQ",
@@ -18037,6 +18256,14 @@
   ],
   "conflicts": [
     [
+      "_macro_declaration_specifiers"
+    ],
+    [
+      "_declaration_modifiers",
+      "_guarded_type_specifiers",
+      "_empty_declaration"
+    ],
+    [
       "_macro_attribute_argument_list",
       "macro_type_specifier"
     ],
@@ -18181,10 +18408,6 @@
     [
       "_sized_type_identifier",
       "macro_specifier"
-    ],
-    [
-      "_declaration_modifiers",
-      "_empty_declaration"
     ],
     [
       "_statement_declaration",

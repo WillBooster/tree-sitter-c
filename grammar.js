@@ -71,6 +71,8 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._macro_declaration_specifiers],
+      [$._declaration_modifiers, $._guarded_type_specifiers, $._empty_declaration],
       [$._macro_attribute_argument_list, $.macro_type_specifier],
       [$._macro_attribute_specifier, $.type_specifier, $.macro_type_specifier],
       [$.declaration, $._declaration_modifiers, $._guarded_type_specifiers],
@@ -132,7 +134,6 @@ module.exports = Object.assign(
       [$.type_specifier, $._sized_type_identifier, $.macro_specifier],
       [$.type_specifier, $._sized_type_identifier],
       [$._sized_type_identifier, $.macro_specifier],
-      [$._declaration_modifiers, $._empty_declaration],
       [$._statement_declaration, $._statement_declaration_modifiers],
       [$.declaration, $._declaration_modifiers],
       [$._statement_declaration, $._statement_type_definition, $._statement_declaration_modifiers],
@@ -603,7 +604,8 @@ module.exports = Object.assign(
           $._macro_declaration_specifiers,
           $._non_macro_declaration_modifiers,
           false,
-          $._macro_declaration_declarator
+          $._macro_declaration_declarator,
+          sym('_post_type_function_attribute_suffix')
         ),
 
       _conditional_declaration: ($) =>
@@ -681,12 +683,16 @@ module.exports = Object.assign(
         ),
 
       _guarded_type_specifiers: ($) =>
-        seq(
-          choice($.storage_class_specifier, $.type_qualifier, $.ms_declspec_modifier),
-          repeat($._non_macro_declaration_modifiers),
-          sym('_function_attribute_start'),
-          field('type', $.type_specifier),
-          repeat(choice($._non_macro_declaration_modifiers, $._conditional_macro_specifier))
+        prec.dynamic(
+          1,
+          seq(
+            repeat($._declaration_modifiers),
+            choice($.storage_class_specifier, $.type_qualifier, $.ms_declspec_modifier),
+            repeat($._declaration_modifiers),
+            sym('_function_attribute_start'),
+            field('type', $.type_specifier),
+            repeat(choice($._non_macro_declaration_modifiers, $._conditional_macro_specifier))
+          )
         ),
 
       _field_declaration_specifiers: ($) =>
@@ -1976,6 +1982,7 @@ function functionDefinitionRule($, specifiers, oldStyle) {
     optional($.ms_call_modifier),
     specifiers,
     ...(oldStyle ? [] : [optional($.ms_call_modifier)]),
+    optional(sym('_post_type_function_attribute_start')),
     field('declarator', oldStyle ? alias($._old_style_declarator, $._declarator) : $._declarator),
     ...(oldStyle ? [repeat1($.declaration)] : []),
     field('body', $.compound_statement)
@@ -1988,8 +1995,16 @@ function functionDefinitionRule($, specifiers, oldStyle) {
  * @param {import('./types/treeSitterDsl').Rule} modifiers
  * @param {boolean} allowInferredType
  * @param {import('./types/treeSitterDsl').Rule} declarator
+ * @param {import('./types/treeSitterDsl').Rule} guard
  */
-function declarationRule($, specifiers, modifiers, allowInferredType = true, declarator = $._declaration_declarator) {
+function declarationRule(
+  $,
+  specifiers,
+  modifiers,
+  allowInferredType = true,
+  declarator = $._declaration_declarator,
+  guard = sym('_post_type_function_attribute_start')
+) {
   return choice(
     seq(
       prec.dynamic(
@@ -2005,9 +2020,12 @@ function declarationRule($, specifiers, modifiers, allowInferredType = true, dec
           : specifiers
       ),
       commaSep1(
-        field(
-          'declarator',
-          choice(seq(optional($.ms_call_modifier), declarator, optional($.gnu_asm_expression)), $.init_declarator)
+        seq(
+          optional(guard),
+          field(
+            'declarator',
+            choice(seq(optional($.ms_call_modifier), declarator, optional($.gnu_asm_expression)), $.init_declarator)
+          )
         )
       ),
       ';'

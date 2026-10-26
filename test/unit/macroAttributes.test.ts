@@ -547,6 +547,7 @@ test('keeps native modifier captures and following function ranges', { timeout: 
         'test/fixtures/statementMacroCases.c',
         'test/fixtures/macroParameterDefinition.c',
         'test/fixtures/bracedMacroAttributes.c',
+        'test/fixtures/bracedParameterTypes.c',
       ],
       {
         cwd: root,
@@ -584,6 +585,11 @@ test('keeps native modifier captures and following function ranges', { timeout: 
       'inline_type',
       'chained',
       'repeated',
+      'anonymous',
+      'enumerated',
+      'array_bound',
+      'callback',
+      'attributed',
     ]);
     expect(capturedText('functionName')).toEqual([
       'following',
@@ -592,6 +598,9 @@ test('keeps native modifier captures and following function ranges', { timeout: 
       'last',
       'discard',
       'following',
+      'following',
+      'named',
+      'opaque',
       'following',
     ]);
     expect(result.stdout).toContain(' - function, start: (1, 0), end: (11, 1)');
@@ -1039,6 +1048,125 @@ test('parses braced annotation arguments with public fields and declaration boun
     ]);
   } finally {
     tags.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('preserves braced parameter types and macro-prefixed opaque types through edits', async () => {
+  await Parser.init();
+  const language = await Language.load(wasmPath);
+  const parser = new Parser().setLanguage(language);
+  const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/bracedParameterTypes.c'), 'utf8');
+  const tree = parser.parse(source)!;
+  const query = new Query(
+    language,
+    fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8') +
+      '\n' +
+      fs.readFileSync(path.join(import.meta.dirname, '../../queries/highlights.scm'), 'utf8')
+  );
+  const captures = (root: typeof tree.rootNode): Array<[string, string, string, number, number]> =>
+    query
+      .captures(root)
+      .map<[string, string, string, number, number]>(({ name, node }) => [
+        name,
+        node.type,
+        node.text,
+        node.startIndex,
+        node.endIndex,
+      ]);
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const structures = tree.rootNode.namedChildren.filter((node) =>
+      ['declaration', 'function_definition'].includes(node.type)
+    );
+    expect(
+      structures.map((node) => [
+        node.type,
+        node.childForFieldName('type')?.text,
+        node.childForFieldName('declarator')?.text,
+        node.childForFieldName('body')?.text,
+      ])
+    ).toEqual([
+      ['declaration', 'int', 'anonymous(struct { int x; } *p)', undefined],
+      ['function_definition', 'int', 'named(struct Named { int x; } p)', '{ return p.x; }'],
+      ['declaration', 'Result', 'enumerated(enum { ENUM_A, ENUM_B } e)', undefined],
+      ['declaration', 'int', 'array_bound(int a[sizeof(struct { int q; })])', undefined],
+      ['declaration', 'int', 'callback(int (*cb)(struct { int z; } *), int y)', undefined],
+      ['declaration', 'int', 'attributed(struct { int a; } s) __attribute__((unused))', undefined],
+      ['declaration', 'TYPE(struct { int member; })', 'object', undefined],
+      ['declaration', 'TYPE(struct { int member; })', 'qualified', undefined],
+      ['function_definition', 'TYPE(struct { int member; })', 'opaque(void)', '{ for (;;) {} }'],
+      ['function_definition', 'int', 'following(void)', '{ return 0; }'],
+    ]);
+    expect(tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.text)).toEqual([
+      '__attribute__((unused))',
+    ]);
+    expect(tree.rootNode.descendantsOfType('macro_specifier').map((node) => node.text)).toEqual([
+      'MARK',
+      'MARK',
+      'OTHER',
+    ]);
+    expect(
+      query
+        .captures(tree.rootNode)
+        .filter(({ name }) => name === 'definition.function')
+        .map(({ node }) => node.text)
+    ).toEqual(
+      structures
+        .map((node) => node.childForFieldName('declarator')!)
+        .filter((node) => node.type === 'function_declarator')
+        .map((node) => node.text)
+    );
+    const originalCaptures = captures(tree.rootNode);
+    for (const group of tree.rootNode.descendantsOfType(['struct_specifier', 'enum_specifier'])) {
+      const at = group.startIndex + group.text.indexOf('{');
+      const text = '/* edit */';
+      const editedSource = source.slice(0, at) + text + source.slice(at);
+      const row = source.slice(0, at).split('\n').length - 1;
+      const column = at - source.lastIndexOf('\n', at - 1) - 1;
+      const cache = tree.copy();
+      cache.edit(
+        new Edit({
+          startIndex: at,
+          oldEndIndex: at,
+          newEndIndex: at + text.length,
+          startPosition: { row, column },
+          oldEndPosition: { row, column },
+          newEndPosition: { row, column: column + text.length },
+        })
+      );
+      const incremental = parser.parse(editedSource, cache)!;
+      const fresh = parser.parse(editedSource)!;
+      try {
+        expect(incremental.rootNode.hasError).toBe(false);
+        expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
+        expect(captures(incremental.rootNode)).toEqual(captures(fresh.rootNode));
+        incremental.edit(
+          new Edit({
+            startIndex: at,
+            oldEndIndex: at + text.length,
+            newEndIndex: at,
+            startPosition: { row, column },
+            oldEndPosition: { row, column: column + text.length },
+            newEndPosition: { row, column },
+          })
+        );
+        const undone = parser.parse(source, incremental)!;
+        try {
+          expect(undone.rootNode.toString()).toBe(tree.rootNode.toString());
+          expect(captures(undone.rootNode)).toEqual(originalCaptures);
+        } finally {
+          undone.delete();
+        }
+      } finally {
+        cache.delete();
+        incremental.delete();
+        fresh.delete();
+      }
+    }
+  } finally {
+    query.delete();
     tree.delete();
     parser.delete();
   }

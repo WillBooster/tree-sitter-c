@@ -75,3 +75,26 @@ int following(void) { return 0; }
     body: (compound_statement
       (return_statement
         (number_literal)))))
+
+================================================================================
+Braced parameters and macro-prefixed opaque types retain public declarations
+================================================================================
+
+#define MARK
+#define OTHER
+#define TYPE(...) __VA_ARGS__
+typedef int Result;
+int anonymous(struct { int x; } *p);
+int named(struct Named { int x; } p) { return p.x; }
+Result enumerated(enum { ENUM_A, ENUM_B } e);
+int array_bound(int a[sizeof(struct { int q; })]);
+int callback(int (*cb)(struct { int z; } *), int y);
+int attributed(struct { int a; } s) __attribute__((unused));
+extern MARK TYPE(struct { int member; }) object;
+MARK extern OTHER const TYPE(struct { int member; }) qualified;
+extern TYPE(struct { int member; }) opaque(void) { for (;;) {} }
+int following(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit (preproc_def name: (identifier)) (preproc_def name: (identifier)) (preproc_function_def name: (identifier) parameters: (preproc_params) value: (preproc_arg)) (type_definition type: (primitive_type) declarator: (type_identifier)) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))) declarator: (pointer_declarator declarator: (identifier)))))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (struct_specifier name: (type_identifier) body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))) declarator: (identifier)))) body: (compound_statement (return_statement (field_expression argument: (identifier) field: (field_identifier))))) (declaration type: (type_identifier) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (enum_specifier body: (enumerator_list (enumerator name: (identifier)) (enumerator name: (identifier)))) declarator: (identifier))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type) declarator: (array_declarator declarator: (identifier) size: (sizeof_expression type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier))))))))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type) declarator: (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier))) parameters: (parameter_list (parameter_declaration type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))) declarator: (abstract_pointer_declarator))))) (parameter_declaration type: (primitive_type) declarator: (identifier))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))) declarator: (identifier))) (attribute_specifier (argument_list (identifier))))) (declaration (storage_class_specifier) (macro_specifier name: (identifier)) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (identifier)) (declaration (macro_specifier name: (identifier)) (storage_class_specifier) (macro_specifier name: (identifier)) (type_qualifier) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (identifier)) (function_definition (storage_class_specifier) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (for_statement body: (compound_statement)))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (number_literal)))))
