@@ -86,7 +86,7 @@ The helper shares pragma and scalar-object dispatch with annotation guards. Copy
 when porting this dispatch. Later pragma lookahead must preserve the zero-width token end.
 
 When overriding declarations or function definitions, retain both guarded ordinary-type/declarator alternatives and
-annotation alternatives. Accept the matching passive guard after calling conventions and before ordinary, builtin,
+annotation alternatives in ordinary, block, and for-declaration builders. Accept the matching passive guard after calling conventions and before ordinary, builtin,
 and initialized declarators. Derived custom declaration builders also need `_guarded_type_specifiers` and
 `_marked_macro_type_specifiers`; adapt their conflicts alongside these productions. Keep the marked-type rule's
 ordinary type and annotation alternatives after the prefix guard, so typedef-return prototypes remain prototypes.
@@ -115,7 +115,8 @@ scanner must skip those splices again to reach `(`.
 
 Annotation lookahead hands the first unquoted brace in an argument group to the grammar instead of scanning the
 whole braced body. The argument grammar handles compound literals, inline types, aggregate initializers, and GNU
-statement expressions. Quoted punctuation and comments remain literal content. Semicolons and preprocessing directives
+statement expressions. Proved braced arguments also accept named declarations such as `int a[sizeof(struct { int m; })]`.
+Their `parameter_declaration` nodes retain public type and declarator subtype queries. Quoted punctuation and comments remain literal content. Semicolons and preprocessing directives
 encountered before an unknown annotation's braced handoff reject that lookahead; directive-bearing arguments need
 separate support. The marker proof balances recognized declaration-modifier groups, including inline types inside
 attribute arguments, in one pass. Those recognized groups do not turn an attribute's internal brace into the following
@@ -132,7 +133,7 @@ published first type-name preference, even though the remaining declarator can b
 types and prefixes with recognized declaration attributes or known specifiers keep the concrete macro-type route.
 This preference preserves query fields; it does not resolve both macro expansions semantically.
 
-Header annotation declarations use `_macro_modified_declaration`, `_macro_declaration_specifiers`,
+Annotation declarations use `_macro_modified_declaration`, `_macro_declaration_specifiers`,
 `_macro_declaration_declarator`, and `_header_preproc_item`. Adapt these rules alongside public declaration/type
 overrides when extending C. Keep `_macro_only_declaration` as a complete semicolon-terminated item and allow
 `_macro_declaration_specifiers` in function definitions so their bodies stay attached. The annotation declarator uses

@@ -540,6 +540,10 @@
           "named": true
         },
         {
+          "type": "parameter_declaration",
+          "named": true
+        },
+        {
           "type": "preproc_defined",
           "named": true
         },

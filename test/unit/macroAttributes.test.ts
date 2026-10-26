@@ -1196,6 +1196,7 @@ const guardedBoundaryFixtures: Array<{
   nextDeclaration?: string;
   attributes?: string[];
   initialized?: string[];
+  parameters?: Array<[string, string]>;
 }> = [
   {
     file: 'bracedDeclarationBoundaries.c',
@@ -1261,6 +1262,48 @@ const guardedBoundaryFixtures: Array<{
     macroTypes: Array.from({ length: 6 }, () => 'int'),
     attributes: Array.from({ length: 5 }, () => 'ATTR(struct { int member; })'),
     initialized: ['DECL(struct { int member; })', 'value', '*pointer', 'first', 'second', '(*callback)(void) LAST'],
+  },
+  {
+    file: 'namedMacroAttributes.c',
+    structures: [
+      ['declaration', 'int', ['value = {0}'], undefined],
+      ['declaration', 'int', ['first = {1}', 'second = {2}'], undefined],
+      ['declaration', 'int', ['next(void)'], undefined],
+      ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
+    ],
+    macroTypes: [],
+    attributes: Array.from({ length: 2 }, () => 'ATTR(int a[sizeof(struct { int member; })])'),
+    initialized: ['value', 'first', 'second'],
+    parameters: [
+      ['int', 'a[sizeof(struct { int member; })]'],
+      ['int', 'a[sizeof(struct { int member; })]'],
+    ],
+  },
+  {
+    file: 'blockMacroAttributes.c',
+    structures: [
+      ['function_definition', 'void', ['scalar(void)'], '{ int ATTR(struct { int member; }) x = 3; int z; }'],
+      ['function_definition', 'void', ['aggregate(void)'], '{ struct S ATTR(struct { int member; }) x = {0}; int z; }'],
+      ['function_definition', 'void', ['enumeration(void)'], '{ int ATTR(enum { ONE }) x = 1; int z; }'],
+      ['function_definition', 'void', ['measured(void)'], '{ int ATTR(sizeof(struct { int member; })) x = 3; int z; }'],
+      [
+        'function_definition',
+        'void',
+        ['loop(void)'],
+        '{ for (int ATTR(struct { int member; }) i = 0; i < 2; i++) {} int z; }',
+      ],
+      ['declaration', 'int', ['next(void)'], undefined],
+      ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
+    ],
+    macroTypes: [],
+    attributes: [
+      'ATTR(struct { int member; })',
+      'ATTR(struct { int member; })',
+      'ATTR(enum { ONE })',
+      'ATTR(sizeof(struct { int member; }))',
+      'ATTR(struct { int member; })',
+    ],
+    initialized: ['x', 'x', 'x', 'x', 'i'],
   },
   {
     file: 'attributedMarkerTypes.c',
@@ -1335,6 +1378,8 @@ test.each(guardedBoundaryFixtures)(
 (translation_unit (function_definition type: (_) @boundary.type))
 (translation_unit (declaration type: (type_specifier/macro_type_specifier) @boundary.macrotype))
 (init_declarator declarator: (_declarator) @boundary.initialized)
+(declaration type: (type_specifier) @boundary.declarationType)
+(attribute_specifier arguments: (argument_list (parameter_declaration type: (type_specifier) @boundary.parameterType declarator: (_declarator) @boundary.parameter)))
 `
     );
     try {
@@ -1366,6 +1411,17 @@ test.each(guardedBoundaryFixtures)(
           .map(({ node }) => node.text)
       ).toEqual(tree.rootNode.descendantsOfType('macro_type_specifier').map((node) => node.text));
       expect(
+        query
+          .captures(tree.rootNode)
+          .filter(({ name }) => name === 'boundary.declarationType')
+          .map(({ node }) => node.text)
+      ).toEqual(
+        tree.rootNode
+          .descendantsOfType('declaration')
+          .map((node) => node.childForFieldName('type')?.text)
+          .filter((type) => type !== undefined)
+      );
+      expect(
         structures.find((node) => ['next', 'next(void)'].includes(node.childForFieldName('declarator')?.text ?? ''))
           ?.text
       ).toBe(fixture.nextDeclaration ?? 'int next(void);');
@@ -1382,6 +1438,14 @@ test.each(guardedBoundaryFixtures)(
             .filter(({ name }) => name === 'boundary.initialized')
             .map(({ node }) => node.text)
         ).toEqual(fixture.initialized);
+      }
+      if (fixture.parameters) {
+        expect(
+          query
+            .matches(tree.rootNode)
+            .filter(({ captures }) => captures.some(({ name }) => name === 'boundary.parameterType'))
+            .map(({ captures }) => captures.map(({ node }) => node.text))
+        ).toEqual(fixture.parameters);
       }
       verifyGuardedGroupEdits(parser, tree, query, source);
     } finally {

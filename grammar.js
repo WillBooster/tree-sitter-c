@@ -71,18 +71,59 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._known_annotation_type_specifier, $.sized_type_specifier],
+      [$._known_annotation_type_specifier, $._sized_bit_int_specifier],
+      [$._braced_macro_attribute_argument_list, $._variadic_macro_type_specifier],
+      [$._braced_macro_attribute_argument_list, $.macro_type_specifier],
+      [$._annotation_type_specifier, $.macro_specifier],
+      [$._annotation_type_specifier, $.sized_type_specifier],
+      [$._annotation_type_specifier, $._sized_bit_int_specifier],
+      [$._bare_initializer_type, $._annotation_type_specifier, $.type_specifier],
+      [$._bare_initializer_type, $._annotation_type_specifier, $.type_specifier, $.macro_specifier],
+      [$._annotation_type_specifier, $.type_specifier, $.macro_specifier],
+      [$._annotation_type_specifier, $.type_specifier, $.expression, $.macro_specifier],
+      [$.type_definition, $._annotation_type_specifier, $.type_specifier, $.sized_type_specifier],
+      [$.type_definition, $._annotation_type_specifier, $.type_specifier, $._sized_bit_int_specifier],
+      [$.type_definition, $._annotation_type_specifier, $.type_specifier],
+      [$._statement_type_definition, $._annotation_type_specifier, $.type_specifier, $.sized_type_specifier],
+      [$._statement_type_definition, $._annotation_type_specifier, $.type_specifier, $._sized_bit_int_specifier],
+      [$._statement_type_definition, $._annotation_type_specifier, $.type_specifier],
+      [$._annotation_type_specifier, $.type_specifier, $.sized_type_specifier],
+      [$._annotation_type_specifier, $.type_specifier, $._sized_bit_int_specifier],
+      [$._annotation_type_specifier, $.type_specifier, $.expression],
+      [$._annotation_type_specifier, $.type_specifier],
+      [
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+        $._case_body_attributed_statement,
+        $._case_label_attributes,
+      ],
+      [$._statement_declaration, $._macro_declaration_specifiers, $._statement_declaration_modifiers],
+      [
+        $._statement_declaration,
+        $._statement_type_definition,
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+        $._statement_empty_declaration,
+      ],
+      [
+        $._statement_declaration,
+        $._statement_type_definition,
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+      ],
+      [$._macro_declaration_specifiers, $._statement_declaration_modifiers, $._statement_empty_declaration],
+      [$._macro_declaration_specifiers, $._statement_declaration_modifiers],
+      [$._macro_declaration_specifiers, $._statement_declaration_modifiers, $.attributed_statement, $.case_statement],
       [$._bare_initializer_type, $.macro_specifier],
-      [$._bare_marker_initializer_declaration, $._declaration_modifiers, $._marked_macro_type_specifiers],
-      [$._bare_initializer_type, $._macro_declaration_specifiers, $.type_specifier, $.macro_specifier],
+      [$.declaration, $._declaration_modifiers, $._marked_macro_type_specifiers],
       [$._bare_initializer_type, $.type_specifier, $.macro_specifier],
-      [$._bare_initializer_type, $._macro_declaration_specifiers, $.type_specifier],
       [$._bare_initializer_type, $.type_specifier, $.macro_type_specifier],
       [$._bare_initializer_type, $.type_specifier],
       [$._guarded_macro_type_specifier, $.type_specifier],
       [$._macro_declaration_specifiers, $._guarded_type_specifiers],
       [$._macro_declaration_specifiers, $._guarded_type_specifiers, $._marked_macro_type_specifiers],
       [$._macro_only_declaration, $._macro_declaration_specifiers, $._guarded_type_specifiers],
-      [$._macro_declaration_specifiers, $.macro_specifier],
       [$._macro_declaration_specifiers, $._declaration_modifiers, $._marked_macro_type_specifiers],
       [
         $._macro_declaration_specifiers,
@@ -125,7 +166,6 @@ module.exports = Object.assign(
         $._statement_empty_declaration,
       ],
       [$._macro_attribute_specifier, $.type_specifier, $.macro_type_specifier],
-      [$._macro_attribute_argument_list, $._variadic_macro_type_specifier],
       [$.type_specifier, $.macro_type_specifier, $._variadic_macro_type_specifier],
       [$._macro_declaration_specifiers],
       [$._declaration_modifiers, $._guarded_type_specifiers, $._empty_declaration],
@@ -190,41 +230,21 @@ module.exports = Object.assign(
       [$.type_specifier, $._sized_type_identifier, $.macro_specifier],
       [$.type_specifier, $._sized_type_identifier],
       [$._sized_type_identifier, $.macro_specifier],
-      [$._statement_declaration, $._statement_declaration_modifiers],
       [$.declaration, $._declaration_modifiers],
-      [$._statement_declaration, $._statement_type_definition, $._statement_declaration_modifiers],
-      [
-        $._statement_declaration,
-        $._statement_type_definition,
-        $._statement_declaration_modifiers,
-        $._statement_empty_declaration,
-      ],
       [$.type_definition, $.type_specifier],
-      [$.type_definition, $._macro_declaration_specifiers],
       [$._macro_declaration_specifiers, $._declaration_modifiers, $.attributed_statement, $.case_statement],
-      [$._macro_declaration_specifiers, $.type_specifier, $.expression, $.macro_specifier],
-      [$._macro_declaration_specifiers, $.type_specifier, $.macro_specifier],
       [$.macro_specifier, $._type_declarator],
       [$.macro_specifier, $._field_declarator],
       [$.macro_specifier, $._declarator],
       [$.macro_specifier, $._declarator, $.attributed_declarator, $.type_specifier],
       [$.macro_specifier, $._declarator, $.attributed_declarator],
-      [$._macro_declaration_specifiers, $.type_specifier, $.sized_type_specifier],
-      [$.type_definition, $._macro_declaration_specifiers, $.type_specifier, $.sized_type_specifier],
-      [$._macro_declaration_specifiers, $.type_specifier, $._sized_bit_int_specifier],
-      [$.type_definition, $._macro_declaration_specifiers, $.type_specifier, $._sized_bit_int_specifier],
       [$._statement_type_definition, $.type_specifier, $.sized_type_specifier],
       [$._statement_type_definition, $.type_specifier, $._sized_bit_int_specifier],
-      [$._macro_declaration_specifiers, $.sized_type_specifier],
-      [$.type_definition, $._macro_declaration_specifiers, $.sized_type_specifier],
       [$.type_definition, $.type_specifier, $.sized_type_specifier],
       [$.type_definition, $.type_specifier, $._sized_bit_int_specifier],
       [$._type_declarator, $.sized_type_specifier],
       [$.macro_specifier, $.expression],
       [$.macro_specifier, $.type_specifier],
-      [$._macro_declaration_specifiers, $.type_definition, $.type_specifier],
-      [$._macro_declaration_specifiers, $.type_specifier, $.expression],
-      [$._macro_declaration_specifiers, $.type_specifier],
       [$._macro_declaration_specifiers, $._declaration_modifiers],
       [$.preproc_include_argument],
       [$._preproc_include_token, $.preproc_argument_list],
@@ -267,8 +287,6 @@ module.exports = Object.assign(
       [$.type_definition, $.sized_type_specifier],
       [$.type_definition, $._sized_bit_int_specifier],
       [$.case_statement],
-      [$._statement_declaration_modifiers, $._case_body_attributed_statement, $._case_label_attributes],
-      [$._statement_declaration_modifiers, $.attributed_statement, $.case_statement],
       [$.enum_specifier],
       [sym('preproc_if_in_enumerator_list'), sym('preproc_if_in_enumerator_list_no_comma')],
       [sym('preproc_ifdef_in_enumerator_list'), sym('preproc_ifdef_in_enumerator_list_no_comma')],
@@ -326,6 +344,7 @@ module.exports = Object.assign(
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
 
     inline: ($) => [
+      $._bare_marker_initializer_declaration,
       $._unattributed_non_case_statement,
       $._single_unattributed_non_case_statement,
       $._unlabeled_non_case_statement,
@@ -357,6 +376,8 @@ module.exports = Object.assign(
       $.type_specifier,
       $._type_name_specifier,
       $._guarded_type_specifier,
+      sym('_annotation_type_specifier'),
+      sym('_known_annotation_type_specifier'),
       $._guarded_macro_type_specifier,
       sym('_bare_initializer_type'),
       $._declarator,
@@ -688,7 +709,8 @@ module.exports = Object.assign(
             choice($._statement_declaration_specifiers, $._marked_macro_type_specifiers),
             $._statement_declaration_modifiers
           ),
-          sym('_bare_marker_initializer_declaration')
+          sym('_bare_marker_initializer_declaration'),
+          $._macro_modified_declaration
         ),
       _bare_marker_initializer_declaration: ($) =>
         declarationRule(
@@ -759,13 +781,13 @@ module.exports = Object.assign(
             repeat($._non_macro_declaration_modifiers),
             alias($._macro_attribute_specifier, $.attribute_specifier),
             repeat(modifier),
-            field('type', $._non_identifier_type_specifier),
+            field('type', alias(sym('_known_annotation_type_specifier'), $.type_specifier)),
             repeat(postModifier)
           ),
           seq(
             repeat($._non_macro_declaration_modifiers),
             choice(
-              field('type', choice($._non_identifier_type_specifier, $._type_identifier)),
+              field('type', alias(sym('_annotation_type_specifier'), $.type_specifier)),
               seq(
                 optional(choice(sym('_function_attribute_start'), sym('_braced_function_attribute_start'))),
                 field('type', alias($._guarded_macro_type_specifier, $.type_specifier))
@@ -777,6 +799,9 @@ module.exports = Object.assign(
           )
         );
       },
+
+      _annotation_type_specifier: ($) => choice($._non_identifier_type_specifier, $._type_identifier),
+      _known_annotation_type_specifier: ($) => $._non_identifier_type_specifier,
 
       _type_definition_type: ($) =>
         seq(
@@ -883,10 +908,19 @@ module.exports = Object.assign(
 
       _post_type_macro_attribute_suffix: ($) => macroAttributeRule($, 'post-type-continuation'),
 
-      _macro_attribute_argument_list: ($) => {
-        const argument = macroAttributeArgument($);
-        return seq('(', optional(argument), repeat(seq(',', optional(argument))), ')');
-      },
+      _macro_attribute_parameter: ($) =>
+        seq(
+          repeat($.type_qualifier),
+          field('type', alias($._type_name_specifier, $.type_specifier)),
+          repeat($.type_qualifier),
+          field('declarator', $._declarator)
+        ),
+
+      _macro_attribute_argument_list: ($) => macroAttributeArgumentList(macroAttributeArgument($)),
+      _braced_macro_attribute_argument_list: ($) =>
+        macroAttributeArgumentList(
+          choice(macroAttributeArgument($), alias(sym('_macro_attribute_parameter'), $.parameter_declaration))
+        ),
 
       attribute: ($) =>
         seq(optional(seq(field('prefix', $.identifier), '::')), field('name', $.identifier), optional($.argument_list)),
@@ -2260,35 +2294,39 @@ function declarationDeclaratorRule($, functionDeclarator) {
  * @param {'leading' | 'post-type' | 'continuation' | 'post-type-continuation' | 'trailing'} context
  */
 function macroAttributeRule($, context) {
-  const bracedGuard = sym('_braced_function_attribute_start');
-  const guard =
-    context === 'trailing'
-      ? []
-      : context === 'continuation'
-        ? [optional(bracedGuard)]
-        : [
-            choice(
-              sym(
-                context === 'leading'
-                  ? '_function_attribute_start'
-                  : context === 'post-type'
-                    ? '_post_type_function_attribute_start'
-                    : '_post_type_function_attribute_suffix'
-              ),
-              bracedGuard
-            ),
-          ];
-  return prec.dynamic(
-    -2,
-    seq(
-      ...guard,
-      field('name', context === 'trailing' ? alias(sym('_trailing_macro_attribute_name'), $.identifier) : $.identifier),
-      field('arguments', alias($._macro_attribute_argument_list, $.argument_list))
-    )
+  const name = field(
+    'name',
+    context === 'trailing' ? alias(sym('_trailing_macro_attribute_name'), $.identifier) : $.identifier
   );
+  const ordinary = seq(name, field('arguments', alias($._macro_attribute_argument_list, $.argument_list)));
+  if (context === 'trailing') return prec.dynamic(-2, ordinary);
+  const braced = seq(
+    sym('_braced_function_attribute_start'),
+    name,
+    field('arguments', alias(sym('_braced_macro_attribute_argument_list'), $.argument_list))
+  );
+  const guarded =
+    context === 'continuation'
+      ? ordinary
+      : seq(
+          sym(
+            context === 'leading'
+              ? '_function_attribute_start'
+              : context === 'post-type'
+                ? '_post_type_function_attribute_start'
+                : '_post_type_function_attribute_suffix'
+          ),
+          ordinary
+        );
+  return prec.dynamic(-2, choice(guarded, braced));
 }
 
-/** @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'type_descriptor' | '_preproc_number' | 'number_literal' | 'compound_statement' | 'initializer_pair' | 'initializer_list'>} $ */
+/** @param {import('./types/treeSitterDsl').Rule} argument */
+function macroAttributeArgumentList(argument) {
+  return seq('(', optional(argument), repeat(seq(',', optional(argument))), ')');
+}
+
+/** @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'parameter_declaration' | 'type_descriptor' | '_preproc_number' | 'number_literal' | 'compound_statement' | 'initializer_pair' | 'initializer_list'>} $ */
 function macroAttributeArgument($) {
   return choice(
     $.expression,
