@@ -90,8 +90,15 @@ annotation alternatives. Accept the matching passive guard after calling convent
 and initialized declarators. Derived custom declaration builders also need `_guarded_type_specifiers` and
 `_marked_macro_type_specifiers`; adapt their conflicts alongside these productions. Keep the marked-type rule's
 ordinary type and annotation alternatives after the prefix guard, so typedef-return prototypes remain prototypes.
+Guard-owned initialized declarators also need their `_declarator` supertype alias; accepting the syntax alone does not
+preserve subtype queries. Keep ordinary initializers on their existing declarator family. Custom declaration builders
+must admit `_bare_marker_initializer_declaration` where they need the published bare-name initializer preference.
+If their ordinary function declarators reject C's opaque trailing identifiers, adapt that private initializer route
+separately and retain its `_declarator` alias.
 If a derived `type_specifier` omits C macro types, its anchored `_guarded_type_specifier` must explicitly retain them
-to preserve braced macro-return function bodies. This adaptation does not enable unanchored macro types globally.
+to preserve braced macro-return function bodies. Its annotation type preguard must retain the derived grammar's
+anchor policy as well, so unanchored recovery keeps the complete return prefix. These adaptations do not enable
+unanchored macro types globally.
 Without these adapters, braced parameters, default arguments, or direct initializers can become annotations and lose
 their declaration boundaries. Copy the scanner headers from the same published C version
 as the grammar, update its external-token enum, then regenerate the derived parser.
@@ -109,11 +116,21 @@ scanner must skip those splices again to reach `(`.
 Annotation lookahead hands the first unquoted brace in an argument group to the grammar instead of scanning the
 whole braced body. The argument grammar handles compound literals, inline types, aggregate initializers, and GNU
 statement expressions. Quoted punctuation and comments remain literal content. Semicolons and preprocessing directives
-encountered before a braced handoff reject the lookahead; directive-bearing annotation arguments need separate support.
+encountered before an unknown annotation's braced handoff reject that lookahead; directive-bearing arguments need
+separate support. The marker proof balances recognized declaration-modifier groups, including inline types inside
+attribute arguments, in one pass. Those recognized groups do not turn an attribute's internal brace into the following
+macro type's handoff.
 Balanced groups followed by a later braced annotation retain their original guard, so typed annotation chains remain
 annotations. Guarded macro types require a first type descriptor; additional arguments are grammar-parsed only under
 the current-group braced hint. A semicolon can terminate an anchored declaration macro without consuming the next
 declaration.
+
+Bare initialized names remain ambiguous without preprocessing or name binding: `Word ATTR(struct { int m; }) value = {0};`
+can declare an integer when `Word` is a typedef and `ATTR` is empty, or a structure when `Word` is empty and `ATTR`
+selects its argument. For a genuinely bare prefix with an initialized first declarator, the grammar preserves the
+published first type-name preference, even though the remaining declarator can be approximate. Uninitialized marked
+types and prefixes with recognized declaration attributes or known specifiers keep the concrete macro-type route.
+This preference preserves query fields; it does not resolve both macro expansions semantically.
 
 Header annotation declarations use `_macro_modified_declaration`, `_macro_declaration_specifiers`,
 `_macro_declaration_declarator`, and `_header_preproc_item`. Adapt these rules alongside public declaration/type

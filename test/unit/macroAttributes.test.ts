@@ -1194,6 +1194,8 @@ const guardedBoundaryFixtures: Array<{
   structures: Array<[string, string | undefined, string[], string | undefined]>;
   macroTypes: string[];
   nextDeclaration?: string;
+  attributes?: string[];
+  initialized?: string[];
 }> = [
   {
     file: 'bracedDeclarationBoundaries.c',
@@ -1242,6 +1244,42 @@ const guardedBoundaryFixtures: Array<{
       'struct { int member; }',
       'struct { int member; }',
     ],
+  },
+  {
+    file: 'initializedMacroAttributes.c',
+    structures: [
+      ['declaration', 'int', ['DECL(struct { int member; }) = 0'], undefined],
+      ['declaration', 'TYPE(int)', ['value = 0'], undefined],
+      ['declaration', 'TYPE(int)', ['*pointer = 0'], undefined],
+      ['declaration', 'TYPE(int)', ['first = 0', 'second = 1'], undefined],
+      ['declaration', 'TYPE(int)', ['plain'], undefined],
+      ['declaration', 'TYPE(int)', ['prototype(void)'], undefined],
+      ['declaration', 'TYPE(int)', ['(*callback)(void) LAST = 0'], undefined],
+      ['declaration', 'int', ['next(void)'], undefined],
+      ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
+    ],
+    macroTypes: Array.from({ length: 6 }, () => 'int'),
+    attributes: Array.from({ length: 5 }, () => 'ATTR(struct { int member; })'),
+    initialized: ['DECL(struct { int member; })', 'value', '*pointer', 'first', 'second', '(*callback)(void) LAST'],
+  },
+  {
+    file: 'attributedMarkerTypes.c',
+    structures: [
+      ['declaration', 'TYPE(struct { int member; })', ['between'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['between_initialized = {1}'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['bracketed'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['bracketed_initialized = {2}'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['leading'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['leading_initialized = {3}'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['microsoft'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['microsoft_initialized = {4}'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['quoted'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['quoted_initialized = {5}'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['aligned = {6}'], undefined],
+      ['declaration', 'int', ['next(void)'], undefined],
+      ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
+    ],
+    macroTypes: Array.from({ length: 11 }, () => 'struct { int member; }'),
   },
   {
     file: 'bracedCallingConventions.c',
@@ -1296,6 +1334,7 @@ test.each(guardedBoundaryFixtures)(
 (translation_unit (declaration type: (_) @boundary.type))
 (translation_unit (function_definition type: (_) @boundary.type))
 (translation_unit (declaration type: (type_specifier/macro_type_specifier) @boundary.macrotype))
+(init_declarator declarator: (_declarator) @boundary.initialized)
 `
     );
     try {
@@ -1331,6 +1370,19 @@ test.each(guardedBoundaryFixtures)(
           ?.text
       ).toBe(fixture.nextDeclaration ?? 'int next(void);');
       expect(structures.at(-1)?.text).toBe('int following(void) { return 0; }');
+      if (fixture.attributes) {
+        expect(tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.text)).toEqual(
+          fixture.attributes
+        );
+      }
+      if (fixture.initialized) {
+        expect(
+          query
+            .captures(tree.rootNode)
+            .filter(({ name }) => name === 'boundary.initialized')
+            .map(({ node }) => node.text)
+        ).toEqual(fixture.initialized);
+      }
       verifyGuardedGroupEdits(parser, tree, query, source);
     } finally {
       query.delete();
@@ -1339,6 +1391,102 @@ test.each(guardedBoundaryFixtures)(
     }
   }
 );
+
+test('retains complete function bodies around bare marker initializers', async () => {
+  await Parser.init();
+  const language = await Language.load(wasmPath);
+  const parser = new Parser().setLanguage(language);
+  const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/blockMarkerTypes.c'), 'utf8');
+  const tree = parser.parse(source)!;
+  const query = new Query(
+    language,
+    fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8') +
+      '\n' +
+      fs.readFileSync(path.join(import.meta.dirname, '../../queries/highlights.scm'), 'utf8') +
+      '\n(declaration type: (type_specifier/type_identifier) @block.type)'
+  );
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const functions = tree.rootNode.namedChildren.filter((node) => node.type === 'function_definition');
+    expect(functions.map((node) => node.childForFieldName('declarator')?.text)).toEqual([
+      'scalar(void)',
+      'several(void)',
+      'array(void)',
+      'following(void)',
+    ]);
+    const declarations = functions
+      .slice(0, 3)
+      .flatMap((node) => node.childForFieldName('body')!.namedChildren.filter((child) => child.type === 'declaration'));
+    expect(declarations.map((node) => node.childForFieldName('type')?.text)).toEqual(['MARK', 'MARK', 'MARK']);
+    expect(
+      declarations.map((node) =>
+        node.childrenForFieldName('declarator').map((child) => [child.type, child.childForFieldName('value')?.text])
+      )
+    ).toEqual([
+      [['init_declarator', '{1}']],
+      [
+        ['init_declarator', '{1}'],
+        ['init_declarator', '{2}'],
+      ],
+      [['init_declarator', '{{1}}']],
+    ]);
+    expect(
+      functions.slice(0, 3).map((node) => node.childForFieldName('body')!.namedChildren.map((child) => child.type))
+    ).toEqual(Array.from({ length: 3 }, () => ['declaration', 'return_statement']));
+    expect(
+      query
+        .captures(tree.rootNode)
+        .filter(({ name }) => name === 'block.type')
+        .map(({ node }) => node.text)
+    ).toEqual(['MARK', 'MARK', 'MARK']);
+    expect(tree.rootNode.namedChildren.find((node) => node.type === 'declaration')?.text).toBe('int next(void);');
+    verifyGuardedGroupEdits(parser, tree, query, source);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test.each([
+  ['typedef', 'typedef int Word;\n#define ATTR(...)\n'],
+  ['macro', '#define Word\n#define ATTR(...) __VA_ARGS__\n'],
+])('preserves the published opaque initializer type with %s definitions', async (_, header) => {
+  await Parser.init();
+  const language = await Language.load(wasmPath);
+  const parser = new Parser().setLanguage(language);
+  const source = header + 'Word ATTR(struct { int member; }) value = {0};\nint next;\n';
+  const tree = parser.parse(source)!;
+  const query = new Query(
+    language,
+    fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8') +
+      '\n' +
+      fs.readFileSync(path.join(import.meta.dirname, '../../queries/highlights.scm'), 'utf8') +
+      '\n' +
+      '(declaration type: (type_specifier/type_identifier) @opaque.type declarator: (init_declarator value: (_) @opaque.value))'
+  );
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const declarations = tree.rootNode.namedChildren.filter((node) => node.type === 'declaration');
+    expect(declarations.map((node) => node.childForFieldName('type')?.text)).toEqual(['Word', 'int']);
+    expect(declarations[0]!.childForFieldName('declarator')?.childForFieldName('value')?.text).toBe('{0}');
+    expect(declarations[1]!.text).toBe('int next;');
+    expect(
+      query
+        .captures(tree.rootNode)
+        .filter(({ name }) => name.startsWith('opaque.'))
+        .map(({ name, node }) => [name, node.text])
+    ).toEqual([
+      ['opaque.type', 'Word'],
+      ['opaque.value', '{0}'],
+    ]);
+    verifyGuardedGroupEdits(parser, tree, query, source);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
 
 function verifyGuardedGroupEdits(parser: Parser, tree: Tree, query: Query, source: string): void {
   const captures = (current: Tree): Array<[string, string, string, number, number]> =>

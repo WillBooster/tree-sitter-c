@@ -71,6 +71,25 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._bare_initializer_type, $.macro_specifier],
+      [$._bare_marker_initializer_declaration, $._declaration_modifiers, $._marked_macro_type_specifiers],
+      [$._bare_initializer_type, $._macro_declaration_specifiers, $.type_specifier, $.macro_specifier],
+      [$._bare_initializer_type, $.type_specifier, $.macro_specifier],
+      [$._bare_initializer_type, $._macro_declaration_specifiers, $.type_specifier],
+      [$._bare_initializer_type, $.type_specifier, $.macro_type_specifier],
+      [$._bare_initializer_type, $.type_specifier],
+      [$._guarded_macro_type_specifier, $.type_specifier],
+      [$._macro_declaration_specifiers, $._guarded_type_specifiers],
+      [$._macro_declaration_specifiers, $._guarded_type_specifiers, $._marked_macro_type_specifiers],
+      [$._macro_only_declaration, $._macro_declaration_specifiers, $._guarded_type_specifiers],
+      [$._macro_declaration_specifiers, $.macro_specifier],
+      [$._macro_declaration_specifiers, $._declaration_modifiers, $._marked_macro_type_specifiers],
+      [
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._marked_macro_type_specifiers,
+      ],
       [$._declaration_modifiers, $._marked_macro_type_specifiers],
       [$.declaration, $._macro_declaration_specifiers, $._declaration_modifiers],
       [$.declaration, $._macro_declaration_specifiers, $._declaration_modifiers, $._guarded_type_specifiers],
@@ -339,9 +358,11 @@ module.exports = Object.assign(
       $._type_name_specifier,
       $._guarded_type_specifier,
       $._guarded_macro_type_specifier,
+      sym('_bare_initializer_type'),
       $._declarator,
       $._old_style_declarator,
       $._initialized_declarator,
+      sym('_guarded_initialized_declarator'),
       $._initialized_parenthesized_content,
       $._field_declarator,
       $._type_declarator,
@@ -652,13 +673,37 @@ module.exports = Object.assign(
         ),
 
       declaration: ($) =>
-        declarationRule(
-          $,
-          choice($._declaration_specifiers, $._guarded_type_specifiers, $._marked_macro_type_specifiers),
-          $._declaration_modifiers
+        choice(
+          declarationRule(
+            $,
+            choice($._declaration_specifiers, $._guarded_type_specifiers, $._marked_macro_type_specifiers),
+            $._declaration_modifiers
+          ),
+          sym('_bare_marker_initializer_declaration')
         ),
       _statement_declaration: ($) =>
-        declarationRule($, $._statement_declaration_specifiers, $._statement_declaration_modifiers),
+        choice(
+          declarationRule(
+            $,
+            choice($._statement_declaration_specifiers, $._marked_macro_type_specifiers),
+            $._statement_declaration_modifiers
+          ),
+          sym('_bare_marker_initializer_declaration')
+        ),
+      _bare_marker_initializer_declaration: ($) =>
+        declarationRule(
+          $,
+          seq(
+            sym('_braced_macro_type_start'),
+            repeat($.macro_specifier),
+            field('type', alias(sym('_bare_initializer_type'), $.type_specifier))
+          ),
+          $._statement_declaration_modifiers,
+          false,
+          $._declaration_declarator,
+          { guard: sym('_braced_function_attribute_start'), bareMarkerInitializer: true }
+        ),
+      _bare_initializer_type: ($) => $._type_identifier,
 
       type_definition: ($) => typeDefinitionRule($, $._declaration_modifiers, true),
       _statement_type_definition: ($) => typeDefinitionRule($, $._statement_declaration_modifiers, false),
@@ -670,7 +715,7 @@ module.exports = Object.assign(
           $._non_macro_declaration_modifiers,
           false,
           $._macro_declaration_declarator,
-          choice(sym('_post_type_function_attribute_suffix'), sym('_braced_function_attribute_start'))
+          { guard: choice(sym('_post_type_function_attribute_suffix'), sym('_braced_function_attribute_start')) }
         ),
 
       _macro_only_declaration: ($) =>
@@ -719,7 +764,13 @@ module.exports = Object.assign(
           ),
           seq(
             repeat($._non_macro_declaration_modifiers),
-            field('type', choice($._non_identifier_type_specifier, $._type_identifier)),
+            choice(
+              field('type', choice($._non_identifier_type_specifier, $._type_identifier)),
+              seq(
+                optional(choice(sym('_function_attribute_start'), sym('_braced_function_attribute_start'))),
+                field('type', alias($._guarded_macro_type_specifier, $.type_specifier))
+              )
+            ),
             repeat($._non_macro_declaration_modifiers),
             alias($._post_type_macro_attribute_specifier, $.attribute_specifier),
             repeat(postModifier)
@@ -781,7 +832,8 @@ module.exports = Object.assign(
             prec.dynamic(
               2,
               seq(
-                repeat1($.macro_specifier),
+                repeat($._non_macro_declaration_modifiers),
+                repeat1(seq($.macro_specifier, repeat($._non_macro_declaration_modifiers))),
                 optional(sym('_braced_function_attribute_start')),
                 field('type', alias($._guarded_macro_type_specifier, $.type_specifier)),
                 repeat($._non_macro_declaration_modifiers)
@@ -1074,12 +1126,10 @@ module.exports = Object.assign(
           )
         ),
 
-      init_declarator: ($) =>
-        seq(
-          field('declarator', alias($._initialized_declarator, $._declarator)),
-          '=',
-          field('value', choice($.initializer_list, $.expression))
-        ),
+      init_declarator: ($) => initDeclaratorRule($, alias($._initialized_declarator, $._declarator)),
+      _guarded_init_declarator: ($) =>
+        initDeclaratorRule($, alias(sym('_guarded_initialized_declarator'), $._declarator)),
+      _guarded_initialized_declarator: ($) => $._declaration_declarator,
 
       _initialized_declarator: ($) =>
         choice(
@@ -2110,7 +2160,7 @@ function functionDefinitionRule($, specifiers, oldStyle) {
  * @param {import('./types/treeSitterDsl').Rule} modifiers
  * @param {boolean} allowInferredType
  * @param {import('./types/treeSitterDsl').Rule} declarator
- * @param {import('./types/treeSitterDsl').Rule} guard
+ * @param {{guard?: import('./types/treeSitterDsl').Rule, bareMarkerInitializer?: boolean}} options
  */
 function declarationRule(
   $,
@@ -2118,8 +2168,21 @@ function declarationRule(
   modifiers,
   allowInferredType = true,
   declarator = $._declaration_declarator,
-  guard = choice(sym('_post_type_function_attribute_start'), sym('_braced_function_attribute_start'))
+  {
+    guard = choice(sym('_post_type_function_attribute_start'), sym('_braced_function_attribute_start')),
+    bareMarkerInitializer = false,
+  } = {}
 ) {
+  const initialized = bareMarkerInitializer
+    ? seq(optional(guard), $.init_declarator)
+    : choice($.init_declarator, seq(guard, alias(sym('_guarded_init_declarator'), $.init_declarator)));
+  const item = choice(
+    seq(optional($.ms_call_modifier), optional(guard), declarator, optional($.gnu_asm_expression)),
+    initialized
+  );
+  const items = bareMarkerInitializer
+    ? seq(field('declarator', initialized), repeat(seq(',', field('declarator', item))))
+    : commaSep1(field('declarator', item));
   return choice(
     seq(
       prec.dynamic(
@@ -2134,21 +2197,21 @@ function declarationRule(
             )
           : specifiers
       ),
-      commaSep1(
-        field(
-          'declarator',
-          choice(
-            seq(optional($.ms_call_modifier), optional(guard), declarator, optional($.gnu_asm_expression)),
-            $.init_declarator
-          )
-        )
-      ),
+      items,
       ';'
     ),
     ...(allowInferredType
       ? [seq(repeat1($.type_qualifier), commaSep1(field('declarator', choice($.identifier, $.init_declarator))), ';')]
       : [])
   );
+}
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'initializer_list' | 'expression'>} $
+ * @param {import('./types/treeSitterDsl').Rule} declarator
+ */
+function initDeclaratorRule($, declarator) {
+  return seq(field('declarator', declarator), '=', field('value', choice($.initializer_list, $.expression)));
 }
 
 /**
