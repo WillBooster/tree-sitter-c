@@ -8518,31 +8518,8 @@
       "type": "SEQ",
       "members": [
         {
-          "type": "REPEAT",
-          "content": {
-            "type": "SYMBOL",
-            "name": "type_qualifier"
-          }
-        },
-        {
-          "type": "FIELD",
-          "name": "type",
-          "content": {
-            "type": "ALIAS",
-            "content": {
-              "type": "SYMBOL",
-              "name": "_type_name_specifier"
-            },
-            "named": true,
-            "value": "type_specifier"
-          }
-        },
-        {
-          "type": "REPEAT",
-          "content": {
-            "type": "SYMBOL",
-            "name": "type_qualifier"
-          }
+          "type": "SYMBOL",
+          "name": "_declaration_specifiers"
         },
         {
           "type": "FIELD",
@@ -8550,6 +8527,13 @@
           "content": {
             "type": "SYMBOL",
             "name": "_declarator"
+          }
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "attribute_specifier"
           }
         }
       ]
@@ -19647,6 +19631,80 @@
     }
   ],
   "conflicts": [
+    [
+      "_sized_bit_int_type_name",
+      "_sized_bit_int_specifier"
+    ],
+    [
+      "type_specifier",
+      "_type_name_specifier",
+      "_sized_bit_int_type_name",
+      "_sized_bit_int_specifier"
+    ],
+    [
+      "_declaration_modifiers",
+      "type_descriptor"
+    ],
+    [
+      "type_specifier",
+      "_type_name_specifier",
+      "macro_specifier"
+    ],
+    [
+      "type_specifier",
+      "_type_name_specifier",
+      "expression",
+      "macro_specifier"
+    ],
+    [
+      "type_specifier",
+      "_type_name_specifier",
+      "expression",
+      "macro_type_specifier"
+    ],
+    [
+      "type_specifier",
+      "_type_name_specifier",
+      "_sized_type_name",
+      "sized_type_specifier"
+    ],
+    [
+      "_sized_type_name",
+      "_sized_bit_int_type_name",
+      "sized_type_specifier",
+      "_sized_bit_int_specifier"
+    ],
+    [
+      "_sized_type_name",
+      "sized_type_specifier"
+    ],
+    [
+      "storage_class_specifier",
+      "type_specifier",
+      "_type_name_specifier",
+      "expression"
+    ],
+    [
+      "storage_class_specifier",
+      "type_specifier",
+      "_type_name_specifier"
+    ],
+    [
+      "type_specifier",
+      "_type_name_specifier",
+      "expression",
+      "va_arg_expression",
+      "macro_type_specifier"
+    ],
+    [
+      "type_specifier",
+      "_type_name_specifier"
+    ],
+    [
+      "type_specifier",
+      "_type_name_specifier",
+      "expression"
+    ],
     [
       "_known_annotation_type_specifier",
       "sized_type_specifier"

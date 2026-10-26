@@ -1197,6 +1197,7 @@ const guardedBoundaryFixtures: Array<{
   attributes?: string[];
   initialized?: string[];
   parameters?: Array<[string, string]>;
+  parameterStorage?: string[];
 }> = [
   {
     file: 'bracedDeclarationBoundaries.c',
@@ -1268,13 +1269,31 @@ const guardedBoundaryFixtures: Array<{
     structures: [
       ['declaration', 'int', ['value = {0}'], undefined],
       ['declaration', 'int', ['first = {1}', 'second = {2}'], undefined],
+      ['declaration', 'int', ['registered = {3}'], undefined],
+      ['declaration', 'int', ['attributed = {4}'], undefined],
+      ['declaration', 'int', ['ordinary(register int a[sizeof(struct { int member; })])'], undefined],
+      [
+        'function_definition',
+        'int',
+        ['ordinary_definition(register int a[sizeof(struct { int member; })])'],
+        '{ return 0; }',
+      ],
       ['declaration', 'int', ['next(void)'], undefined],
       ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
     ],
     macroTypes: [],
-    attributes: Array.from({ length: 2 }, () => 'ATTR(int a[sizeof(struct { int member; })])'),
-    initialized: ['value', 'first', 'second'],
+    attributes: [
+      'ATTR(int a[sizeof(struct { int member; })])',
+      'ATTR(int a[sizeof(struct { int member; })])',
+      'ATTR(register int a[sizeof(struct { int member; })])',
+      'ATTR(int a[sizeof(struct { int member; })] __attribute__((unused)))',
+      '__attribute__((unused))',
+    ],
+    initialized: ['value', 'first', 'second', 'registered', 'attributed'],
+    parameterStorage: ['register'],
     parameters: [
+      ['int', 'a[sizeof(struct { int member; })]'],
+      ['int', 'a[sizeof(struct { int member; })]'],
       ['int', 'a[sizeof(struct { int member; })]'],
       ['int', 'a[sizeof(struct { int member; })]'],
     ],
@@ -1380,6 +1399,7 @@ test.each(guardedBoundaryFixtures)(
 (init_declarator declarator: (_declarator) @boundary.initialized)
 (declaration type: (type_specifier) @boundary.declarationType)
 (attribute_specifier arguments: (argument_list (parameter_declaration type: (type_specifier) @boundary.parameterType declarator: (_declarator) @boundary.parameter)))
+(attribute_specifier arguments: (argument_list (parameter_declaration (storage_class_specifier) @boundary.parameterStorage)))
 `
     );
     try {
@@ -1440,6 +1460,12 @@ test.each(guardedBoundaryFixtures)(
         ).toEqual(fixture.initialized);
       }
       if (fixture.parameters) {
+        expect(
+          query
+            .captures(tree.rootNode)
+            .filter(({ name }) => name === 'boundary.parameterStorage')
+            .map(({ node }) => node.text)
+        ).toEqual(fixture.parameterStorage ?? []);
         expect(
           query
             .matches(tree.rootNode)

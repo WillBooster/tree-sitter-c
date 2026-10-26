@@ -115,8 +115,9 @@ scanner must skip those splices again to reach `(`.
 
 Annotation lookahead hands the first unquoted brace in an argument group to the grammar instead of scanning the
 whole braced body. The argument grammar handles compound literals, inline types, aggregate initializers, and GNU
-statement expressions. Proved braced arguments also accept named declarations such as `int a[sizeof(struct { int m; })]`.
-Their `parameter_declaration` nodes retain public type and declarator subtype queries. Quoted punctuation and comments remain literal content. Semicolons and preprocessing directives
+statement expressions. Proved braced arguments also accept named declarations such as `register int a[sizeof(struct { int m; })]`,
+including declaration specifiers and trailing GNU attributes. Their `parameter_declaration` nodes require a name and retain
+public type and declarator subtype queries. Quoted punctuation and comments remain literal content. Semicolons and preprocessing directives
 encountered before an unknown annotation's braced handoff reject that lookahead; directive-bearing arguments need
 separate support. The marker proof balances recognized declaration-modifier groups, including inline types inside
 attribute arguments, in one pass. Those recognized groups do not turn an attribute's internal brace into the following

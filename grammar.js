@@ -71,6 +71,20 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._sized_bit_int_type_name, $._sized_bit_int_specifier],
+      [$.type_specifier, $._type_name_specifier, $._sized_bit_int_type_name, $._sized_bit_int_specifier],
+      [$._declaration_modifiers, $.type_descriptor],
+      [$.type_specifier, $._type_name_specifier, $.macro_specifier],
+      [$.type_specifier, $._type_name_specifier, $.expression, $.macro_specifier],
+      [$.type_specifier, $._type_name_specifier, $.expression, $.macro_type_specifier],
+      [$.type_specifier, $._type_name_specifier, $._sized_type_name, $.sized_type_specifier],
+      [$._sized_type_name, $._sized_bit_int_type_name, $.sized_type_specifier, $._sized_bit_int_specifier],
+      [$._sized_type_name, $.sized_type_specifier],
+      [$.storage_class_specifier, $.type_specifier, $._type_name_specifier, $.expression],
+      [$.storage_class_specifier, $.type_specifier, $._type_name_specifier],
+      [$.type_specifier, $._type_name_specifier, $.expression, $.va_arg_expression, $.macro_type_specifier],
+      [$.type_specifier, $._type_name_specifier],
+      [$.type_specifier, $._type_name_specifier, $.expression],
       [$._known_annotation_type_specifier, $.sized_type_specifier],
       [$._known_annotation_type_specifier, $._sized_bit_int_specifier],
       [$._braced_macro_attribute_argument_list, $._variadic_macro_type_specifier],
@@ -909,12 +923,7 @@ module.exports = Object.assign(
       _post_type_macro_attribute_suffix: ($) => macroAttributeRule($, 'post-type-continuation'),
 
       _macro_attribute_parameter: ($) =>
-        seq(
-          repeat($.type_qualifier),
-          field('type', alias($._type_name_specifier, $.type_specifier)),
-          repeat($.type_qualifier),
-          field('declarator', $._declarator)
-        ),
+        seq($._declaration_specifiers, field('declarator', $._declarator), repeat($.attribute_specifier)),
 
       _macro_attribute_argument_list: ($) => macroAttributeArgumentList(macroAttributeArgument($)),
       _braced_macro_attribute_argument_list: ($) =>
