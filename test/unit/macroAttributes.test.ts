@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Edit, Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Edit, Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 const wasmPath = path.join(import.meta.dirname, '../../tree-sitter-c.wasm');
@@ -568,7 +568,7 @@ test('keeps native modifier captures and following function ranges', { timeout: 
       'DEPRECATED',
       'CHECK_TYPES',
       'EMPTY',
-      ...Array.from({ length: 10 }, () => 'ANNOTATE'),
+      ...Array.from({ length: 16 }, () => 'ANNOTATE'),
     ]);
     expect(capturedText('prototype')).toEqual([
       'sprintf',
@@ -585,11 +585,15 @@ test('keeps native modifier captures and following function ranges', { timeout: 
       'inline_type',
       'chained',
       'repeated',
+      'type_only_chain',
+      'typed_chain',
+      'typed_empty_chain',
       'anonymous',
       'enumerated',
       'array_bound',
       'callback',
       'attributed',
+      'macro_parameter',
     ]);
     expect(capturedText('functionName')).toEqual([
       'following',
@@ -1006,6 +1010,9 @@ test('parses braced annotation arguments with public fields and declaration boun
       ['int', 'inline_type(void)'],
       ['int', 'chained(void)'],
       ['int', 'repeated(void)'],
+      ['int', 'type_only_chain(void)'],
+      ['int', 'typed_chain(void)'],
+      ['int', 'typed_empty_chain(void)'],
     ]);
     const attributes = tree.rootNode
       .descendantsOfType('attribute_specifier')
@@ -1021,6 +1028,12 @@ test('parses braced annotation arguments with public fields and declaration boun
       '((int[]){1, 2})',
       '((int[]){1, 2})',
       '((struct Pair){1, 2})',
+      '(int)',
+      '((int[]){1})',
+      '(int, 1)',
+      '((int[]){1})',
+      '(int,)',
+      '((int[]){1})',
     ]);
     for (const attribute of attributes) {
       expect(attribute.text).toBe(source.slice(attribute.startIndex, attribute.endIndex));
@@ -1041,6 +1054,9 @@ test('parses braced annotation arguments with public fields and declaration boun
       'inline_type(void)',
       'chained(void)',
       'repeated(void)',
+      'type_only_chain(void)',
+      'typed_chain(void)',
+      'typed_empty_chain(void)',
       'following(void)',
     ]);
     expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
@@ -1097,6 +1113,7 @@ test('preserves braced parameter types and macro-prefixed opaque types through e
       ['declaration', 'TYPE(struct { int member; })', 'object', undefined],
       ['declaration', 'TYPE(struct { int member; })', 'qualified', undefined],
       ['function_definition', 'TYPE(struct { int member; })', 'opaque(void)', '{ for (;;) {} }'],
+      ['declaration', 'TYPE(int)', 'macro_parameter(struct { int nested; } *p)', undefined],
       ['function_definition', 'int', 'following(void)', '{ return 0; }'],
     ]);
     expect(tree.rootNode.descendantsOfType('attribute_specifier').map((node) => node.text)).toEqual([
@@ -1171,3 +1188,159 @@ test('preserves braced parameter types and macro-prefixed opaque types through e
     parser.delete();
   }
 });
+
+const guardedBoundaryFixtures: Array<{
+  file: string;
+  structures: Array<[string, string, string[], string | undefined]>;
+  macroTypes: string[];
+}> = [
+  {
+    file: 'bracedCallingConventions.c',
+    structures: [
+      ['declaration', 'int', ['__stdcall', 'stdcall(struct Std { int a; } x)'], undefined],
+      ['declaration', 'int', ['__cdecl', 'cdecl(struct Decl { int a; } x)'], undefined],
+      ['declaration', 'void', ['__stdcall', 'anonymous(struct { int a; } x)'], undefined],
+      ['declaration', 'int', ['__stdcall', 'sized(int a[sizeof(struct { int q; })])'], undefined],
+      ['declaration', 'int', ['__stdcall', 'callback(int (*cb)(struct { int z; } *), int y)'], undefined],
+      ['function_definition', 'int', ['definition(struct Def { int a; } x)'], '{ return x.a; }'],
+      ['declaration', 'int', ['__stdcall *pointer(struct Ptr { int a; } x)'], undefined],
+      ['declaration', 'int', ['__stdcall', 'plain(struct Plain *x)'], undefined],
+      ['declaration', 'int', ['next(void)'], undefined],
+      ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
+    ],
+    macroTypes: [],
+  },
+  {
+    file: 'variadicMacroTypes.c',
+    structures: [
+      ['declaration', 'PICK(int, {1})', ['value'], undefined],
+      ['declaration', 'int', ['next(void)'], undefined],
+      ['declaration', 'PICK(Word, {1, 2})', ['typed'], undefined],
+      ['declaration', 'PICK(unsigned long, (unsigned long[]){1, 2})', ['wide'], undefined],
+      ['declaration', 'PICK(int, WRAP((int[]){1, 2}))', ['nested'], undefined],
+      ['declaration', 'PICK(int, ({ int x = 1; x; }))', ['statement'], undefined],
+      ['declaration', 'PICK(int, /* } ) */ {.field = 1}, "};#")', ['commented'], undefined],
+      ['declaration', 'PICK(int, , {1},)', ['empty'], undefined],
+      ['declaration', 'Word', ['annotated'], undefined],
+      ['declaration', 'int', ['quoted_chain(void)'], undefined],
+      ['declaration', 'int', ['commented_chain(void)'], undefined],
+      ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
+    ],
+    macroTypes: ['int', 'Word', 'unsigned long', 'int', 'int', 'int', 'int'],
+  },
+];
+
+test.each(guardedBoundaryFixtures)(
+  'retains guarded declaration fields, queries and edits in $file',
+  async (fixture) => {
+    await Parser.init();
+    const language = await Language.load(wasmPath);
+    const parser = new Parser().setLanguage(language);
+    const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures', fixture.file), 'utf8');
+    const tree = parser.parse(source)!;
+    const query = new Query(
+      language,
+      fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8') +
+        '\n' +
+        fs.readFileSync(path.join(import.meta.dirname, '../../queries/highlights.scm'), 'utf8') +
+        `
+(translation_unit (declaration type: (_) @boundary.type))
+(translation_unit (function_definition type: (_) @boundary.type))
+(translation_unit (declaration type: (type_specifier/macro_type_specifier) @boundary.macrotype))
+`
+    );
+    try {
+      expect(tree.rootNode.hasError).toBe(false);
+      const structures = tree.rootNode.namedChildren.filter((node) =>
+        ['declaration', 'function_definition'].includes(node.type)
+      );
+      expect(
+        structures.map((node) => [
+          node.type,
+          node.childForFieldName('type')?.text,
+          node.childrenForFieldName('declarator').map((declarator) => declarator.text),
+          node.childForFieldName('body')?.text,
+        ])
+      ).toEqual(fixture.structures);
+      expect(
+        tree.rootNode.descendantsOfType('macro_type_specifier').map((node) => node.childForFieldName('type')?.text)
+      ).toEqual(fixture.macroTypes);
+      expect(
+        query
+          .captures(tree.rootNode)
+          .filter(({ name }) => name === 'boundary.type')
+          .map(({ node }) => node.text)
+      ).toEqual(fixture.structures.map(([, type]) => type));
+      expect(
+        query
+          .captures(tree.rootNode)
+          .filter(({ name }) => name === 'boundary.macrotype')
+          .map(({ node }) => node.text)
+      ).toEqual(tree.rootNode.descendantsOfType('macro_type_specifier').map((node) => node.text));
+      expect(structures.find((node) => node.childForFieldName('declarator')?.text === 'next(void)')?.text).toBe(
+        'int next(void);'
+      );
+      expect(structures.at(-1)?.text).toBe('int following(void) { return 0; }');
+      verifyGuardedGroupEdits(parser, tree, query, source);
+    } finally {
+      query.delete();
+      tree.delete();
+      parser.delete();
+    }
+  }
+);
+
+function verifyGuardedGroupEdits(parser: Parser, tree: Tree, query: Query, source: string): void {
+  const captures = (current: Tree): Array<[string, string, string, number, number]> =>
+    query
+      .captures(current.rootNode)
+      .map(({ name, node }) => [name, node.type, node.text, node.startIndex, node.endIndex]);
+  const expected = captures(tree);
+  const groups = tree.rootNode.descendantsOfType(['struct_specifier', 'initializer_list', 'compound_statement']);
+  for (const group of groups.filter((node) => node.text.includes('{'))) {
+    const at = group.startIndex + group.text.indexOf('{');
+    const text = '/* edit */';
+    const editedSource = source.slice(0, at) + text + source.slice(at);
+    const row = source.slice(0, at).split('\n').length - 1;
+    const column = at - source.lastIndexOf('\n', at - 1) - 1;
+    const cache = tree.copy();
+    cache.edit(
+      new Edit({
+        startIndex: at,
+        oldEndIndex: at,
+        newEndIndex: at + text.length,
+        startPosition: { row, column },
+        oldEndPosition: { row, column },
+        newEndPosition: { row, column: column + text.length },
+      })
+    );
+    const incremental = parser.parse(editedSource, cache)!;
+    const fresh = parser.parse(editedSource)!;
+    try {
+      expect(incremental.rootNode.hasError).toBe(false);
+      expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
+      expect(captures(incremental)).toEqual(captures(fresh));
+      incremental.edit(
+        new Edit({
+          startIndex: at,
+          oldEndIndex: at + text.length,
+          newEndIndex: at,
+          startPosition: { row, column },
+          oldEndPosition: { row, column: column + text.length },
+          newEndPosition: { row, column },
+        })
+      );
+      const undone = parser.parse(source, incremental)!;
+      try {
+        expect(undone.rootNode.toString()).toBe(tree.rootNode.toString());
+        expect(captures(undone)).toEqual(expected);
+      } finally {
+        undone.delete();
+      }
+    } finally {
+      cache.delete();
+      incremental.delete();
+      fresh.delete();
+    }
+  }
+}

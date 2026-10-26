@@ -71,10 +71,13 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._macro_attribute_specifier, $.type_specifier, $.macro_type_specifier],
+      [$._macro_attribute_argument_list, $._variadic_macro_type_specifier],
+      [$.type_specifier, $.macro_type_specifier, $._variadic_macro_type_specifier],
       [$._macro_declaration_specifiers],
       [$._declaration_modifiers, $._guarded_type_specifiers, $._empty_declaration],
       [$._macro_attribute_argument_list, $.macro_type_specifier],
-      [$._macro_attribute_specifier, $.type_specifier, $.macro_type_specifier],
+      [$._macro_attribute_specifier, $.type_specifier, $.macro_type_specifier, $._variadic_macro_type_specifier],
       [$.declaration, $._declaration_modifiers, $._guarded_type_specifiers],
       [$._declaration_modifiers, $._guarded_type_specifiers],
       [
@@ -263,6 +266,7 @@ module.exports = Object.assign(
       sym('_conditional_marker_ifndef'),
       sym('_leading_conditional_marker_ifdef'),
       sym('_leading_conditional_marker_ifndef'),
+      sym('_braced_function_attribute_start'),
     ],
 
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
@@ -298,6 +302,7 @@ module.exports = Object.assign(
       $._case_label_chain_statement,
       $.type_specifier,
       $._type_name_specifier,
+      $._guarded_type_specifier,
       $._declarator,
       $._old_style_declarator,
       $._initialized_declarator,
@@ -605,7 +610,7 @@ module.exports = Object.assign(
           $._non_macro_declaration_modifiers,
           false,
           $._macro_declaration_declarator,
-          sym('_post_type_function_attribute_suffix')
+          choice(sym('_post_type_function_attribute_suffix'), sym('_braced_function_attribute_start'))
         ),
 
       _conditional_declaration: ($) =>
@@ -689,11 +694,19 @@ module.exports = Object.assign(
             repeat($._declaration_modifiers),
             choice($.storage_class_specifier, $.type_qualifier, $.ms_declspec_modifier),
             repeat($._declaration_modifiers),
-            sym('_function_attribute_start'),
-            field('type', $.type_specifier),
+            choice(
+              seq(sym('_function_attribute_start'), field('type', $.type_specifier)),
+              seq(
+                sym('_braced_function_attribute_start'),
+                field('type', alias($._guarded_type_specifier, $.type_specifier))
+              )
+            ),
             repeat(choice($._non_macro_declaration_modifiers, $._conditional_macro_specifier))
           )
         ),
+
+      _guarded_type_specifier: ($) =>
+        choice($.type_specifier, alias($._variadic_macro_type_specifier, $.macro_type_specifier)),
 
       _field_declaration_specifiers: ($) =>
         seq(
@@ -1914,6 +1927,18 @@ module.exports = Object.assign(
           )
         ),
 
+      _variadic_macro_type_specifier: ($) =>
+        prec.dynamic(
+          -2,
+          seq(
+            field('name', choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier))),
+            '(',
+            field('type', $.type_descriptor),
+            repeat1(seq(',', optional(macroAttributeArgument($)))),
+            ')'
+          )
+        ),
+
       _preproc_number: () =>
         /(\d|\.\d)([\p{XID_Continue}.]|[eEpP][+-]|'[_a-zA-Z0-9]|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8})*/u,
 
@@ -1982,7 +2007,7 @@ function functionDefinitionRule($, specifiers, oldStyle) {
     optional($.ms_call_modifier),
     specifiers,
     ...(oldStyle ? [] : [optional($.ms_call_modifier)]),
-    optional(sym('_post_type_function_attribute_start')),
+    optional(choice(sym('_post_type_function_attribute_start'), sym('_braced_function_attribute_start'))),
     field('declarator', oldStyle ? alias($._old_style_declarator, $._declarator) : $._declarator),
     ...(oldStyle ? [repeat1($.declaration)] : []),
     field('body', $.compound_statement)
@@ -2003,7 +2028,7 @@ function declarationRule(
   modifiers,
   allowInferredType = true,
   declarator = $._declaration_declarator,
-  guard = sym('_post_type_function_attribute_start')
+  guard = choice(sym('_post_type_function_attribute_start'), sym('_braced_function_attribute_start'))
 ) {
   return choice(
     seq(
@@ -2020,11 +2045,11 @@ function declarationRule(
           : specifiers
       ),
       commaSep1(
-        seq(
-          optional(guard),
-          field(
-            'declarator',
-            choice(seq(optional($.ms_call_modifier), declarator, optional($.gnu_asm_expression)), $.init_declarator)
+        field(
+          'declarator',
+          choice(
+            seq(optional($.ms_call_modifier), optional(guard), declarator, optional($.gnu_asm_expression)),
+            $.init_declarator
           )
         )
       ),
@@ -2082,18 +2107,24 @@ function declarationDeclaratorRule($, functionDeclarator) {
  * @param {'leading' | 'post-type' | 'continuation' | 'post-type-continuation' | 'trailing'} context
  */
 function macroAttributeRule($, context) {
+  const bracedGuard = sym('_braced_function_attribute_start');
   const guard =
-    context === 'continuation' || context === 'trailing'
+    context === 'trailing'
       ? []
-      : [
-          sym(
-            context === 'leading'
-              ? '_function_attribute_start'
-              : context === 'post-type'
-                ? '_post_type_function_attribute_start'
-                : '_post_type_function_attribute_suffix'
-          ),
-        ];
+      : context === 'continuation'
+        ? [optional(bracedGuard)]
+        : [
+            choice(
+              sym(
+                context === 'leading'
+                  ? '_function_attribute_start'
+                  : context === 'post-type'
+                    ? '_post_type_function_attribute_start'
+                    : '_post_type_function_attribute_suffix'
+              ),
+              bracedGuard
+            ),
+          ];
   return prec.dynamic(
     -2,
     seq(
@@ -2104,9 +2135,16 @@ function macroAttributeRule($, context) {
   );
 }
 
-/** @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'type_descriptor' | '_preproc_number' | 'number_literal'>} $ */
+/** @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'type_descriptor' | '_preproc_number' | 'number_literal' | 'compound_statement' | 'initializer_pair' | 'initializer_list'>} $ */
 function macroAttributeArgument($) {
-  return choice($.expression, prec.dynamic(-1, $.type_descriptor), alias($._preproc_number, $.number_literal));
+  return choice(
+    $.expression,
+    prec.dynamic(-1, $.type_descriptor),
+    alias($._preproc_number, $.number_literal),
+    $.compound_statement,
+    $.initializer_pair,
+    prec.dynamic(-1, $.initializer_list)
+  );
 }
 
 /**

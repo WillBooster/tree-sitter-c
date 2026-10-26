@@ -23,6 +23,8 @@ typedef struct {
     TSSymbol object_start;
     bool allow_pragma;
     bool allow_object_start;
+    TSSymbol braced_start;
+    bool allow_braced_start;
 } MacroAttributeSymbols;
 
 typedef enum {
@@ -54,6 +56,7 @@ static bool function_macro_keyword(const char *word);
 static bool function_macro_word_in(const char *word, const char *const *words, unsigned count);
 
 static bool scan_function_attribute_guard(TSLexer *lexer, bool prototype, bool require_literal, bool trailing, const MacroAttributeSymbols *symbols) {
+    bool braced_only = symbols->allow_braced_start && lexer->result_symbol == symbols->braced_start;
     char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
     MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true, .lookahead_only = !trailing};
     if (!scan_macro_name(lexer, &name)) return false;
@@ -72,6 +75,11 @@ static bool scan_function_attribute_guard(TSLexer *lexer, bool prototype, bool r
     bool literal = false;
     MacroGroup group = function_macro_group_prefix(lexer, '(', ')', &literal);
     // The grammar closes braced arguments without repeated lookahead through an incomplete body.
+    if (group == MACRO_GROUP_BRACED && symbols->allow_braced_start) {
+        lexer->result_symbol = symbols->braced_start;
+        return true;
+    }
+    if (braced_only) return false;
     if (group != MACRO_GROUP_BALANCED) return group == MACRO_GROUP_BRACED;
     return (!require_literal || literal) && (!prototype || function_macro_declaration_continues(lexer, require_literal));
 }

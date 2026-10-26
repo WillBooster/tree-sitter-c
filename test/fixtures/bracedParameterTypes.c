@@ -11,4 +11,5 @@ int attributed(struct { int a; } s) __attribute__((unused));
 extern MARK TYPE(struct { int member; }) object;
 MARK extern OTHER const TYPE(struct { int member; }) qualified;
 extern TYPE(struct { int member; }) opaque(void) { for (;;) {} }
+extern TYPE(int) macro_parameter(struct { int nested; } *p);
 int following(void) { return 0; }
