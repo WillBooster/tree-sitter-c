@@ -9,7 +9,14 @@
       "file-types": ["c", "h"],
       "highlights": "queries/highlights.scm",
       "tags": "queries/tags.scm",
-      "injection-regex": "^(c|h)$"
+      "injection-regex": "^(c|h)$",
+      "external-files": [
+        "src/pragma.h",
+        "src/identifier.h",
+        "src/keywords.h",
+        "src/functionMacro.h",
+        "src/conditionalMacro.h"
+      ]
     }
   ],
   "metadata": {
