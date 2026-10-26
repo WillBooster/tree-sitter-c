@@ -1,0 +1,42 @@
+================================================================================
+Storage classes cannot interleave a cast type name
+:error
+================================================================================
+
+void f(void) { (int static long)1; }
+
+--------------------------------------------------------------------------------
+
+================================================================================
+Storage classes cannot interleave a sizeof type name
+:error
+================================================================================
+
+void f(void) { sizeof(int static long); }
+
+--------------------------------------------------------------------------------
+
+================================================================================
+Trailing storage classes leave following declarations bounded
+================================================================================
+
+long static;
+int after;
+void f(void) { unsigned static; int next; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (sized_type_specifier)
+  (storage_class_specifier)
+  (declaration type: (primitive_type) declarator: (identifier))
+  (function_definition
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration type: (primitive_type))))
+    body: (compound_statement
+      (sized_type_specifier)
+      (storage_class_specifier)
+      (declaration type: (primitive_type) declarator: (identifier)))))

@@ -1279,7 +1279,15 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "type_definition",
+          "named": true
+        },
+        {
+          "type": "type_qualifier",
           "named": true
         },
         {
@@ -1385,7 +1393,7 @@
     "fields": {
       "declarator": {
         "multiple": true,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "array_declarator",
@@ -1572,11 +1580,19 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "switch_statement",
           "named": true
         },
         {
           "type": "type_definition",
+          "named": true
+        },
+        {
+          "type": "type_qualifier",
           "named": true
         },
         {
@@ -1688,6 +1704,10 @@
         },
         {
           "type": "attribute_specifier",
+          "named": true
+        },
+        {
+          "type": "type_qualifier",
           "named": true
         }
       ]
@@ -3256,7 +3276,15 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "type_definition",
+          "named": true
+        },
+        {
+          "type": "type_qualifier",
           "named": true
         },
         {
@@ -3372,7 +3400,15 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "type_definition",
+          "named": true
+        },
+        {
+          "type": "type_qualifier",
           "named": true
         },
         {
@@ -3459,7 +3495,15 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "type_definition",
+          "named": true
+        },
+        {
+          "type": "type_qualifier",
           "named": true
         },
         {
@@ -3653,7 +3697,15 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "type_definition",
+          "named": true
+        },
+        {
+          "type": "type_qualifier",
           "named": true
         },
         {
@@ -3769,7 +3821,15 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "type_definition",
+          "named": true
+        },
+        {
+          "type": "type_qualifier",
           "named": true
         },
         {
@@ -4002,6 +4062,10 @@
       "multiple": true,
       "required": false,
       "types": [
+        {
+          "type": "storage_class_specifier",
+          "named": true
+        },
         {
           "type": "type_qualifier",
           "named": true
@@ -4302,11 +4366,19 @@
           "named": true
         },
         {
+          "type": "storage_class_specifier",
+          "named": true
+        },
+        {
           "type": "switch_statement",
           "named": true
         },
         {
           "type": "type_definition",
+          "named": true
+        },
+        {
+          "type": "type_qualifier",
           "named": true
         },
         {
