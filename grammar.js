@@ -235,6 +235,7 @@ module.exports = Object.assign(
       sym('_conditional_marker_ifndef'),
       sym('_leading_conditional_marker_ifdef'),
       sym('_leading_conditional_marker_ifndef'),
+      sym('_gnu_raw_string_body'),
     ],
 
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
@@ -494,7 +495,11 @@ module.exports = Object.assign(
         ),
 
       preproc_argument_list: ($) =>
-        seq('(', commaSep(choice($._preproc_expression, $.system_lib_string, $.string_literal)), ')'),
+        seq(
+          '(',
+          commaSep(choice($._preproc_expression, $.system_lib_string, $.string_literal, $.raw_string_literal)),
+          ')'
+        ),
 
       preproc_binary_expression: ($) => {
         return choice(
@@ -667,7 +672,7 @@ module.exports = Object.assign(
       linkage_specification: ($) =>
         seq(
           'extern',
-          field('value', $.string_literal),
+          field('value', choice($.string_literal, $.raw_string_literal)),
           field('body', choice($.function_definition, $.declaration, $.declaration_list))
         ),
 
@@ -1441,7 +1446,9 @@ module.exports = Object.assign(
           $.builtin_available_expression
         ),
 
-      _string: ($) => prec.left(choice($.string_literal, $.concatenated_string)),
+      _string: ($) => prec.left(choice($.string_literal, $.raw_string_literal, $.concatenated_string)),
+
+      raw_string_literal: () => seq(choice('R"', 'LR"', 'uR"', 'UR"', 'u8R"'), sym('_gnu_raw_string_body'), '"'),
 
       comma_expression: ($) =>
         seq(field('left', $.expression), ',', field('right', choice($.expression, $.comma_expression))),
@@ -1613,7 +1620,7 @@ module.exports = Object.assign(
       gnu_asm_output_operand: ($) =>
         seq(
           optional(seq('[', field('symbol', $.identifier), ']')),
-          field('constraint', $.string_literal),
+          field('constraint', choice($.string_literal, $.raw_string_literal)),
           '(',
           field('value', $.expression),
           ')'
@@ -1624,7 +1631,7 @@ module.exports = Object.assign(
       gnu_asm_input_operand: ($) =>
         seq(
           optional(seq('[', field('symbol', $.identifier), ']')),
-          field('constraint', $.string_literal),
+          field('constraint', choice($.string_literal, $.raw_string_literal)),
           '(',
           field('value', $.expression),
           ')'
@@ -1768,11 +1775,11 @@ module.exports = Object.assign(
         prec.right(
           seq(
             choice(
-              seq($.identifier, $.string_literal),
-              seq($.string_literal, $.string_literal),
-              seq($.string_literal, $.identifier)
+              seq($.identifier, choice($.string_literal, $.raw_string_literal)),
+              seq(choice($.string_literal, $.raw_string_literal), choice($.string_literal, $.raw_string_literal)),
+              seq(choice($.string_literal, $.raw_string_literal), $.identifier)
             ),
-            repeat(choice($.string_literal, $.identifier))
+            repeat(choice($.string_literal, $.raw_string_literal, $.identifier))
           )
         ),
 

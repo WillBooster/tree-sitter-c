@@ -208,6 +208,10 @@
         "named": true
       },
       {
+        "type": "raw_string_literal",
+        "named": true
+      },
+      {
         "type": "sizeof_expression",
         "named": true
       },
@@ -1314,6 +1318,10 @@
           "named": true
         },
         {
+          "type": "raw_string_literal",
+          "named": true
+        },
+        {
           "type": "string_literal",
           "named": true
         }
@@ -2210,6 +2218,10 @@
             "named": true
           },
           {
+            "type": "raw_string_literal",
+            "named": true
+          },
+          {
             "type": "string_literal",
             "named": true
           }
@@ -2227,6 +2239,10 @@
         "types": [
           {
             "type": "concatenated_string",
+            "named": true
+          },
+          {
+            "type": "raw_string_literal",
             "named": true
           },
           {
@@ -2312,6 +2328,10 @@
         "required": true,
         "types": [
           {
+            "type": "raw_string_literal",
+            "named": true
+          },
+          {
             "type": "string_literal",
             "named": true
           }
@@ -2363,6 +2383,10 @@
         "multiple": false,
         "required": true,
         "types": [
+          {
+            "type": "raw_string_literal",
+            "named": true
+          },
           {
             "type": "string_literal",
             "named": true
@@ -2647,6 +2671,10 @@
         "multiple": false,
         "required": true,
         "types": [
+          {
+            "type": "raw_string_literal",
+            "named": true
+          },
           {
             "type": "string_literal",
             "named": true
@@ -3964,6 +3992,11 @@
     }
   },
   {
+    "type": "raw_string_literal",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "return_statement",
     "named": true,
     "fields": {},
@@ -4968,7 +5001,15 @@
     "named": false
   },
   {
+    "type": "LR\"",
+    "named": false
+  },
+  {
     "type": "NULL",
+    "named": false
+  },
+  {
+    "type": "R\"",
     "named": false
   },
   {
@@ -4977,6 +5018,10 @@
   },
   {
     "type": "U'",
+    "named": false
+  },
+  {
+    "type": "UR\"",
     "named": false
   },
   {
@@ -5431,6 +5476,14 @@
   },
   {
     "type": "u8'",
+    "named": false
+  },
+  {
+    "type": "u8R\"",
+    "named": false
+  },
+  {
+    "type": "uR\"",
     "named": false
   },
   {
