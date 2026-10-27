@@ -149,6 +149,120 @@ test('keeps non-type and multi-argument annotations after proved marked types', 
   }
 });
 
+test('retains function typedef ownership when array bounds contain braced types', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  let query: Query | undefined;
+  try {
+    parser.setLanguage(language);
+    query = new Query(language, tags + '\n(type_definition type: (_) @alias.type declarator: (_) @alias.name)');
+    for (const declaration of [
+      'typedef Word F(int x[sizeof(struct { int m; })]);',
+      'typedef Word F(int x[sizeof(union { int m; })]);',
+      'typedef Word F(int x[sizeof(enum { MEMBER })]);',
+      'typedef Word F(int x[(int){1}]);',
+      'typedef const Word F(int x[sizeof(struct { int m; })]);',
+      'const typedef Word F(int x[sizeof(struct { int m; })]);',
+      'MARK typedef Word F(int x[sizeof(struct { int m; })]);',
+    ]) {
+      const source = header + declaration + '\nF *callback;\n' + following;
+      let tree: Tree | undefined;
+      try {
+        tree = parser.parse(source)!;
+        const check = (current: Tree, text: string): void => {
+          expect(current.rootNode.hasError).toBe(false);
+          const definition = current.rootNode.descendantsOfType('type_definition').at(-1)!;
+          expect(definition.childForFieldName('type')?.type).toBe('type_identifier');
+          expect(definition.childForFieldName('type')?.text.replaceAll(/\\\r?\n/g, '')).toBe('Word');
+          const declarator = definition.childForFieldName('declarator')!;
+          expect(declarator.type).toBe('function_declarator');
+          expect(declarator.childForFieldName('declarator')?.type).toBe('type_identifier');
+          expect(declarator.childForFieldName('declarator')?.text).toBe('F');
+          expect(definition.startIndex).toBeGreaterThanOrEqual(header.length);
+          expect(definition.endIndex).toBeLessThan(text.indexOf('F *callback;'));
+          expect(current.rootNode.namedChildren.at(-1)?.text).toBe(following);
+          const captures = query!.captures(current.rootNode);
+          expect(captures.findLast(({ name }) => name === 'alias.name')?.node.text).toBe(declarator.text);
+          expect(captures.filter(({ name }) => name === 'definition.function').map(({ node }) => node.text)).toEqual([
+            'after(void)',
+          ]);
+        };
+        check(tree, source);
+        verifyCommentEdit(parser, tree, query, source, source.indexOf('{', header.length), check);
+      } finally {
+        tree?.delete();
+      }
+    }
+  } finally {
+    query?.delete();
+    parser.delete();
+  }
+});
+
+test('keeps marked nested function declarators with braced parameter bounds', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser();
+  let query: Query | undefined;
+  try {
+    parser.setLanguage(language);
+    query = new Query(language, tags + '\n(declaration type: (_) @nested.type declarator: (_declarator) @nested.name)');
+    for (const declaration of [
+      'MARK Word (*f(int x[sizeof(struct { int m; })]))(int);',
+      'static MARK Word (*f(int x[sizeof(struct { int m; })]))(int);',
+      'MARK Word (**f(int x[sizeof(struct { int m; })]))(int);',
+      'MARK Word (*(*f(int x[sizeof(struct { int m; })]))[2])(int);',
+      'MARK Word (*f(int x[(int){1}]))(int);',
+      'MARK Word (*f(int x[sizeof(union { int m; })]))(int);',
+      'MARK Word (*f(int x[sizeof(enum { MEMBER })]))(int);',
+      'MARK Word (*f(int x[sizeof(struct { int m; })]))(int) { return 0; }',
+      'MARK Word (/* comment */ *f(int x[sizeof(struct { int m; })]))(int);',
+    ]) {
+      const source = header + declaration + '\n' + following;
+      let tree: Tree | undefined;
+      try {
+        tree = parser.parse(source)!;
+        const check = (current: Tree, text: string): void => {
+          expect(current.rootNode.hasError).toBe(false);
+          const node = current.rootNode.namedChildren.find(
+            (child) => ['declaration', 'function_definition'].includes(child.type) && child.startIndex >= header.length
+          )!;
+          expect(node.childForFieldName('type')?.type).toBe('type_identifier');
+          expect(node.childForFieldName('type')?.text).toBe('Word');
+          expect(node.childForFieldName('declarator')?.type).toBe('function_declarator');
+          const declaratorNames = node.descendantsOfType('function_declarator').flatMap((child) => {
+            const name = child.childForFieldName('declarator');
+            return name?.type === 'identifier' ? [name.text] : [];
+          });
+          expect(declaratorNames).toEqual(['f']);
+          expect(
+            query!
+              .captures(current.rootNode)
+              .filter(({ name, node }) => name === 'name' && node.type === 'identifier')
+              .map(({ node }) => node.text)
+          ).toEqual(['f', 'after']);
+          const after = current.rootNode.namedChildren.at(-1)!;
+          expect([after.type, after.text, after.startIndex, after.endIndex, after.hasError]).toEqual([
+            'function_definition',
+            following,
+            text.indexOf(following),
+            text.length,
+            false,
+          ]);
+        };
+        check(tree, source);
+        verifyCommentEdit(parser, tree, query, source, source.indexOf('{', header.length), check);
+      } finally {
+        tree?.delete();
+      }
+    }
+  } finally {
+    query?.delete();
+    parser.delete();
+  }
+});
+
 function verifyCommentEdit(
   parser: Parser,
   tree: Tree,

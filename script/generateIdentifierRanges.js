@@ -46,6 +46,9 @@ const objectPrefixKeywords = new Set(grammarKeywords.primitiveTypeKeywords);
 for (const rule of ['sized_type_specifier', 'storage_class_specifier', 'type_definition'])
   collectKeywords(grammar.rules[rule], objectPrefixKeywords);
 for (const keyword of declarationModifiers) objectPrefixKeywords.add(keyword);
+/** @type {Set<string>} */
+const typePrefixModifiers = new Set(declarationModifiers);
+collectKeywords(grammar.rules.storage_class_specifier, typePrefixModifiers);
 collectTypeKeywords(grammar.rules._non_identifier_type_specifier, typeKeywords);
 const sortedKeywords = [...keywords].toSorted();
 const keywordTable = `#define FUNCTION_MACRO_KEYWORD_MAX_LENGTH ${Math.max(...sortedKeywords.map((word) => word.length))}
@@ -72,6 +75,12 @@ ${[...scalarTypeKeywords]
 };
 static const char *const function_macro_object_prefix_keywords[] = {
 ${[...objectPrefixKeywords]
+  .toSorted()
+  .map((word) => `  ${JSON.stringify(word)},`)
+  .join('\n')}
+};
+static const char *const function_macro_type_prefix_modifiers[] = {
+${[...typePrefixModifiers]
   .toSorted()
   .map((word) => `  ${JSON.stringify(word)},`)
   .join('\n')}

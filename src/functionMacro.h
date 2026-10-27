@@ -182,8 +182,8 @@ static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const Mac
         if (strcmp(name->word, "struct") == 0 || strcmp(name->word, "union") == 0 || strcmp(name->word, "enum") == 0) return MACRO_TYPE_PREFIX_TAGGED_TYPE;
         return MACRO_TYPE_PREFIX_KNOWN_TYPE;
     }
-    if (name->ascii && function_macro_word_in(name->word, function_macro_object_prefix_keywords,
-        sizeof(function_macro_object_prefix_keywords) / sizeof(function_macro_object_prefix_keywords[0]))) return MACRO_TYPE_PREFIX_MODIFIER;
+    if (name->ascii && function_macro_word_in(name->word, function_macro_type_prefix_modifiers,
+        sizeof(function_macro_type_prefix_modifiers) / sizeof(function_macro_type_prefix_modifiers[0]))) return MACRO_TYPE_PREFIX_MODIFIER;
     if (function_macro_type_prefix_keyword(name, reserved_words, reserved_count)) return MACRO_TYPE_PREFIX_INVALID;
     if (lexer->lookahead == '(') {
         MacroGroup group = function_macro_group_prefix(lexer, '(', ')', NULL, type_argument);

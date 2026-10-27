@@ -710,11 +710,11 @@ module.exports = Object.assign(
       },
 
       function_definition: ($) =>
-        functionDefinitionRule($, functionDefinitionSpecifiers($, $._declaration_specifiers), false),
+        functionDefinitionRule($, functionDefinitionSpecifiers($, declarationSpecifiers($, true)), false),
       _statement_function_definition: ($) =>
         functionDefinitionRule($, functionDefinitionSpecifiers($, $._statement_declaration_specifiers), false),
       _old_style_function_definition: ($) =>
-        functionDefinitionRule($, functionDefinitionSpecifiers($, $._declaration_specifiers), true),
+        functionDefinitionRule($, functionDefinitionSpecifiers($, declarationSpecifiers($, true)), true),
       _statement_old_style_function_definition: ($) =>
         functionDefinitionRule($, functionDefinitionSpecifiers($, $._statement_declaration_specifiers), true),
 
@@ -765,7 +765,7 @@ module.exports = Object.assign(
         choice(
           declarationRule(
             $,
-            choice($._declaration_specifiers, $._guarded_type_specifiers, $._marked_macro_type_specifiers),
+            choice(declarationSpecifiers($, true), $._guarded_type_specifiers, $._marked_macro_type_specifiers),
             $._declaration_modifiers
           ),
           sym('_bare_marker_initializer_declaration')
@@ -824,7 +824,7 @@ module.exports = Object.assign(
       _trailing_macro_modified_declaration: ($) =>
         seq(
           sym('_trailing_object_declaration_start'),
-          $._declaration_specifiers,
+          declarationSpecifiers($, true),
           field('declarator', $._trailing_macro_object_declarator),
           repeat1(alias($._trailing_macro_attribute_specifier, $.attribute_specifier)),
           ';'
@@ -909,12 +909,7 @@ module.exports = Object.assign(
           $.ms_declspec_modifier
         ),
 
-      _declaration_specifiers: ($) =>
-        seq(
-          repeat($._declaration_modifiers),
-          field('type', $.type_specifier),
-          repeat($._non_macro_declaration_modifiers)
-        ),
+      _declaration_specifiers: ($) => declarationSpecifiers($),
 
       _guarded_type_specifiers: ($) =>
         prec.dynamic(
@@ -953,7 +948,7 @@ module.exports = Object.assign(
                 repeat($._non_macro_declaration_modifiers)
               )
             ),
-            $._declaration_specifiers,
+            declarationSpecifiers($, true),
             $._guarded_type_specifiers,
             $._macro_declaration_specifiers,
             seq(
@@ -2234,8 +2229,23 @@ module.exports = Object.assign(
       comment: () => token(choice(LINE_COMMENT, seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
     },
   }),
-  { PREC, preprocIf, preprocessor, commaSep, commaSep1 }
+  { PREC, preprocIf, preprocessor, commaSep, commaSep1, declarationSpecifiers }
 );
+
+/**
+ * Build declaration specifiers, optionally retaining real types after a braced group guard.
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'_declaration_specifiers' | '_declaration_modifiers' | 'type_specifier' | '_non_macro_declaration_modifiers'>} $
+ * @param {boolean} [braced=false] Enable the guard for declaration owners; parameter and annotation readers keep it off.
+ */
+function declarationSpecifiers($, braced = false) {
+  const specifiers = seq(
+    repeat($._declaration_modifiers),
+    ...(braced ? [sym('_braced_function_attribute_start')] : []),
+    field('type', $.type_specifier),
+    repeat($._non_macro_declaration_modifiers)
+  );
+  return braced ? choice($._declaration_specifiers, specifiers) : specifiers;
+}
 
 /**
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'identifier' | 'macro_specifier'>} $
