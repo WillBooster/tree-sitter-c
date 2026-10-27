@@ -147,7 +147,8 @@ test.each(
     '#if FLAG\nextern FOO("a" int f(void)\n#endif\n',
   ].flatMap((line) => (line.includes('R"') ? ['', ')"', ')")', ')");'] : ['']).map((suffix) => [line, suffix]))
 )('keeps unbalanced annotation recovery approximately linear: %s', { timeout: 60_000 }, (line, suffix) => {
-  const expectedError = !line.startsWith('_Pragma') || suffix === '' || suffix === ')"';
+  const completeRawType = line.startsWith('extern FOO(R"') && suffix === ')");';
+  const expectedError = !completeRawType && (!line.startsWith('_Pragma') || suffix === '' || suffix === ')"');
   const small = line.repeat(100) + suffix;
   const large = line.repeat(1000) + suffix;
   parseAverageCpuTime(large, expectedError);

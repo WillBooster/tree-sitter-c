@@ -79,8 +79,7 @@ Port `scan_function_attribute_guard`, its `MacroAttributeSymbols` context, and t
 The `_trailing_object_declaration_start` guard checks an object prefix before declaration parsing;
 `_trailing_macro_attribute_name` consumes only the annotation name and preserves its ordinary identifier leaf.
 Keep the shared first-word dispatch so a failed lookahead never falls back from an advanced lexer cursor.
-Prototype guards recognize raw literals at argument starts; other arguments require a prototype-tail check.
-Post-type continuation guards inspect only their own argument group.
+First prototype guards check the prototype tail; post-type continuation guards inspect only their own argument group.
 Regenerate Unicode and keyword tables from the derived grammar's metadata.
 The generation source is `script/generateIdentifierRanges.js` in this repository.
 The primitive keyword data shared by grammar generation and object-prefix classification is in `src/grammarKeywords.cjs`.

@@ -72,6 +72,7 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._string, $._raw_string_type_argument],
       [
         $._conditional_function_specifiers,
         $._declaration_specifiers,
@@ -1881,11 +1882,20 @@ module.exports = Object.assign(
           -1,
           seq(
             field('name', choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier))),
-            '(',
-            field('type', $.type_descriptor),
-            ')'
+            choice(
+              seq('(', field('type', $.type_descriptor), ')'),
+              field('arguments', alias($._raw_string_macro_type_arguments, $.argument_list))
+            )
           )
         ),
+
+      _raw_string_macro_type_arguments: ($) =>
+        seq('(', $._raw_string_type_argument, repeat(seq(',', $.expression)), ')'),
+
+      _raw_string_type_argument: ($) =>
+        choice($.raw_string_literal, alias($._parenthesized_raw_string_type_argument, $.parenthesized_expression)),
+
+      _parenthesized_raw_string_type_argument: ($) => seq('(', $._raw_string_type_argument, ')'),
 
       _preproc_number: () =>
         /(\d|\.\d)([\p{XID_Continue}.]|[eEpP][+-]|'[_a-zA-Z0-9]|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8})*/u,
