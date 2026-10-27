@@ -1400,23 +1400,11 @@
         "required": false,
         "types": [
           {
-            "type": "array_declarator",
-            "named": true
-          },
-          {
-            "type": "attributed_declarator",
-            "named": true
-          },
-          {
-            "type": "function_declarator",
+            "type": "_declarator",
             "named": true
           },
           {
             "type": "gnu_asm_expression",
-            "named": true
-          },
-          {
-            "type": "identifier",
             "named": true
           },
           {
@@ -1425,14 +1413,6 @@
           },
           {
             "type": "ms_call_modifier",
-            "named": true
-          },
-          {
-            "type": "parenthesized_declarator",
-            "named": true
-          },
-          {
-            "type": "pointer_declarator",
             "named": true
           }
         ]
@@ -2891,11 +2871,23 @@
           "named": true
         },
         {
-          "type": "identifier",
+          "type": "expression",
+          "named": true
+        },
+        {
+          "type": "initializer_list",
+          "named": true
+        },
+        {
+          "type": "initializer_pair",
           "named": true
         },
         {
           "type": "parameter_declaration",
+          "named": true
+        },
+        {
+          "type": "type_descriptor",
           "named": true
         },
         {

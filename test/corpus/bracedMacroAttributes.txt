@@ -463,3 +463,122 @@ int following(void) { return 0; }
 --------------------------------------------------------------------------------
 
 (translation_unit (preproc_function_def name: (identifier) parameters: (preproc_params)) (struct_specifier name: (type_identifier) body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (declaration type: (primitive_type) (attribute_specifier name: (identifier) arguments: (argument_list (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier))))))) declarator: (init_declarator declarator: (identifier) value: (number_literal))) (declaration type: (primitive_type) declarator: (identifier)))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (declaration type: (struct_specifier name: (type_identifier)) (attribute_specifier name: (identifier) arguments: (argument_list (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier))))))) declarator: (init_declarator declarator: (identifier) value: (initializer_list (number_literal)))) (declaration type: (primitive_type) declarator: (identifier)))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (declaration type: (primitive_type) (attribute_specifier name: (identifier) arguments: (argument_list (type_descriptor type: (enum_specifier body: (enumerator_list (enumerator name: (identifier))))))) declarator: (init_declarator declarator: (identifier) value: (number_literal))) (declaration type: (primitive_type) declarator: (identifier)))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (declaration type: (primitive_type) (attribute_specifier name: (identifier) arguments: (argument_list (sizeof_expression type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))))) declarator: (init_declarator declarator: (identifier) value: (number_literal))) (declaration type: (primitive_type) declarator: (identifier)))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (for_statement initializer: (declaration type: (primitive_type) (attribute_specifier name: (identifier) arguments: (argument_list (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier))))))) declarator: (init_declarator declarator: (identifier) value: (number_literal))) condition: (binary_expression left: (identifier) right: (number_literal)) update: (update_expression argument: (identifier)) body: (compound_statement)) (declaration type: (primitive_type) declarator: (identifier)))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (number_literal)))))
+
+================================================================================
+Leading recognized attributes retain guarded macro types and function bodies
+================================================================================
+
+#define TYPE(...) __VA_ARGS__
+typedef int Word;
+__attribute__((unused)) TYPE(struct { int member; }) gnu_object;
+__attribute__((unused)) TYPE(struct { int member; }) gnu_initialized = {0};
+__attribute__((unused)) TYPE(struct { int member; }) gnu_prototype(void);
+__attribute__((unused)) TYPE(struct GNUResult { int member; }) gnu_definition(void) { return (struct GNUResult){0}; }
+[[maybe_unused]] TYPE(struct { int member; }) c23_object;
+[[maybe_unused]] TYPE(struct { int member; }) c23_initialized = {0};
+[[maybe_unused]] TYPE(struct { int member; }) c23_prototype(void);
+[[maybe_unused]] TYPE(struct C23Result { int member; }) c23_definition(void) { return (struct C23Result){0}; }
+__attribute__((unused)) Word gnu_opaque;
+[[maybe_unused]] Word c23_opaque;
+void block(void) {
+  __attribute__((unused)) TYPE(struct { int member; }) gnu_local = {0};
+  [[maybe_unused]] TYPE(struct { int member; }) c23_local = {0};
+  int next = 1;
+  static TYPE(struct { int member; }) static_local;
+  { static TYPE(struct { int member; }) nested_local; int nested_next; }
+  for (const TYPE(struct { int member; }) item = {0}; ; ) { break; }
+}
+int next(void);
+int following(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit (preproc_function_def name: (identifier) parameters: (preproc_params) value: (preproc_arg)) (type_definition type: (primitive_type) declarator: (type_identifier)) (declaration (attribute_specifier (argument_list (identifier))) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (identifier)) (declaration (attribute_specifier (argument_list (identifier))) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (init_declarator declarator: (identifier) value: (initializer_list (number_literal)))) (declaration (attribute_specifier (argument_list (identifier))) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (function_definition (attribute_specifier (argument_list (identifier))) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier name: (type_identifier) body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (compound_literal_expression type: (type_descriptor type: (struct_specifier name: (type_identifier))) value: (initializer_list (number_literal)))))) (declaration (attribute_declaration (attribute name: (identifier))) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (identifier)) (declaration (attribute_declaration (attribute name: (identifier))) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (init_declarator declarator: (identifier) value: (initializer_list (number_literal)))) (declaration (attribute_declaration (attribute name: (identifier))) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (function_definition (attribute_declaration (attribute name: (identifier))) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier name: (type_identifier) body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (compound_literal_expression type: (type_descriptor type: (struct_specifier name: (type_identifier))) value: (initializer_list (number_literal)))))) (declaration (attribute_specifier (argument_list (identifier))) type: (type_identifier) declarator: (identifier)) (declaration (attribute_declaration (attribute name: (identifier))) type: (type_identifier) declarator: (identifier)) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (declaration (attribute_specifier (argument_list (identifier))) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (init_declarator declarator: (identifier) value: (initializer_list (number_literal)))) (declaration (attribute_declaration (attribute name: (identifier))) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (init_declarator declarator: (identifier) value: (initializer_list (number_literal)))) (declaration type: (primitive_type) declarator: (init_declarator declarator: (identifier) value: (number_literal))) (declaration (storage_class_specifier) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (identifier)) (compound_statement (declaration (storage_class_specifier) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (identifier)) (declaration type: (primitive_type) declarator: (identifier))) (for_statement initializer: (declaration (type_qualifier) type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (init_declarator declarator: (identifier) value: (initializer_list (number_literal)))) body: (compound_statement (break_statement))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (number_literal)))))
+
+================================================================================
+Declaration macros own terminators in blocks and for initializers
+================================================================================
+
+#define DECLARE(...) int generated = 0
+static DECLARE(foo, {1, 2});
+int global_next = 1;
+int block(void) {
+  static DECLARE(foo, {1, 2});
+  int next = 1;
+  return next;
+}
+int nested(void) {
+  {
+    const DECLARE(foo, {1, 2});
+    int next = 2;
+  }
+  return 0;
+}
+void loop(void) {
+  for (const DECLARE(foo, {1, 2}); ; ) { break; }
+  int next = 3;
+}
+int next(void);
+int following(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit (preproc_function_def name: (identifier) parameters: (preproc_params) value: (preproc_arg)) (declaration (storage_class_specifier) (attribute_specifier name: (identifier) arguments: (argument_list (identifier) (initializer_list (number_literal) (number_literal))))) (declaration type: (primitive_type) declarator: (init_declarator declarator: (identifier) value: (number_literal))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (declaration (storage_class_specifier) (attribute_specifier name: (identifier) arguments: (argument_list (identifier) (initializer_list (number_literal) (number_literal))))) (declaration type: (primitive_type) declarator: (init_declarator declarator: (identifier) value: (number_literal))) (return_statement (identifier)))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (compound_statement (declaration (type_qualifier) (attribute_specifier name: (identifier) arguments: (argument_list (identifier) (initializer_list (number_literal) (number_literal))))) (declaration type: (primitive_type) declarator: (init_declarator declarator: (identifier) value: (number_literal)))) (return_statement (number_literal)))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (for_statement initializer: (declaration (type_qualifier) (attribute_specifier name: (identifier) arguments: (argument_list (identifier) (initializer_list (number_literal) (number_literal))))) body: (compound_statement (break_statement))) (declaration type: (primitive_type) declarator: (init_declarator declarator: (identifier) value: (number_literal))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (number_literal)))))
+
+================================================================================
+GNU nested annotation and macro-type functions retain normal and old-style bodies
+================================================================================
+
+#define SECTION(...)
+#define TYPE(...) __VA_ARGS__
+#define MARK
+#define OLD_FN(name, ...) name(value)
+int outer(void) {
+  int SECTION((int[]){1}) annotated(void) { return 0; }
+  TYPE(int) typed(void) { return 1; }
+  TYPE(struct { int member; } *) braced(void) { return 0; }
+  int SECTION((int[]){1}) old_style(value)
+  int value;
+  { return value; }
+  int OLD_FN(old_provided, {1})
+  int value;
+  { return value; }
+  return annotated() + typed();
+}
+int following(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit (preproc_function_def name: (identifier) parameters: (preproc_params)) (preproc_function_def name: (identifier) parameters: (preproc_params) value: (preproc_arg)) (preproc_def name: (identifier)) (preproc_function_def name: (identifier) parameters: (preproc_params (identifier)) value: (preproc_arg)) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (function_definition type: (primitive_type) (attribute_specifier name: (identifier) arguments: (argument_list (compound_literal_expression type: (type_descriptor type: (primitive_type) declarator: (abstract_array_declarator)) value: (initializer_list (number_literal))))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (number_literal)))) (function_definition type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (primitive_type))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (number_literal)))) (function_definition type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))) declarator: (abstract_pointer_declarator))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (number_literal)))) (function_definition type: (primitive_type) (attribute_specifier name: (identifier) arguments: (argument_list (compound_literal_expression type: (type_descriptor type: (primitive_type) declarator: (abstract_array_declarator)) value: (initializer_list (number_literal))))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (identifier))) (declaration type: (primitive_type) declarator: (identifier)) body: (compound_statement (return_statement (identifier)))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (identifier) (initializer_list (number_literal)))) (declaration type: (primitive_type) declarator: (identifier)) body: (compound_statement (return_statement (identifier)))) (return_statement (binary_expression left: (call_expression function: (identifier) arguments: (argument_list)) right: (call_expression function: (identifier) arguments: (argument_list)))))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (number_literal)))))
+
+================================================================================
+Braced macro declarators own declaration delimiters and function bodies
+================================================================================
+
+#define ARRAY(name, ...) name[] = __VA_ARGS__
+#define NAME(name, ...) name
+#define TYPE(...) __VA_ARGS__
+#define ATTR(...)
+#define FN(name, ...) name(void)
+int ARRAY(global_values, {1, 2});
+TYPE(struct { int member; }) after_type;
+int ARRAY(first, {1, 2}), second = 3;
+int NAME(initialized, {0}) = 4;
+int ATTR(struct { int member; }) ordinary;
+int ATTR(struct { int member; }) ordinary_initialized = 5;
+int FN(provided, {1}) { return 0; }
+int f(void) {
+  int ARRAY(values, {1, 2});
+  values[0] = 3;
+  return values[1];
+}
+void loop(void) {
+  for (int ARRAY(values, {1, 2}); values[0] < 3; values[0]++) {}
+  int next = 1;
+}
+int next(void);
+int following(void) { return 0; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit (preproc_function_def name: (identifier) parameters: (preproc_params (identifier)) value: (preproc_arg)) (preproc_function_def name: (identifier) parameters: (preproc_params (identifier)) value: (preproc_arg)) (preproc_function_def name: (identifier) parameters: (preproc_params) value: (preproc_arg)) (preproc_function_def name: (identifier) parameters: (preproc_params)) (preproc_function_def name: (identifier) parameters: (preproc_params (identifier)) value: (preproc_arg)) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (identifier) (initializer_list (number_literal) (number_literal))))) (declaration type: (macro_type_specifier name: (identifier) type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (identifier)) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (identifier) (initializer_list (number_literal) (number_literal)))) declarator: (init_declarator declarator: (identifier) value: (number_literal))) (declaration type: (primitive_type) declarator: (init_declarator declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (identifier) (initializer_list (number_literal)))) value: (number_literal))) (declaration type: (primitive_type) (attribute_specifier name: (identifier) arguments: (argument_list (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier))))))) declarator: (identifier)) (declaration type: (primitive_type) (attribute_specifier name: (identifier) arguments: (argument_list (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier))))))) declarator: (init_declarator declarator: (identifier) value: (number_literal))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (identifier) (initializer_list (number_literal)))) body: (compound_statement (return_statement (number_literal)))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (identifier) (initializer_list (number_literal) (number_literal))))) (expression_statement (assignment_expression left: (subscript_expression argument: (identifier) index: (number_literal)) right: (number_literal))) (return_statement (subscript_expression argument: (identifier) index: (number_literal))))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (for_statement initializer: (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (identifier) (initializer_list (number_literal) (number_literal))))) condition: (binary_expression left: (subscript_expression argument: (identifier) index: (number_literal)) right: (number_literal)) update: (update_expression argument: (subscript_expression argument: (identifier) index: (number_literal))) body: (compound_statement)) (declaration type: (primitive_type) declarator: (init_declarator declarator: (identifier) value: (number_literal))))) (declaration type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (function_definition type: (primitive_type) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type)))) body: (compound_statement (return_statement (number_literal)))))

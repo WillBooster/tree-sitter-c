@@ -1578,6 +1578,272 @@ test.each([
   }
 });
 
+test('retains macro types after leading recognized attributes in declarations and bodies', async () => {
+  await Parser.init();
+  const language = await Language.load(wasmPath);
+  const parser = new Parser().setLanguage(language);
+  const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/leadingAttributeTypes.c'), 'utf8');
+  const tree = parser.parse(source)!;
+  const query = new Query(
+    language,
+    `(declaration type: (type_specifier/macro_type_specifier) @macro.type)
+(function_definition type: (type_specifier/macro_type_specifier) @macro.type)
+(declaration type: (type_specifier/type_identifier) @opaque.type)
+(function_definition declarator: (_declarator) @function body: (_) @body)`
+  );
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const macroTypes = tree.rootNode.descendantsOfType('macro_type_specifier');
+    expect(macroTypes).toHaveLength(13);
+    expect(macroTypes.map((node) => node.childForFieldName('name')?.text)).toEqual(
+      Array.from({ length: 13 }, () => 'TYPE')
+    );
+    const captures = query.captures(tree.rootNode);
+    expect(captures.filter(({ name }) => name === 'macro.type').map(({ node }) => node.text)).toEqual(
+      macroTypes.map((node) => node.text)
+    );
+    expect(captures.filter(({ name }) => name === 'opaque.type').map(({ node }) => node.text)).toEqual([
+      'Word',
+      'Word',
+    ]);
+    expect(captures.filter(({ name }) => name === 'function').map(({ node }) => node.text)).toEqual([
+      'gnu_definition(void)',
+      'c23_definition(void)',
+      'block(void)',
+      'following(void)',
+    ]);
+    const declarations = tree.rootNode.namedChildren.filter((node) => node.type === 'declaration');
+    expect(declarations.map((node) => node.childForFieldName('declarator')?.text)).toEqual([
+      'gnu_object',
+      'gnu_initialized = {0}',
+      'gnu_prototype(void)',
+      'c23_object',
+      'c23_initialized = {0}',
+      'c23_prototype(void)',
+      'gnu_opaque',
+      'c23_opaque',
+      'next(void)',
+    ]);
+    const block = tree.rootNode.namedChildren.find(
+      (node) => node.childForFieldName('declarator')?.text === 'block(void)'
+    );
+    expect(
+      block?.childForFieldName('body')?.namedChildren.map((node) => node.childForFieldName('declarator')?.text)
+    ).toEqual(['gnu_local = {0}', 'c23_local = {0}', 'next = 1', 'static_local', undefined, undefined]);
+    const loop = tree.rootNode.descendantsOfType('for_statement')[0]!;
+    expect(loop.childForFieldName('initializer')?.text).toBe('const TYPE(struct { int member; }) item = {0};');
+    expect(tree.rootNode.descendantsOfType('declaration').some((node) => node.text === 'int nested_next;')).toBe(true);
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
+    verifyGuardedGroupEdits(parser, tree, query, source);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('retains physical declaration-macro terminators in blocks and for initializers', async () => {
+  await Parser.init();
+  const language = await Language.load(wasmPath);
+  const parser = new Parser().setLanguage(language);
+  const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/blockDeclarationMacros.c'), 'utf8');
+  const tree = parser.parse(source)!;
+  const query = new Query(
+    language,
+    `(declaration (attribute_specifier name: (identifier) @macro.name)) @macro.declaration
+(init_declarator declarator: (_declarator) @initialized.name)
+(function_definition declarator: (_declarator) @function body: (_) @body)`
+  );
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const captures = query.captures(tree.rootNode);
+    expect(captures.filter(({ name }) => name === 'macro.declaration').map(({ node }) => node.text)).toEqual([
+      'static DECLARE(foo, {1, 2});',
+      'static DECLARE(foo, {1, 2});',
+      'const DECLARE(foo, {1, 2});',
+      'const DECLARE(foo, {1, 2});',
+    ]);
+    expect(captures.filter(({ name }) => name === 'macro.name').map(({ node }) => node.text)).toEqual(
+      Array.from({ length: 4 }, () => 'DECLARE')
+    );
+    expect(captures.filter(({ name }) => name === 'initialized.name').map(({ node }) => node.text)).toEqual([
+      'global_next',
+      'next',
+      'next',
+      'next',
+    ]);
+    expect(captures.filter(({ name }) => name === 'function').map(({ node }) => node.text)).toEqual([
+      'block(void)',
+      'nested(void)',
+      'loop(void)',
+      'following(void)',
+    ]);
+    const block = tree.rootNode.namedChildren.find(
+      (node) => node.childForFieldName('declarator')?.text === 'block(void)'
+    );
+    expect(block?.childForFieldName('body')?.namedChildren.map((node) => node.text)).toEqual([
+      'static DECLARE(foo, {1, 2});',
+      'int next = 1;',
+      'return next;',
+    ]);
+    const loop = tree.rootNode.descendantsOfType('for_statement')[0]!;
+    expect(loop.childForFieldName('initializer')?.text).toBe('const DECLARE(foo, {1, 2});');
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
+    verifyGuardedGroupEdits(parser, tree, query, source);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('retains GNU nested annotation and macro-type function bodies including old-style definitions', async () => {
+  await Parser.init();
+  const language = await Language.load(wasmPath);
+  const parser = new Parser().setLanguage(language);
+  const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/nestedMacroFunctions.c'), 'utf8');
+  const tree = parser.parse(source)!;
+  const query = new Query(
+    language,
+    '(function_definition type: (type_specifier) @type declarator: (_declarator) @function body: (_) @body)'
+  );
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const marked = tree.rootNode
+      .descendantsOfType('function_definition')
+      .find((node) => node.text.startsWith('MARK TYPE('));
+    expect(marked?.text).toBe('MARK TYPE(struct { int member; } *) marked(void) { return 0; }');
+    expect(marked?.childForFieldName('body')?.text).toBe('{ return 0; }');
+    const markedDeclarator = marked?.childForFieldName('declarator');
+    const markedType = marked?.childForFieldName('type');
+    const captures = query.captures(tree.rootNode);
+    expect(captures.filter(({ name }) => name === 'function')).toHaveLength(8);
+    expect(captures.filter(({ name }) => name === 'type')).toHaveLength(8);
+    expect(
+      captures
+        .filter(({ name, node }) => name === 'function' && node.startIndex !== markedDeclarator?.startIndex)
+        .map(({ node }) => node.text)
+    ).toEqual([
+      'outer(void)',
+      'annotated(void)',
+      'typed(void)',
+      'braced(void)',
+      'old_style(value)',
+      'OLD_FN(old_provided, {1})',
+      'following(void)',
+    ]);
+    expect(
+      captures
+        .filter(({ name, node }) => name === 'type' && node.startIndex !== markedType?.startIndex)
+        .map(({ node }) => node.text)
+    ).toEqual(['int', 'int', 'TYPE(int)', 'TYPE(struct { int member; } *)', 'int', 'int', 'int']);
+    expect(captures.filter(({ name }) => name === 'body')).toHaveLength(8);
+    const outerBody = tree.rootNode.namedChildren
+      .find((node) => node.childForFieldName('declarator')?.text === 'outer(void)')
+      ?.childForFieldName('body');
+    expect(outerBody?.namedChildren.map((node) => node.type)).toEqual([
+      'function_definition',
+      'function_definition',
+      'function_definition',
+      'function_definition',
+      'function_definition',
+      'function_definition',
+      'return_statement',
+    ]);
+    const oldStyle = tree.rootNode
+      .descendantsOfType('function_definition')
+      .find((node) => node.childForFieldName('declarator')?.text === 'old_style(value)');
+    expect(oldStyle?.namedChildren.filter((node) => node.type === 'declaration').map((node) => node.text)).toEqual([
+      'int value;',
+    ]);
+    expect(oldStyle?.childForFieldName('body')?.text).toBe('{ return value; }');
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
+    verifyGuardedGroupEdits(parser, tree, query, source);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('retains braced declarator-macro fields and following assignments at declaration delimiters', async () => {
+  await Parser.init();
+  const language = await Language.load(wasmPath);
+  const parser = new Parser().setLanguage(language);
+  const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/bracedMacroDeclarators.c'), 'utf8');
+  const tree = parser.parse(source)!;
+  const query = new Query(
+    language,
+    `(declaration declarator: (_declarator/function_declarator) @call)
+(init_declarator declarator: (_declarator/function_declarator) @call)
+(declaration type: (type_specifier/macro_type_specifier) @type)`
+  );
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const captures = query.captures(tree.rootNode);
+    const macroCalls = captures.filter(
+      ({ name, node }) =>
+        name === 'call' && ['ARRAY', 'NAME'].includes(node.childForFieldName('declarator')?.text ?? '')
+    );
+    expect(macroCalls.map(({ node }) => node.text)).toEqual([
+      'ARRAY(global_values, {1, 2})',
+      'ARRAY(first, {1, 2})',
+      'NAME(initialized, {0})',
+      'ARRAY(values, {1, 2})',
+      'ARRAY(values, {1, 2})',
+    ]);
+    expect(macroCalls.map(({ node }) => node.childForFieldName('parameters')?.type)).toEqual(
+      Array.from({ length: 5 }, () => 'parameter_list')
+    );
+    expect(captures.filter(({ name }) => name === 'type').map(({ node }) => node.text)).toEqual([
+      'TYPE(struct { int member; })',
+    ]);
+    const supplied = tree.rootNode
+      .descendantsOfType('function_definition')
+      .find((node) => node.childForFieldName('declarator')?.text === 'FN(provided, {1})');
+    expect(supplied?.childForFieldName('body')?.text).toBe('{ return 0; }');
+    const functionBody = tree.rootNode.namedChildren
+      .find((node) => node.childForFieldName('declarator')?.text === 'f(void)')
+      ?.childForFieldName('body');
+    expect(functionBody?.namedChildren.map((node) => [node.type, node.text])).toEqual([
+      ['declaration', 'int ARRAY(values, {1, 2});'],
+      ['expression_statement', 'values[0] = 3;'],
+      ['return_statement', 'return values[1];'],
+    ]);
+    const declarations = tree.rootNode.namedChildren.filter((node) => node.type === 'declaration');
+    expect(
+      declarations
+        .find((node) => node.childrenForFieldName('declarator').some((child) => child.text === 'ARRAY(first, {1, 2})'))
+        ?.childrenForFieldName('declarator')
+        .map((node) => node.text)
+    ).toEqual(['ARRAY(first, {1, 2})', 'second = 3']);
+    expect(
+      declarations
+        .find((node) => node.childForFieldName('declarator')?.text === 'NAME(initialized, {0}) = 4')
+        ?.childForFieldName('declarator')
+        ?.childForFieldName('value')?.text
+    ).toBe('4');
+    expect(
+      declarations
+        .filter((node) =>
+          node
+            .descendantsOfType('attribute_specifier')
+            .some((attribute) => attribute.childForFieldName('name')?.text === 'ATTR')
+        )
+        .map((node) => node.childForFieldName('declarator')?.text)
+    ).toEqual(['ordinary', 'ordinary_initialized = 5']);
+    expect(tree.rootNode.descendantsOfType('for_statement')[0]?.childForFieldName('initializer')?.text).toBe(
+      'int ARRAY(values, {1, 2});'
+    );
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
+    verifyGuardedGroupEdits(parser, tree, query, source);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
 function verifyGuardedGroupEdits(parser: Parser, tree: Tree, query: Query, source: string): void {
   const captures = (current: Tree): Array<[string, string, string, number, number]> =>
     query

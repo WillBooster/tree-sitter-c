@@ -18,7 +18,7 @@ This fork fixes parsing bugs and raises conformance with the ISO C standard
 ## Usage
 
 The npm package ships `tree-sitter-c.wasm` for
-[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 15.0.0 or later within 15.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000b`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
+[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 15.0.3 or later within 15.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000b`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
 
 ```js
 import { fileURLToPath } from 'node:url';
@@ -88,7 +88,8 @@ when porting this dispatch. Later pragma lookahead must preserve the zero-width 
 When overriding declarations or function definitions, retain both guarded ordinary-type/declarator alternatives and
 annotation alternatives in ordinary, block, and for-declaration builders. Accept the matching passive guard after calling conventions and before ordinary, builtin,
 and initialized declarators. Derived custom declaration builders also need `_guarded_type_specifiers` and
-`_marked_macro_type_specifiers`; adapt their conflicts alongside these productions. Keep the marked-type rule's
+`_marked_macro_type_specifiers`; adapt their conflicts alongside these productions. Recognized GNU and C23 attributes
+also anchor the guarded type route. Retain that route in custom block and for-declaration builders. Keep the marked-type rule's
 ordinary type and annotation alternatives after the prefix guard, so typedef-return prototypes remain prototypes.
 Guard-owned initialized declarators also need their `_declarator` supertype alias; accepting the syntax alone does not
 preserve subtype queries. Keep ordinary initializers on their existing declarator family. Custom declaration builders
@@ -134,9 +135,19 @@ published first type-name preference, even though the remaining declarator can b
 types and prefixes with recognized declaration attributes or known specifiers keep the concrete macro-type route.
 This preference preserves query fields; it does not resolve both macro expansions semantically.
 
+A proved braced macro call can also supply a declarator. Its `function_declarator` keeps the macro name in `declarator`
+and the structural argument group in `parameters`, so a physical semicolon, comma, initializer or function body
+terminates that role without absorbing the next declaration or statement. Retain this guarded alternative and its
+`_declarator` supertype alias in custom declaration-item and function-definition builders. Derived grammars with
+constructor syntax keep their ordinary constructor preference; use guarded macro-call initializer/body alternatives
+where that ordinary route cannot complete. The call ends at its argument group; a following identifier still needs
+the annotation alternative. Normal and old-style GNU nested
+function definitions retain the same guarded/marked type and annotation alternatives as top-level definitions. Macro calls and
+marked function headers remain structural; they do not resolve preprocessing or name bindings.
+
 Annotation declarations use `_macro_modified_declaration`, `_macro_declaration_specifiers`,
 `_macro_declaration_declarator`, and `_header_preproc_item`. Adapt these rules alongside public declaration/type
-overrides when extending C. Keep `_macro_only_declaration` as a complete semicolon-terminated item and allow
+overrides when extending C. Keep `_macro_only_declaration` as a complete semicolon-terminated item in header, block and for-declaration contexts. Allow
 `_macro_declaration_specifiers` in function definitions so their bodies stay attached. The annotation declarator uses
 `function_declarator` to retain trailing macro calls.
 The separate `_trailing_macro_modified_declaration` route uses public declaration specifiers and
@@ -168,11 +179,11 @@ arrays, parenthesized/function declarators, initializers and multiple declarator
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
-fuzzed with, at version 15.0.0 or later within 15.x. No other runtime loads the parser:
+fuzzed with, at version 15.0.3 or later within 15.x. No other runtime loads the parser:
 
 ```toml
 [dependencies]
-tree-sitter = { package = "willbooster-tree-sitter", version = "15.0.0" }
+tree-sitter = { package = "willbooster-tree-sitter", version = "15.0.3" }
 tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "18" }
 ```
 
