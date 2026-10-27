@@ -8227,13 +8227,27 @@
                       "type": "FIELD",
                       "name": "type",
                       "content": {
-                        "type": "ALIAS",
-                        "content": {
-                          "type": "SYMBOL",
-                          "name": "_annotation_type_specifier"
-                        },
-                        "named": true,
-                        "value": "type_specifier"
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "ALIAS",
+                            "content": {
+                              "type": "SYMBOL",
+                              "name": "_annotation_type_specifier"
+                            },
+                            "named": true,
+                            "value": "type_specifier"
+                          },
+                          {
+                            "type": "ALIAS",
+                            "content": {
+                              "type": "SYMBOL",
+                              "name": "_guarded_macro_type_specifier"
+                            },
+                            "named": true,
+                            "value": "type_specifier"
+                          }
+                        ]
                       }
                     }
                   ]
@@ -8718,6 +8732,86 @@
             {
               "type": "SYMBOL",
               "name": "_macro_declaration_specifiers"
+            },
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_declaration_modifiers"
+                  }
+                },
+                {
+                  "type": "FIELD",
+                  "name": "type",
+                  "content": {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_known_annotation_type_specifier"
+                        },
+                        "named": true,
+                        "value": "type_specifier"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_guarded_macro_type_specifier"
+                        },
+                        "named": true,
+                        "value": "type_specifier"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_non_macro_declaration_modifiers"
+                  }
+                },
+                {
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_braced_leading_macro_attribute_specifier"
+                  },
+                  "named": true,
+                  "value": "attribute_specifier"
+                },
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "_non_macro_declaration_modifiers"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "macro_specifier"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_post_type_macro_attribute_suffix"
+                        },
+                        "named": true,
+                        "value": "attribute_specifier"
+                      }
+                    ]
+                  }
+                }
+              ]
             }
           ]
         }
@@ -20065,8 +20159,12 @@
         "type": "FIELD",
         "name": "name",
         "content": {
-          "type": "SYMBOL",
-          "name": "identifier"
+          "type": "RESERVED",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          },
+          "context_name": "marker"
         }
       }
     },
@@ -20628,10 +20726,6 @@
     [
       "_annotation_type_specifier",
       "macro_specifier"
-    ],
-    [
-      "_annotation_type_specifier",
-      "_macro_attribute_suffix"
     ],
     [
       "_macro_attribute_specifier",
@@ -21377,6 +21471,53 @@
     [
       "_compound_literal_constexpr_specifier",
       "type_qualifier"
+    ],
+    [
+      "_marked_macro_type_specifiers"
+    ],
+    [
+      "_braced_leading_macro_attribute_specifier",
+      "_post_type_macro_attribute_specifier"
+    ],
+    [
+      "_annotation_type_specifier",
+      "_known_annotation_type_specifier",
+      "type_specifier",
+      "_sized_bit_int_specifier"
+    ],
+    [
+      "_annotation_type_specifier",
+      "_known_annotation_type_specifier",
+      "type_specifier"
+    ],
+    [
+      "_annotation_type_specifier",
+      "_known_annotation_type_specifier",
+      "type_specifier",
+      "sized_type_specifier"
+    ],
+    [
+      "_annotation_type_specifier",
+      "_macro_attribute_suffix",
+      "macro_type_specifier"
+    ],
+    [
+      "_annotation_type_specifier",
+      "macro_type_specifier"
+    ],
+    [
+      "_known_annotation_type_specifier",
+      "type_specifier",
+      "sized_type_specifier"
+    ],
+    [
+      "_known_annotation_type_specifier",
+      "type_specifier",
+      "_sized_bit_int_specifier"
+    ],
+    [
+      "_known_annotation_type_specifier",
+      "type_specifier"
     ]
   ],
   "precedences": [],
@@ -21496,5 +21637,13 @@
     "_type_declarator",
     "_abstract_declarator"
   ],
-  "reserved": {}
+  "reserved": {
+    "global": [],
+    "marker": [
+      {
+        "type": "SYMBOL",
+        "name": "primitive_type"
+      }
+    ]
+  }
 }

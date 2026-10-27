@@ -115,12 +115,15 @@ static bool function_macro_type_modifier_word(const MacroName *name) {
 
 typedef enum {
     MACRO_TYPE_PREFIX_INVALID, MACRO_TYPE_PREFIX_MODIFIER, MACRO_TYPE_PREFIX_MARKER, MACRO_TYPE_PREFIX_TYPE,
+    MACRO_TYPE_PREFIX_KNOWN_TYPE, MACRO_TYPE_PREFIX_BALANCED_TYPE, MACRO_TYPE_PREFIX_TAGGED_TYPE,
 } MacroTypePrefix;
 
 static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const MacroName *name, const char *const *reserved_words, unsigned reserved_count);
 
 static bool scan_braced_macro_type_start(TSLexer *lexer, const MacroAttributeSymbols *symbols, const char *const *reserved_words, unsigned reserved_count) {
     bool marker = false;
+    bool known_type = false;
+    bool tag = false;
     bool started = false;
     for (;;) {
         while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
@@ -140,25 +143,53 @@ static bool scan_braced_macro_type_start(TSLexer *lexer, const MacroAttributeSym
         }
         started = true;
         MacroTypePrefix kind = function_macro_type_prefix_item(lexer, &name, reserved_words, reserved_count);
-        if (kind == MACRO_TYPE_PREFIX_INVALID) return false;
-        if (kind == MACRO_TYPE_PREFIX_TYPE) return marker;
-        if (kind == MACRO_TYPE_PREFIX_MARKER) marker = true;
+        switch (kind) {
+            case MACRO_TYPE_PREFIX_INVALID:
+                return false;
+            case MACRO_TYPE_PREFIX_TYPE:
+                return marker;
+            case MACRO_TYPE_PREFIX_MODIFIER:
+                continue;
+            case MACRO_TYPE_PREFIX_MARKER:
+                if (known_type && !tag) return false;
+                marker |= !known_type;
+                tag = false;
+                break;
+            case MACRO_TYPE_PREFIX_KNOWN_TYPE:
+            case MACRO_TYPE_PREFIX_BALANCED_TYPE:
+            case MACRO_TYPE_PREFIX_TAGGED_TYPE:
+                if (!marker || (known_type && kind == MACRO_TYPE_PREFIX_BALANCED_TYPE)) return false;
+                known_type = true;
+                tag = kind == MACRO_TYPE_PREFIX_TAGGED_TYPE;
+                break;
+        }
     }
 }
 
 static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const MacroName *name, const char *const *reserved_words, unsigned reserved_count) {
     if (name->ascii && strcmp(name->word, pragma_word) == 0) {
-        return scan_pragma_suffix_end(lexer, false) ? MACRO_TYPE_PREFIX_MODIFIER : MACRO_TYPE_PREFIX_INVALID;
+        return scan_pragma_suffix_end(lexer, false) && scan_pragma_spacing(lexer)
+            ? MACRO_TYPE_PREFIX_MODIFIER : MACRO_TYPE_PREFIX_INVALID;
     }
     if (!scan_pragma_spacing(lexer)) return MACRO_TYPE_PREFIX_INVALID;
     if (function_macro_type_modifier_word(name)) {
         return lexer->lookahead == '(' && function_macro_modifier_balanced(lexer, '(', ')') && scan_pragma_spacing(lexer)
             ? MACRO_TYPE_PREFIX_MODIFIER : MACRO_TYPE_PREFIX_INVALID;
     }
+    if (name->ascii && function_macro_word_in(name->word, function_macro_type_keywords,
+        sizeof(function_macro_type_keywords) / sizeof(function_macro_type_keywords[0]))) {
+        if (lexer->lookahead == '(' && (!function_macro_balanced(lexer, '(', ')', NULL) || !scan_pragma_spacing(lexer))) return MACRO_TYPE_PREFIX_INVALID;
+        if (strcmp(name->word, "struct") == 0 || strcmp(name->word, "union") == 0 || strcmp(name->word, "enum") == 0) return MACRO_TYPE_PREFIX_TAGGED_TYPE;
+        return MACRO_TYPE_PREFIX_KNOWN_TYPE;
+    }
+    if (name->ascii && function_macro_word_in(name->word, function_macro_object_prefix_keywords,
+        sizeof(function_macro_object_prefix_keywords) / sizeof(function_macro_object_prefix_keywords[0]))) return MACRO_TYPE_PREFIX_MODIFIER;
     if (function_macro_type_prefix_keyword(name, reserved_words, reserved_count)) return MACRO_TYPE_PREFIX_INVALID;
     if (lexer->lookahead == '(') {
-        return function_macro_group_prefix(lexer, '(', ')', NULL, true) == MACRO_GROUP_BRACED
-            ? MACRO_TYPE_PREFIX_TYPE : MACRO_TYPE_PREFIX_INVALID;
+        MacroGroup group = function_macro_group_prefix(lexer, '(', ')', NULL, true);
+        if (group == MACRO_GROUP_BRACED) return MACRO_TYPE_PREFIX_TYPE;
+        if (group == MACRO_GROUP_BALANCED && scan_pragma_spacing(lexer)) return MACRO_TYPE_PREFIX_BALANCED_TYPE;
+        return MACRO_TYPE_PREFIX_INVALID;
     }
     return MACRO_TYPE_PREFIX_MARKER;
 }

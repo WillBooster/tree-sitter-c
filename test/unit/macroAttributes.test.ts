@@ -1198,6 +1198,7 @@ const guardedBoundaryFixtures: Array<{
   initialized?: string[];
   parameters?: Array<[string, string]>;
   parameterStorage?: string[];
+  editBefore?: string[];
 }> = [
   {
     file: 'bracedDeclarationBoundaries.c',
@@ -1229,6 +1230,7 @@ const guardedBoundaryFixtures: Array<{
       ['declaration', 'TYPE(struct { int member; })', ['pragma_before'], undefined],
       ['declaration', 'TYPE(struct { int member; })', ['pragma_between'], undefined],
       ['declaration', 'TYPE(struct { int member; })', ['pragma_later'], undefined],
+      ['declaration', 'TYPE(struct { int member; })', ['pragma_after'], undefined],
       ['declaration', 'Word', ['expression'], undefined],
       ['declaration', 'Word', ['typed_annotation'], undefined],
       ['declaration', 'int', ['next(void)'], undefined],
@@ -1245,6 +1247,7 @@ const guardedBoundaryFixtures: Array<{
       'struct { int member; }',
       'struct { int member; }',
       'struct { int member; }',
+      'struct { int member; }',
     ],
   },
   {
@@ -1257,12 +1260,74 @@ const guardedBoundaryFixtures: Array<{
       ['declaration', 'TYPE(int)', ['plain'], undefined],
       ['declaration', 'TYPE(int)', ['prototype(void)'], undefined],
       ['declaration', 'TYPE(int)', ['(*callback)(void) LAST = 0'], undefined],
+      ['declaration', 'int', ['marked = 0'], undefined],
+      ['declaration', 'TYPE(int)', ['marked_type = 0'], undefined],
+      ['declaration', 'int', ['marked_storage = 0'], undefined],
+      ['declaration', 'int', ['storage_marked = 0'], undefined],
+      ['declaration', 'int', ['trailing_marked = {0}'], undefined],
+      ['declaration', 'int', ['trailing_several = {0}'], undefined],
+      ['declaration', 'int', ['trailing_storage = {0}'], undefined],
+      ['declaration', 'TYPE(int)', ['trailing_type = {0}'], undefined],
+      ['declaration', 'TYPE(int)', ['trailing_several_type = {0}'], undefined],
+      ['declaration', 'struct S', ['trailing_tag = {0}'], undefined],
+      ['declaration', 'struct S', ['trailing_storage_tag = {0}'], undefined],
       ['declaration', 'int', ['next(void)'], undefined],
       ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
     ],
-    macroTypes: Array.from({ length: 6 }, () => 'int'),
-    attributes: Array.from({ length: 5 }, () => 'ATTR(struct { int member; })'),
-    initialized: ['DECL(struct { int member; })', 'value', '*pointer', 'first', 'second', '(*callback)(void) LAST'],
+    macroTypes: Array.from({ length: 9 }, () => 'int'),
+    attributes: Array.from({ length: 16 }, () => 'ATTR(struct { int member; })'),
+    initialized: [
+      'DECL(struct { int member; })',
+      'value',
+      '*pointer',
+      'first',
+      'second',
+      '(*callback)(void) LAST',
+      'marked',
+      'marked_type',
+      'marked_storage',
+      'storage_marked',
+      'trailing_marked',
+      'trailing_several',
+      'trailing_storage',
+      'trailing_type',
+      'trailing_several_type',
+      'trailing_tag',
+      'trailing_storage_tag',
+    ],
+    editBefore: ['OTHER trailing_marked'],
+  },
+  {
+    file: 'balancedOpaqueAnnotations.c',
+    structures: [
+      ['declaration', 'result_t', ['append(void)'], undefined],
+      ['declaration', 'int', ['next(void)'], undefined],
+      ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
+    ],
+    macroTypes: [],
+    attributes: ['DEPRECATED(7.56.0, "replacement")'],
+    editBefore: ['7.56.0'],
+  },
+  {
+    file: 'leadingMacroTypes.c',
+    structures: [
+      ['declaration', 'TYPE(int)', ['prototype(void)'], undefined],
+      ['declaration', 'TYPE(int)', ['object'], undefined],
+      ['declaration', 'TYPE(int)', ['initialized = 1'], undefined],
+      ['declaration', 'TYPE(int)', ['*pointer(void)'], undefined],
+      ['function_definition', 'TYPE(int)', ['definition(void)'], '{ return 0; }'],
+      ['declaration', 'int', ['next(void)'], undefined],
+      ['function_definition', 'int', ['following(void)'], '{ return 0; }'],
+    ],
+    macroTypes: Array.from({ length: 5 }, () => 'int'),
+    attributes: [
+      'ATTR((int[]){1})',
+      'ATTR(struct { int member; })',
+      'ATTR((int[]){1})',
+      'ATTR((int[]){1})',
+      'ATTR((int[]){1})',
+    ],
+    initialized: ['initialized'],
   },
   {
     file: 'namedMacroAttributes.c',
@@ -1396,6 +1461,7 @@ test.each(guardedBoundaryFixtures)(
 (translation_unit (declaration type: (_) @boundary.type))
 (translation_unit (function_definition type: (_) @boundary.type))
 (translation_unit (declaration type: (type_specifier/macro_type_specifier) @boundary.macrotype))
+(translation_unit (function_definition type: (type_specifier/macro_type_specifier) @boundary.macrotype))
 (init_declarator declarator: (_declarator) @boundary.initialized)
 (declaration type: (type_specifier) @boundary.declarationType)
 (attribute_specifier arguments: (argument_list (parameter_declaration type: (type_specifier) @boundary.parameterType declarator: (_declarator) @boundary.parameter)))
@@ -1473,7 +1539,7 @@ test.each(guardedBoundaryFixtures)(
             .map(({ captures }) => captures.map(({ node }) => node.text))
         ).toEqual(fixture.parameters);
       }
-      verifyGuardedGroupEdits(parser, tree, query, source);
+      verifyGuardedGroupEdits(parser, tree, query, source, fixture.editBefore);
     } finally {
       query.delete();
       tree.delete();
@@ -1892,15 +1958,28 @@ test('retains braced declarator-macro fields and following assignments at declar
   }
 });
 
-function verifyGuardedGroupEdits(parser: Parser, tree: Tree, query: Query, source: string): void {
+function verifyGuardedGroupEdits(
+  parser: Parser,
+  tree: Tree,
+  query: Query,
+  source: string,
+  editBefore: string[] = []
+): void {
   const captures = (current: Tree): Array<[string, string, string, number, number]> =>
     query
       .captures(current.rootNode)
       .map(({ name, node }) => [name, node.type, node.text, node.startIndex, node.endIndex]);
   const expected = captures(tree);
   const groups = tree.rootNode.descendantsOfType(['struct_specifier', 'initializer_list', 'compound_statement']);
-  for (const group of groups.filter((node) => node.text.includes('{'))) {
-    const at = group.startIndex + group.text.indexOf('{');
+  const offsets = groups
+    .filter((node) => node.text.includes('{'))
+    .map((group) => group.startIndex + group.text.indexOf('{'));
+  for (const before of editBefore) {
+    const at = source.indexOf(before);
+    expect(at).toBeGreaterThanOrEqual(0);
+    offsets.push(at);
+  }
+  for (const at of offsets) {
     const text = '/* edit */';
     const editedSource = source.slice(0, at) + text + source.slice(at);
     const row = source.slice(0, at).split('\n').length - 1;

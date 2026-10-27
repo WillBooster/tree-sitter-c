@@ -8,7 +8,7 @@
 // @ts-check
 
 // Tree-sitter injects its DSL before loading this CommonJS grammar.
-const { grammar, alias, choice, field, optional, prec, repeat, repeat1, seq, sym, token } =
+const { grammar, alias, choice, field, optional, prec, repeat, repeat1, reserved, seq, sym, token } =
   /** @type {typeof globalThis & typeof import('./types/treeSitterDsl')} */ (globalThis);
 
 // oxlint-disable-next-line unicorn/prefer-module -- Tree-sitter loads this grammar as CommonJS.
@@ -181,7 +181,6 @@ module.exports = Object.assign(
       [$._braced_macro_attribute_argument_list, $._variadic_macro_type_specifier],
       [$._braced_macro_attribute_argument_list, $.macro_type_specifier],
       [$._annotation_type_specifier, $.macro_specifier],
-      [$._annotation_type_specifier, $._macro_attribute_suffix],
       [$._macro_attribute_specifier, $._braced_leading_macro_attribute_specifier],
       [$._annotation_type_specifier, $.sized_type_specifier],
       [$._annotation_type_specifier, $._sized_bit_int_specifier],
@@ -308,7 +307,6 @@ module.exports = Object.assign(
         $._guarded_type_specifiers,
         $._statement_empty_declaration,
       ],
-
       [
         $._conditional_function_specifiers,
         $._declaration_specifiers,
@@ -371,7 +369,6 @@ module.exports = Object.assign(
       [sym('preproc_else_in_statement'), sym('preproc_else_in_initializer_list')],
       [sym('preproc_elif_in_statement'), sym('preproc_elif_in_initializer_list')],
       [sym('preproc_elifdef_in_statement'), sym('preproc_elifdef_in_initializer_list')],
-
       [$.type_specifier, $.expression, $.va_arg_expression, $.macro_type_specifier],
       [$.va_arg_expression, $.expression],
       [$.type_definition, $._declaration_modifiers],
@@ -431,6 +428,16 @@ module.exports = Object.assign(
       [$._declaration_modifiers, $._field_declaration_list_item],
       [$._declaration_specifiers],
       [$._compound_literal_constexpr_specifier, $.type_qualifier],
+      [$._marked_macro_type_specifiers],
+      [$._braced_leading_macro_attribute_specifier, $._post_type_macro_attribute_specifier],
+      [$._annotation_type_specifier, $._known_annotation_type_specifier, $.type_specifier, $._sized_bit_int_specifier],
+      [$._annotation_type_specifier, $._known_annotation_type_specifier, $.type_specifier],
+      [$._annotation_type_specifier, $._known_annotation_type_specifier, $.type_specifier, $.sized_type_specifier],
+      [$._annotation_type_specifier, $._macro_attribute_suffix, $.macro_type_specifier],
+      [$._annotation_type_specifier, $.macro_type_specifier],
+      [$._known_annotation_type_specifier, $.type_specifier, $.sized_type_specifier],
+      [$._known_annotation_type_specifier, $.type_specifier, $._sized_bit_int_specifier],
+      [$._known_annotation_type_specifier, $.type_specifier],
     ],
 
     externals: () => [
@@ -502,6 +509,8 @@ module.exports = Object.assign(
       $._type_declarator,
       $._abstract_declarator,
     ],
+
+    reserved: { global: () => [], marker: ($) => [$.primitive_type] },
 
     word: ($) => $.identifier,
 
@@ -885,7 +894,13 @@ module.exports = Object.assign(
               seq(
                 alias(sym('_braced_leading_macro_attribute_specifier'), $.attribute_specifier),
                 repeat(modifier),
-                field('type', alias(sym('_annotation_type_specifier'), $.type_specifier))
+                field(
+                  'type',
+                  choice(
+                    alias(sym('_annotation_type_specifier'), $.type_specifier),
+                    alias($._guarded_macro_type_specifier, $.type_specifier)
+                  )
+                )
               )
             ),
             repeat(postModifier)
@@ -972,7 +987,26 @@ module.exports = Object.assign(
             ),
             $._declaration_specifiers,
             $._guarded_type_specifiers,
-            $._macro_declaration_specifiers
+            $._macro_declaration_specifiers,
+            seq(
+              repeat($._declaration_modifiers),
+              field(
+                'type',
+                choice(
+                  alias(sym('_known_annotation_type_specifier'), $.type_specifier),
+                  alias($._guarded_macro_type_specifier, $.type_specifier)
+                )
+              ),
+              repeat($._non_macro_declaration_modifiers),
+              alias(sym('_braced_leading_macro_attribute_specifier'), $.attribute_specifier),
+              repeat(
+                choice(
+                  $._non_macro_declaration_modifiers,
+                  $.macro_specifier,
+                  alias($._post_type_macro_attribute_suffix, $.attribute_specifier)
+                )
+              )
+            )
           )
         ),
 
@@ -2193,7 +2227,7 @@ module.exports = Object.assign(
           ';'
         ),
 
-      macro_specifier: ($) => prec.dynamic(-2, field('name', $.identifier)),
+      macro_specifier: ($) => prec.dynamic(-2, field('name', reserved('marker', $.identifier))),
 
       _conditional_macro_specifier: () => alias(sym('_marker_preproc_ifdef'), sym('preproc_ifdef')),
       _leading_conditional_macro_specifier: () => alias(sym('_leading_marker_preproc_ifdef'), sym('preproc_ifdef')),

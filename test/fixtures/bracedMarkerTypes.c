@@ -14,6 +14,7 @@ TYPE(struct { int member; }) spaced;
 _Pragma(/* before */ "STDC FP_CONTRACT ON") MARK TYPE(struct { int member; }) pragma_before;
 MARK _Pragma(/* between */ "STDC FP_CONTRACT ON") TYPE(struct { int member; }) pragma_between;
 MARK OTHER _Pragma("STDC FP_CONTRACT ON") TYPE(struct { int member; }) pragma_later;
+MARK _Pragma("STDC FP_CONTRACT ON") /* suffix */ TYPE(struct { int member; }) pragma_after;
 Word ANNOTATE((int[]){1}) expression;
 Word ANNOTATE(int, (int[]){1}) typed_annotation;
 int next(void);
