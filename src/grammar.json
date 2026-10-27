@@ -12176,6 +12176,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "defer_statement"
+        },
+        {
+          "type": "SYMBOL",
           "name": "switch_statement"
         },
         {
@@ -12247,6 +12251,10 @@
         {
           "type": "SYMBOL",
           "name": "if_statement"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "defer_statement"
         },
         {
           "type": "SYMBOL",
@@ -12413,6 +12421,23 @@
         ]
       }
     },
+    "defer_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "_Defer"
+        },
+        {
+          "type": "FIELD",
+          "name": "body",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_single_statement"
+          }
+        }
+      ]
+    },
     "else_clause": {
       "type": "SEQ",
       "members": [
@@ -12557,6 +12582,10 @@
         {
           "type": "SYMBOL",
           "name": "if_statement"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "defer_statement"
         },
         {
           "type": "SYMBOL",
