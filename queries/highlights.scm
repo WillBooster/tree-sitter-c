@@ -14,7 +14,6 @@
 "const" @keyword
 "continue" @keyword
 "default" @keyword
-"defer" @keyword
 "do" @keyword
 "else" @keyword
 "enum" @keyword

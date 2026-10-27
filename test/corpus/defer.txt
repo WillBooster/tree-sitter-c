@@ -5,14 +5,14 @@ Deferred statement bodies and surrounding control flow
 void cleanup(void);
 void f(int value) {
   _Defer cleanup();
-  defer { cleanup(); }
+  _Defer { cleanup(); }
   _Defer _Defer cleanup();
   if (value) _Defer if (value > 1) cleanup(); else cleanup(); else cleanup();
   while (value--) _Defer cleanup();
-  for (; value; value--) defer cleanup();
+  for (; value; value--) _Defer cleanup();
   switch (value) {
     case 1: _Defer cleanup();
-    case 2: defer { cleanup(); }
+    case 2: _Defer { cleanup(); }
     default: break;
   }
   _Defer ;
@@ -132,3 +132,47 @@ void following(void) {}
         (parameter_declaration
           (primitive_type))))
     (compound_statement)))
+
+================================================================================
+Ordinary defer identifiers remain expressions
+================================================================================
+
+void defer(int);
+void f(int x) { defer(x); int defer = 1; defer = 2; defer++; }
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list
+            (identifier))))
+      (declaration
+        (primitive_type)
+        (init_declarator
+          (identifier)
+          (number_literal)))
+      (expression_statement
+        (assignment_expression
+          (identifier)
+          (number_literal)))
+      (expression_statement
+        (update_expression
+          (identifier))))))

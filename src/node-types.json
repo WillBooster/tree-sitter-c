@@ -5241,10 +5241,6 @@
     "named": false
   },
   {
-    "type": "defer",
-    "named": false
-  },
-  {
     "type": "defined",
     "named": false
   },

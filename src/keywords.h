@@ -74,7 +74,6 @@ static const char *const function_macro_keywords[] = {
   "constexpr",
   "continue",
   "default",
-  "defer",
   "defined",
   "do",
   "double",

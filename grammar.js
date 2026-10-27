@@ -1228,7 +1228,7 @@ module.exports = Object.assign(
           )
         ),
 
-      defer_statement: ($) => seq(choice('_Defer', 'defer'), field('body', $._single_statement)),
+      defer_statement: ($) => seq('_Defer', field('body', $._single_statement)),
 
       else_clause: ($) => seq('else', $._single_statement),
 

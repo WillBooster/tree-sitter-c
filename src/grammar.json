@@ -12425,17 +12425,8 @@
       "type": "SEQ",
       "members": [
         {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "STRING",
-              "value": "_Defer"
-            },
-            {
-              "type": "STRING",
-              "value": "defer"
-            }
-          ]
+          "type": "STRING",
+          "value": "_Defer"
         },
         {
           "type": "FIELD",
