@@ -1516,6 +1516,7 @@ module.exports = Object.assign(
           $.compound_statement,
           $.expression_statement,
           $.if_statement,
+          $.defer_statement,
           $.switch_statement,
           $.do_statement,
           $.while_statement,
@@ -1536,6 +1537,7 @@ module.exports = Object.assign(
           $.compound_statement,
           alias($._top_level_expression_statement, $.expression_statement),
           $.if_statement,
+          $.defer_statement,
           $.switch_statement,
           $.do_statement,
           $.while_statement,
@@ -1568,6 +1570,8 @@ module.exports = Object.assign(
           )
         ),
 
+      defer_statement: ($) => seq('_Defer', field('body', $._single_statement)),
+
       else_clause: ($) => seq('else', $._single_statement),
 
       switch_statement: ($) =>
@@ -1596,6 +1600,7 @@ module.exports = Object.assign(
           $.seh_leave_statement,
           alias($._single_labeled_statement, $.labeled_statement),
           $.if_statement,
+          $.defer_statement,
           $.while_statement,
           $.do_statement,
           $.for_statement

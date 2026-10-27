@@ -11,6 +11,7 @@ static const char *const function_macro_keywords[] = {
   "_BitInt",
   "_Complex",
   "_Countof",
+  "_Defer",
   "_Generic",
   "_Imaginary",
   "_Nonnull",
