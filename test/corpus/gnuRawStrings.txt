@@ -581,3 +581,32 @@ void after(void) {}
         (parameter_declaration
           (primitive_type))))
     (compound_statement)))
+
+==================
+GNU raw strings in pragma directive arguments
+==================
+#pragma message(R"tag(first
+second)tag")
+# pragma message(R"(third
+fourth)")
+int after(void) { return 0; }
+
+---
+
+(translation_unit
+  (preproc_call
+    (preproc_directive)
+    (preproc_arg))
+  (preproc_call
+    (preproc_directive)
+    (preproc_arg))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (number_literal)))))

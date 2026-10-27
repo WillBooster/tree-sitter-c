@@ -408,6 +408,29 @@ test('keeps scalar keywords and escaped prefixes in annotation expressions', () 
   }
 });
 
+test('retains malformed raw delimiters inside opaque replacement lines', () => {
+  const parser = createParser();
+  try {
+    for (const prefix of ['R', 'LR', 'uR', 'UR', 'u8R']) {
+      for (const delimiter of ['something', 'invalid delimiter', ')invalid']) {
+        const value = `${prefix}"${delimiter}"`;
+        const tree = parser.parse(`#define MSG ${value}\nint after(void) { return 0; }`)!;
+        try {
+          expect(tree.rootNode.hasError).toBe(false);
+          expect(tree.rootNode.namedChildren[0]?.childForFieldName('value')?.text).toBe(value);
+          expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
+            'int after(void) { return 0; }',
+          ]);
+        } finally {
+          tree.delete();
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
 function createParser(): Parser {
   const parser = new Parser();
   parser.setLanguage(language);

@@ -72,6 +72,8 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
 
 static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols) {
     bool directive_text = !valid_symbols[PREPROC_ARG] && valid_symbols[PREPROC_DIRECTIVE_ARG];
+    PreprocArgumentMode argument_mode = preproc_argument_mode(
+        valid_symbols[PREPROC_ARG], valid_symbols[PREPROC_DIRECTIVE_ARG], valid_symbols[PREPROC_LPAREN]);
     TSSymbol argument_symbol = directive_text ? PREPROC_DIRECTIVE_ARG : PREPROC_ARG;
     bool argument_valid = valid_symbols[PREPROC_ARG] || directive_text;
     while (valid_symbols[PREPROC_LPAREN] && lexer->lookahead == '\\') {
@@ -94,7 +96,7 @@ static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols) {
             lexer->mark_end(lexer);
             if (!scan_preproc_newline(lexer, true)) {
                 lexer->result_symbol = argument_symbol;
-                return argument_valid && scan_preproc_arg(lexer, true, directive_text);
+                return argument_valid && scan_preproc_arg(lexer, true, argument_mode);
             }
         }
         if (lexer->eof(lexer) || scan_preproc_newline(lexer, false)) {
@@ -105,7 +107,7 @@ static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols) {
     }
     if (argument_valid) {
         lexer->result_symbol = argument_symbol;
-        return scan_preproc_arg(lexer, false, directive_text);
+        return scan_preproc_arg(lexer, false, argument_mode);
     }
     lexer->result_symbol = PRAGMA_OPERATOR;
     return valid_symbols[PRAGMA_OPERATOR] && scan_pragma(lexer);

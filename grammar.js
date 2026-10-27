@@ -426,16 +426,9 @@ module.exports = Object.assign(
       preproc_params: ($) => seq(alias($._preproc_lparen, '('), commaSep(choice($.identifier, '...')), ')'),
 
       preproc_call: ($) =>
-        seq(
-          field('directive', $.preproc_directive),
-          repeat(choice($.comment, $.pragma_operator)),
-          optional(
-            seq(
-              field('argument', alias($._preproc_directive_arg, $.preproc_arg)),
-              repeat(choice($.comment, $.pragma_operator))
-            )
-          ),
-          sym('_preproc_newline')
+        choice(
+          preprocCall($, alias(/#[ \t]*pragma/, $.preproc_directive), choice($._preproc_directive_arg, $.preproc_arg)),
+          preprocCall($, $.preproc_directive, $._preproc_directive_arg)
         ),
 
       ...preprocIf('_in_header', () => sym('_header_preproc_item')),
@@ -1902,6 +1895,20 @@ module.exports = Object.assign(
   }),
   { PREC, preprocIf, preprocessor, commaSep, commaSep1 }
 );
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'comment' | 'pragma_operator' | 'preproc_arg'>} $
+ * @param {import('./types/treeSitterDsl').Rule} directive
+ * @param {import('./types/treeSitterDsl').Rule} argument
+ */
+function preprocCall($, directive, argument) {
+  return seq(
+    field('directive', directive),
+    repeat(choice($.comment, $.pragma_operator)),
+    optional(seq(field('argument', alias(argument, $.preproc_arg)), repeat(choice($.comment, $.pragma_operator)))),
+    sym('_preproc_newline')
+  );
+}
 
 /**
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'identifier' | 'macro_specifier'>} $
