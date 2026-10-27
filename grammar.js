@@ -71,13 +71,8 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
-      [
-        $._statement_declaration,
-        $._statement_type_definition,
-        $._macro_declaration_specifiers,
-        $._statement_declaration_modifiers,
-        $._guarded_type_specifiers,
-      ],
+      [$._declaration_modifiers, $._empty_declaration],
+      [$.type_definition, $._declaration_modifiers, $._empty_declaration],
       [
         $._statement_declaration,
         $._statement_type_definition,
@@ -95,12 +90,6 @@ module.exports = Object.assign(
       ],
       [
         $._statement_declaration,
-        $._macro_declaration_specifiers,
-        $._statement_declaration_modifiers,
-        $._guarded_type_specifiers,
-      ],
-      [
-        $._statement_declaration,
         $._macro_only_declaration,
         $._macro_declaration_specifiers,
         $._statement_declaration_modifiers,
@@ -109,21 +98,7 @@ module.exports = Object.assign(
       [
         $._statement_declaration,
         $._statement_type_definition,
-        $._macro_declaration_specifiers,
-        $._statement_declaration_modifiers,
-        $._guarded_type_specifiers,
-        $._statement_empty_declaration,
-      ],
-      [
-        $._statement_declaration,
-        $._statement_type_definition,
         $._macro_only_declaration,
-        $._macro_declaration_specifiers,
-        $._statement_declaration_modifiers,
-        $._guarded_type_specifiers,
-        $._statement_empty_declaration,
-      ],
-      [
         $._macro_declaration_specifiers,
         $._statement_declaration_modifiers,
         $._guarded_type_specifiers,
@@ -150,10 +125,6 @@ module.exports = Object.assign(
         $.case_statement,
       ],
       [$._macro_declaration_specifiers, $._statement_declaration_modifiers, $._guarded_type_specifiers],
-      [$.declaration, $._declaration_modifiers, $._guarded_type_specifiers, $._marked_macro_type_specifiers],
-      [$._declaration_modifiers, $._guarded_type_specifiers, $._marked_macro_type_specifiers],
-      [$.type_definition, $._declaration_modifiers, $._guarded_type_specifiers, $._empty_declaration],
-      [$.type_definition, $._declaration_modifiers, $._guarded_type_specifiers],
       [$._declarator, sym('_braced_macro_function_declarator')],
       [
         $._macro_declaration_specifiers,
@@ -240,7 +211,6 @@ module.exports = Object.assign(
       [$._declaration_modifiers, $._marked_macro_type_specifiers],
       [$.declaration, $._macro_declaration_specifiers, $._declaration_modifiers],
       [$.declaration, $._macro_declaration_specifiers, $._declaration_modifiers, $._guarded_type_specifiers],
-      [$._macro_only_declaration, $._macro_declaration_specifiers, $._declaration_modifiers],
       [
         $.declaration,
         $.type_definition,
@@ -274,7 +244,6 @@ module.exports = Object.assign(
       [$._macro_attribute_specifier, $.type_specifier, $.macro_type_specifier],
       [$.type_specifier, $.macro_type_specifier, $._variadic_macro_type_specifier],
       [$._macro_declaration_specifiers],
-      [$._declaration_modifiers, $._guarded_type_specifiers, $._empty_declaration],
       [$._macro_attribute_argument_list, $.macro_type_specifier],
       [
         $._macro_attribute_specifier,
@@ -285,14 +254,7 @@ module.exports = Object.assign(
       ],
       [$.declaration, $._declaration_modifiers, $._guarded_type_specifiers],
       [$._declaration_modifiers, $._guarded_type_specifiers],
-      [
-        $.declaration,
-        $.type_definition,
-        $._macro_declaration_specifiers,
-        $._declaration_modifiers,
-        $._guarded_type_specifiers,
-        $._statement_empty_declaration,
-      ],
+      // Required by derived C++ declarations although unnecessary in C alone.
       [
         $._macro_declaration_specifiers,
         $._declaration_modifiers,
@@ -301,6 +263,7 @@ module.exports = Object.assign(
         $._statement_empty_declaration,
       ],
       [$._macro_declaration_specifiers, $._declaration_modifiers, $._guarded_type_specifiers],
+      // Required by derived C++ declarations although unnecessary in C alone.
       [
         $._macro_declaration_specifiers,
         $._declaration_modifiers,
@@ -957,9 +920,8 @@ module.exports = Object.assign(
         prec.dynamic(
           1,
           seq(
-            repeat(choice($.macro_specifier, $._leading_conditional_macro_specifier)),
             $._non_macro_declaration_modifiers,
-            repeat($._declaration_modifiers),
+            repeat($._non_macro_declaration_modifiers),
             choice(
               seq(sym('_function_attribute_start'), field('type', $.type_specifier)),
               seq(

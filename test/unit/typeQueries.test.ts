@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-import { Edit, Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Edit, Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 test('preserves type query captures for sized declarations and enum bases', async () => {
@@ -189,44 +189,51 @@ void other(void);`;
 test('keeps known type constructors and keyword captures after marker prefixes', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser().setLanguage(language);
-  const keywords = ['typeof', '__typeof', '__typeof__', 'typeof_unqual', '__typeof_unqual', '__typeof_unqual__'];
-  const types = [...keywords.map((keyword) => `${keyword}(int)`), '_Atomic(int)', '_BitInt(8)', 'TYPE(int)'];
-  const parameter = 'struct { int z; } p';
-  const source = `#define MARK\n#define TYPE(...) __VA_ARGS__\n${types.map((type, index) => `MARK const ${type} f${index}(${parameter});`).join('\n')}\nint next;\n`;
-  let currentSource = source;
-  let tree = parser.parse(source)!;
-  const query = new Query(
-    language,
-    fs.readFileSync(new URL('../../queries/highlights.scm', import.meta.url), 'utf8') +
-      '\n(declaration type: (typeof_specifier) @return.type declarator: (function_declarator declarator: (identifier) @return.name))'
-  );
-  const captures = (root: typeof tree.rootNode): Array<[string, string, number, number]> =>
-    query.captures(root).map(({ name, node }) => [name, node.text, node.startIndex, node.endIndex]);
-  const check = (): void => {
-    expect(tree.rootNode.hasError).toBe(false);
-    const declarations = tree.rootNode.namedChildren.filter((node) => node.type === 'declaration');
-    expect(declarations.map((node) => node.childForFieldName('type')?.type)).toEqual([
-      ...keywords.map(() => 'typeof_specifier'),
-      'atomic_type_specifier',
-      'bit_int_specifier',
-      'macro_type_specifier',
-      'primitive_type',
-    ]);
-    expect(declarations.map((node) => node.childForFieldName('type')?.text)).toEqual([...types, 'int']);
-    expect(declarations.at(-1)?.text).toBe('int next;');
-    const result = query.captures(tree.rootNode);
-    expect(result.filter(({ name }) => name === 'return.type').map(({ node }) => node.text)).toEqual(
-      keywords.map((keyword) => `${keyword}(int)`)
-    );
-    expect(result.filter(({ name }) => name === 'return.name').map(({ node }) => node.text)).toEqual(
-      keywords.map((_, index) => `f${index}`)
-    );
-    expect(
-      result.filter(({ name, node }) => name === 'keyword' && keywords.includes(node.text)).map(({ node }) => node.text)
-    ).toEqual(keywords);
-  };
+  const parser = new Parser();
+  let ownedTree: Tree | undefined;
+  let ownedQuery: Query | undefined;
   try {
+    parser.setLanguage(language);
+    const keywords = ['typeof', '__typeof', '__typeof__', 'typeof_unqual', '__typeof_unqual', '__typeof_unqual__'];
+    const types = [...keywords.map((keyword) => `${keyword}(int)`), '_Atomic(int)', '_BitInt(8)', 'TYPE(int)'];
+    const parameter = 'struct { int z; } p';
+    const source = `#define MARK\n#define TYPE(...) __VA_ARGS__\n${types.map((type, index) => `MARK const ${type} f${index}(${parameter});`).join('\n')}\nint next;\n`;
+    let currentSource = source;
+    let tree = parser.parse(source)!;
+    ownedTree = tree;
+    const query = new Query(
+      language,
+      fs.readFileSync(new URL('../../queries/highlights.scm', import.meta.url), 'utf8') +
+        '\n(declaration type: (typeof_specifier) @return.type declarator: (function_declarator declarator: (identifier) @return.name))'
+    );
+    ownedQuery = query;
+    const captures = (root: typeof tree.rootNode): Array<[string, string, number, number]> =>
+      query.captures(root).map(({ name, node }) => [name, node.text, node.startIndex, node.endIndex]);
+    const check = (): void => {
+      expect(tree.rootNode.hasError).toBe(false);
+      const declarations = tree.rootNode.namedChildren.filter((node) => node.type === 'declaration');
+      expect(declarations.map((node) => node.childForFieldName('type')?.type)).toEqual([
+        ...keywords.map(() => 'typeof_specifier'),
+        'atomic_type_specifier',
+        'bit_int_specifier',
+        'macro_type_specifier',
+        'primitive_type',
+      ]);
+      expect(declarations.map((node) => node.childForFieldName('type')?.text)).toEqual([...types, 'int']);
+      expect(declarations.at(-1)?.text).toBe('int next;');
+      const result = query.captures(tree.rootNode);
+      expect(result.filter(({ name }) => name === 'return.type').map(({ node }) => node.text)).toEqual(
+        keywords.map((keyword) => `${keyword}(int)`)
+      );
+      expect(result.filter(({ name }) => name === 'return.name').map(({ node }) => node.text)).toEqual(
+        keywords.map((_, index) => `f${index}`)
+      );
+      expect(
+        result
+          .filter(({ name, node }) => name === 'keyword' && keywords.includes(node.text))
+          .map(({ node }) => node.text)
+      ).toEqual(keywords);
+    };
     check();
     let oldParameter = parameter;
     for (const nextParameter of ['int p', parameter]) {
@@ -248,6 +255,7 @@ test('keeps known type constructors and keyword captures after marker prefixes',
       const incremental = parser.parse(currentSource, tree)!;
       tree.delete();
       tree = incremental;
+      ownedTree = tree;
       const fresh = parser.parse(currentSource)!;
       try {
         check();
@@ -259,8 +267,8 @@ test('keeps known type constructors and keyword captures after marker prefixes',
       oldParameter = nextParameter;
     }
   } finally {
-    query.delete();
-    tree.delete();
+    ownedQuery?.delete();
+    ownedTree?.delete();
     parser.delete();
   }
 });

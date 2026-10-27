@@ -8555,22 +8555,6 @@
         "type": "SEQ",
         "members": [
           {
-            "type": "REPEAT",
-            "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "macro_specifier"
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "_leading_conditional_macro_specifier"
-                }
-              ]
-            }
-          },
-          {
             "type": "SYMBOL",
             "name": "_non_macro_declaration_modifiers"
           },
@@ -8578,7 +8562,7 @@
             "type": "REPEAT",
             "content": {
               "type": "SYMBOL",
-              "name": "_declaration_modifiers"
+              "name": "_non_macro_declaration_modifiers"
             }
           },
           {
@@ -20532,11 +20516,13 @@
   ],
   "conflicts": [
     [
-      "_statement_declaration",
-      "_statement_type_definition",
-      "_macro_declaration_specifiers",
-      "_statement_declaration_modifiers",
-      "_guarded_type_specifiers"
+      "_declaration_modifiers",
+      "_empty_declaration"
+    ],
+    [
+      "type_definition",
+      "_declaration_modifiers",
+      "_empty_declaration"
     ],
     [
       "_statement_declaration",
@@ -20555,12 +20541,6 @@
     ],
     [
       "_statement_declaration",
-      "_macro_declaration_specifiers",
-      "_statement_declaration_modifiers",
-      "_guarded_type_specifiers"
-    ],
-    [
-      "_statement_declaration",
       "_macro_only_declaration",
       "_macro_declaration_specifiers",
       "_statement_declaration_modifiers",
@@ -20569,21 +20549,7 @@
     [
       "_statement_declaration",
       "_statement_type_definition",
-      "_macro_declaration_specifiers",
-      "_statement_declaration_modifiers",
-      "_guarded_type_specifiers",
-      "_statement_empty_declaration"
-    ],
-    [
-      "_statement_declaration",
-      "_statement_type_definition",
       "_macro_only_declaration",
-      "_macro_declaration_specifiers",
-      "_statement_declaration_modifiers",
-      "_guarded_type_specifiers",
-      "_statement_empty_declaration"
-    ],
-    [
       "_macro_declaration_specifiers",
       "_statement_declaration_modifiers",
       "_guarded_type_specifiers",
@@ -20612,28 +20578,6 @@
     [
       "_macro_declaration_specifiers",
       "_statement_declaration_modifiers",
-      "_guarded_type_specifiers"
-    ],
-    [
-      "declaration",
-      "_declaration_modifiers",
-      "_guarded_type_specifiers",
-      "_marked_macro_type_specifiers"
-    ],
-    [
-      "_declaration_modifiers",
-      "_guarded_type_specifiers",
-      "_marked_macro_type_specifiers"
-    ],
-    [
-      "type_definition",
-      "_declaration_modifiers",
-      "_guarded_type_specifiers",
-      "_empty_declaration"
-    ],
-    [
-      "type_definition",
-      "_declaration_modifiers",
       "_guarded_type_specifiers"
     ],
     [
@@ -20935,11 +20879,6 @@
       "_guarded_type_specifiers"
     ],
     [
-      "_macro_only_declaration",
-      "_macro_declaration_specifiers",
-      "_declaration_modifiers"
-    ],
-    [
       "declaration",
       "type_definition",
       "_macro_only_declaration",
@@ -20983,11 +20922,6 @@
       "_macro_declaration_specifiers"
     ],
     [
-      "_declaration_modifiers",
-      "_guarded_type_specifiers",
-      "_empty_declaration"
-    ],
-    [
       "_macro_attribute_argument_list",
       "macro_type_specifier"
     ],
@@ -21006,14 +20940,6 @@
     [
       "_declaration_modifiers",
       "_guarded_type_specifiers"
-    ],
-    [
-      "declaration",
-      "type_definition",
-      "_macro_declaration_specifiers",
-      "_declaration_modifiers",
-      "_guarded_type_specifiers",
-      "_statement_empty_declaration"
     ],
     [
       "_macro_declaration_specifiers",
