@@ -2987,7 +2987,7 @@
     "named": true,
     "fields": {},
     "children": {
-      "multiple": false,
+      "multiple": true,
       "required": true,
       "types": [
         {
@@ -3000,6 +3000,10 @@
         },
         {
           "type": "expression",
+          "named": true
+        },
+        {
+          "type": "preproc_arg",
           "named": true
         },
         {

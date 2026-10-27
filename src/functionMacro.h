@@ -67,8 +67,7 @@ static inline bool scan_raw_macro_type_tail(TSLexer *lexer) {
             lexer->advance(lexer, true);
         }
     }
-    if (lexer->lookahead != ',') return false;
-    lexer->advance(lexer, false);
+    if (lexer->lookahead == ')' || lexer->eof(lexer)) return false;
     unsigned depth = 1;
     MacroArgumentWord word = {0};
     while (!lexer->eof(lexer)) {

@@ -1896,7 +1896,8 @@ module.exports = Object.assign(
       _raw_string_type_argument: ($) =>
         choice($.raw_string_literal, alias($._parenthesized_raw_string_type_argument, $.parenthesized_expression)),
 
-      _parenthesized_raw_string_type_argument: ($) => seq('(', $._raw_string_type_argument, ')'),
+      _parenthesized_raw_string_type_argument: ($) =>
+        seq('(', $._raw_string_type_argument, optional(alias(sym('_raw_macro_type_tail'), $.preproc_arg)), ')'),
 
       _preproc_number: () =>
         /(\d|\.\d)([\p{XID_Continue}.]|[eEpP][+-]|'[_a-zA-Z0-9]|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8})*/u,

@@ -708,3 +708,58 @@ void after(void) {}
         (parameter_declaration
           (primitive_type))))
     (compound_statement)))
+
+==================
+Raw first-argument tails preserve discarded preprocessing tokens
+==================
+#define TYPE(...) int
+extern TYPE(R"(x)" "tail") joined;
+extern TYPE((R"(x)" + 1), const int) expression;
+extern TYPE(((R"(x)" "tail") + 1) suffix, ], {) nested;
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params)
+    (preproc_arg))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (parenthesized_expression
+          (raw_string_literal)
+          (preproc_arg))
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (parenthesized_expression
+          (parenthesized_expression
+            (raw_string_literal)
+            (preproc_arg))
+          (preproc_arg))
+        (preproc_arg)))
+    (identifier))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
