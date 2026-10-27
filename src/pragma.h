@@ -62,10 +62,13 @@ static bool scan_pragma_argument(TSLexer *lexer) {
     if (lexer->lookahead == 'L' || lexer->lookahead == 'u' || lexer->lookahead == 'U') {
         bool utf8 = lexer->lookahead == 'u';
         lexer->advance(lexer, false);
+        if (!scan_preproc_splices(lexer)) return false;
         if (utf8 && lexer->lookahead == '8') lexer->advance(lexer, false);
+        if (!scan_preproc_splices(lexer)) return false;
     }
     bool raw = lexer->lookahead == 'R';
     if (raw) lexer->advance(lexer, false);
+    if (!scan_preproc_splices(lexer)) return false;
     if (lexer->lookahead != '"') return false;
     lexer->advance(lexer, false);
     if (raw) return scan_gnu_raw_string_end(lexer);
@@ -236,7 +239,10 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
             in_number = false;
             in_identifier = false;
             bool quoted = raw ? scan_gnu_raw_string_end(lexer) : scan_preproc_quote(lexer, quote, escaped, directive_text);
-            if (!quoted) return true;
+            if (!quoted) {
+                if (raw && lexer->eof(lexer)) lexer->mark_end(lexer);
+                return true;
+            }
             raw_prefix = (GnuRawStringPrefix){0};
             has_content = true;
             after_comment = false;

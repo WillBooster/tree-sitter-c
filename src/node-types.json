@@ -5015,15 +5015,7 @@
     "named": false
   },
   {
-    "type": "LR\"",
-    "named": false
-  },
-  {
     "type": "NULL",
-    "named": false
-  },
-  {
-    "type": "R\"",
     "named": false
   },
   {
@@ -5032,10 +5024,6 @@
   },
   {
     "type": "U'",
-    "named": false
-  },
-  {
-    "type": "UR\"",
     "named": false
   },
   {
@@ -5490,14 +5478,6 @@
   },
   {
     "type": "u8'",
-    "named": false
-  },
-  {
-    "type": "u8R\"",
-    "named": false
-  },
-  {
-    "type": "uR\"",
     "named": false
   },
   {

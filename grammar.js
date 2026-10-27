@@ -60,6 +60,7 @@ const BINARY_OPERATORS = [
   ['>>', PREC.SHIFT],
 ];
 
+const LINE_SPLICE = /\\(?:\r\n?|\n\r?)/;
 const LINE_COMMENT = seq('//', /(\\+(.|\r?\n)|[^\\\n])*/);
 const PRAGMA_SPACING = repeat(choice(/\s/, /\\(?:\r\n?|\n\r?)/));
 const PREPROC_ARGUMENT = /\S([^/\n]|\/[^*]|\\\r?\n)*/;
@@ -1448,7 +1449,19 @@ module.exports = Object.assign(
 
       _string: ($) => prec.left(choice($.string_literal, $.raw_string_literal, $.concatenated_string)),
 
-      raw_string_literal: () => seq(choice('R"', 'LR"', 'uR"', 'UR"', 'u8R"'), sym('_gnu_raw_string_body'), '"'),
+      raw_string_literal: () =>
+        seq(
+          token(
+            seq(
+              optional(seq(choice('L', 'U', 'u', seq('u', repeat(LINE_SPLICE), '8')), repeat(LINE_SPLICE))),
+              'R',
+              repeat(LINE_SPLICE),
+              '"'
+            )
+          ),
+          sym('_gnu_raw_string_body'),
+          '"'
+        ),
 
       comma_expression: ($) =>
         seq(field('left', $.expression), ',', field('right', choice($.expression, $.comma_expression))),

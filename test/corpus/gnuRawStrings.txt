@@ -524,3 +524,60 @@ void after(void) {}
         (parameter_declaration
           (primitive_type))))
     (compound_statement)))
+
+==================
+GNU raw string encoding prefixes allow physical line splices
+==================
+const char *a = R\
+"(first)";
+__auto_type b = L\
+R"(wide)";
+__auto_type c = u\
+R"(utf16)";
+__auto_type d = U\
+R\
+"(utf32)";
+__auto_type e = u\
+8\
+R\
+"(utf8)";
+void after(void) {}
+
+---
+
+(translation_unit
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))

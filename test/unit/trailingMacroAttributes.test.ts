@@ -10,6 +10,13 @@ test.each([
   ['int *value', '(1)', '*value'],
   ['int value', '1', 'value'],
   ['int *deprecated_value', '"use replacement"', '*deprecated_value'],
+  ...['R', 'LR', 'uR', 'UR', 'u8R'].flatMap((prefix) =>
+    [prefix, prefix.split('').join('\\\n') + '\\\n'].map((encoding) => [
+      'int *raw_value',
+      `${encoding}"tag(a " (b) {c})tag"`,
+      '*raw_value',
+    ])
+  ),
   ['int versioned', '7.56.0', 'versioned'],
   ['int empty_slots', ', 1, ,', 'empty_slots'],
   ['int fractional', '.5', 'fractional'],

@@ -25,6 +25,7 @@ test('uses a Wasm build built from the current parser', () => {
     'src/keywords.h',
     'src/functionMacro.h',
     'src/conditionalMacro.h',
+    'src/gnuRawString.h',
   ].map((name) => fs.statSync(path.join(Root, name)).mtimeMs);
   expect(
     Math.max(generationInputMtime(Root), ...sources) > fs.statSync(WasmPath).mtimeMs,
@@ -126,6 +127,9 @@ test.each([
   'int *value ATTR(((\n',
   'int value ATTR((1)\n',
   'extern FOO("a" int f(void);\n',
+  'extern FOO(R"(a) int f(void);\n',
+  'extern FOO(1) BAR(R"(a) int f(void);\n',
+  '_Pragma(R"(a) int f(void);\n',
   'extern FOO({ "a" int f(void);\n}\n',
   'extern FOO((struct T){ "a" int f(void);\n}\n',
   'extern FOO(({ int value; value;\n})\n',
