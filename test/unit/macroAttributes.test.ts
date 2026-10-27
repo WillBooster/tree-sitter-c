@@ -1642,6 +1642,54 @@ test('retains macro types after leading recognized attributes in declarations an
   }
 });
 
+test('retains opaque types and function tags after leading braced annotations', async () => {
+  await Parser.init();
+  const language = await Language.load(wasmPath);
+  const parser = new Parser().setLanguage(language);
+  const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/leadingOpaqueAnnotations.c'), 'utf8');
+  const tree = parser.parse(source)!;
+  const query = new Query(
+    language,
+    `(declaration type: (type_specifier/type_identifier) @type declarator: (_) @declarator)
+(function_definition type: (type_specifier/type_identifier) @type declarator: (_) @declarator)
+(attribute_specifier name: (identifier) @attribute)`
+  );
+  const tags = new Query(language, fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8'));
+  try {
+    expect(tree.rootNode.hasError).toBe(false);
+    const captures = query.captures(tree.rootNode);
+    expect(captures.filter(({ name }) => name === 'type').map(({ node }) => node.text)).toEqual(
+      Array.from({ length: 8 }, () => 'Result')
+    );
+    expect(captures.filter(({ name }) => name === 'declarator').map(({ node }) => node.text)).toEqual([
+      'g(void)',
+      'object',
+      'initialized = 1',
+      '*pointer(void)',
+      'chained(void)',
+      'definition(void)',
+      'local(void)',
+      'value = 0',
+    ]);
+    expect(captures.filter(({ name }) => name === 'attribute').map(({ node }) => node.text)).toEqual(
+      Array.from({ length: 9 }, () => 'ATTR')
+    );
+    expect(
+      tags
+        .captures(tree.rootNode)
+        .filter(({ name }) => name === 'name')
+        .map(({ node }) => node.text)
+    ).toEqual(expect.arrayContaining(['g', 'pointer', 'chained', 'definition', 'local', 'following']));
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
+    verifyGuardedGroupEdits(parser, tree, query, source);
+  } finally {
+    tags.delete();
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
 test('retains physical declaration-macro terminators in blocks and for initializers', async () => {
   await Parser.init();
   const language = await Language.load(wasmPath);
