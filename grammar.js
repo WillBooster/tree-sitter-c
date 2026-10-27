@@ -60,6 +60,7 @@ const BINARY_OPERATORS = [
   ['>>', PREC.SHIFT],
 ];
 
+const LINE_SPLICE = /\\(?:\r\n?|\n\r?)/;
 const LINE_COMMENT = seq('//', /(\\+(.|\r?\n)|[^\\\n])*/);
 const PRAGMA_SPACING = repeat(choice(/\s/, /\\(?:\r\n?|\n\r?)/));
 const PREPROC_ARGUMENT = /\S([^/\n]|\/[^*]|\\\r?\n)*/;
@@ -71,6 +72,7 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._string, $._raw_string_type_argument],
       [
         $._conditional_function_specifiers,
         $._declaration_specifiers,
@@ -235,6 +237,8 @@ module.exports = Object.assign(
       sym('_conditional_marker_ifndef'),
       sym('_leading_conditional_marker_ifdef'),
       sym('_leading_conditional_marker_ifndef'),
+      sym('_gnu_raw_string_body'),
+      sym('_raw_macro_type_tail'),
     ],
 
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
@@ -424,16 +428,9 @@ module.exports = Object.assign(
       preproc_params: ($) => seq(alias($._preproc_lparen, '('), commaSep(choice($.identifier, '...')), ')'),
 
       preproc_call: ($) =>
-        seq(
-          field('directive', $.preproc_directive),
-          repeat(choice($.comment, $.pragma_operator)),
-          optional(
-            seq(
-              field('argument', alias($._preproc_directive_arg, $.preproc_arg)),
-              repeat(choice($.comment, $.pragma_operator))
-            )
-          ),
-          sym('_preproc_newline')
+        choice(
+          preprocCall($, alias(/#[ \t]*pragma/, $.preproc_directive), choice($._preproc_directive_arg, $.preproc_arg)),
+          preprocCall($, $.preproc_directive, $._preproc_directive_arg)
         ),
 
       ...preprocIf('_in_header', () => sym('_header_preproc_item')),
@@ -494,7 +491,11 @@ module.exports = Object.assign(
         ),
 
       preproc_argument_list: ($) =>
-        seq('(', commaSep(choice($._preproc_expression, $.system_lib_string, $.string_literal)), ')'),
+        seq(
+          '(',
+          commaSep(choice($._preproc_expression, $.system_lib_string, $.string_literal, $.raw_string_literal)),
+          ')'
+        ),
 
       preproc_binary_expression: ($) => {
         return choice(
@@ -667,7 +668,7 @@ module.exports = Object.assign(
       linkage_specification: ($) =>
         seq(
           'extern',
-          field('value', $.string_literal),
+          field('value', choice($.string_literal, $.raw_string_literal)),
           field('body', choice($.function_definition, $.declaration, $.declaration_list))
         ),
 
@@ -1441,7 +1442,21 @@ module.exports = Object.assign(
           $.builtin_available_expression
         ),
 
-      _string: ($) => prec.left(choice($.string_literal, $.concatenated_string)),
+      _string: ($) => prec.left(choice($.string_literal, $.raw_string_literal, $.concatenated_string)),
+
+      raw_string_literal: () =>
+        seq(
+          token(
+            seq(
+              optional(seq(choice('L', 'U', 'u', seq('u', repeat(LINE_SPLICE), '8')), repeat(LINE_SPLICE))),
+              'R',
+              repeat(LINE_SPLICE),
+              '"'
+            )
+          ),
+          sym('_gnu_raw_string_body'),
+          '"'
+        ),
 
       comma_expression: ($) =>
         seq(field('left', $.expression), ',', field('right', choice($.expression, $.comma_expression))),
@@ -1613,7 +1628,7 @@ module.exports = Object.assign(
       gnu_asm_output_operand: ($) =>
         seq(
           optional(seq('[', field('symbol', $.identifier), ']')),
-          field('constraint', $.string_literal),
+          field('constraint', choice($.string_literal, $.raw_string_literal)),
           '(',
           field('value', $.expression),
           ')'
@@ -1624,7 +1639,7 @@ module.exports = Object.assign(
       gnu_asm_input_operand: ($) =>
         seq(
           optional(seq('[', field('symbol', $.identifier), ']')),
-          field('constraint', $.string_literal),
+          field('constraint', choice($.string_literal, $.raw_string_literal)),
           '(',
           field('value', $.expression),
           ')'
@@ -1768,11 +1783,11 @@ module.exports = Object.assign(
         prec.right(
           seq(
             choice(
-              seq($.identifier, $.string_literal),
-              seq($.string_literal, $.string_literal),
-              seq($.string_literal, $.identifier)
+              seq($.identifier, choice($.string_literal, $.raw_string_literal)),
+              seq(choice($.string_literal, $.raw_string_literal), choice($.string_literal, $.raw_string_literal)),
+              seq(choice($.string_literal, $.raw_string_literal), $.identifier)
             ),
-            repeat(choice($.string_literal, $.identifier))
+            repeat(choice($.string_literal, $.raw_string_literal, $.identifier))
           )
         ),
 
@@ -1868,11 +1883,21 @@ module.exports = Object.assign(
           -1,
           seq(
             field('name', choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier))),
-            '(',
-            field('type', $.type_descriptor),
-            ')'
+            choice(
+              seq('(', field('type', $.type_descriptor), ')'),
+              field('arguments', alias($._raw_string_macro_type_arguments, $.argument_list))
+            )
           )
         ),
+
+      _raw_string_macro_type_arguments: ($) =>
+        seq('(', $._raw_string_type_argument, optional(alias(sym('_raw_macro_type_tail'), $.preproc_arg)), ')'),
+
+      _raw_string_type_argument: ($) =>
+        choice($.raw_string_literal, alias($._parenthesized_raw_string_type_argument, $.parenthesized_expression)),
+
+      _parenthesized_raw_string_type_argument: ($) =>
+        seq('(', $._raw_string_type_argument, optional(alias(sym('_raw_macro_type_tail'), $.preproc_arg)), ')'),
 
       _preproc_number: () =>
         /(\d|\.\d)([\p{XID_Continue}.]|[eEpP][+-]|'[_a-zA-Z0-9]|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8})*/u,
@@ -1882,6 +1907,20 @@ module.exports = Object.assign(
   }),
   { PREC, preprocIf, preprocessor, commaSep, commaSep1 }
 );
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'comment' | 'pragma_operator' | 'preproc_arg'>} $
+ * @param {import('./types/treeSitterDsl').Rule} directive
+ * @param {import('./types/treeSitterDsl').Rule} argument
+ */
+function preprocCall($, directive, argument) {
+  return seq(
+    field('directive', directive),
+    repeat(choice($.comment, $.pragma_operator)),
+    optional(seq(field('argument', alias(argument, $.preproc_arg)), repeat(choice($.comment, $.pragma_operator)))),
+    sym('_preproc_newline')
+  );
+}
 
 /**
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'identifier' | 'macro_specifier'>} $

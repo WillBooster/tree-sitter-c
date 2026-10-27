@@ -3,6 +3,7 @@
 
 #include "tree_sitter/parser.h"
 #include "identifier.h"
+#include "gnuRawString.h"
 #include <string.h>
 
 static const char pragma_word[] = "_Pragma";
@@ -16,6 +17,12 @@ typedef struct {
 } MacroName;
 
 typedef enum {
+    PREPROC_ARGUMENT_TOKENS,
+    PREPROC_ARGUMENT_TEXT,
+    PREPROC_ARGUMENT_PRAGMA,
+} PreprocArgumentMode;
+
+typedef enum {
     MACRO_NAME_END,
     MACRO_NAME_CHARACTER,
     MACRO_NAME_SPLICE,
@@ -27,6 +34,7 @@ static void scan_macro_name_start(TSLexer *lexer, bool lookahead_only);
 static MacroNameCharacter scan_macro_name_character(TSLexer *lexer, bool continuation, MacroName *name);
 static bool scan_macro_name_ucn(TSLexer *lexer);
 
+static bool scan_pragma_argument(TSLexer *lexer);
 static bool scan_pragma_spacing(TSLexer *lexer);
 static bool scan_pragma_suffix(TSLexer *lexer);
 static bool pragma_space(int32_t c);
@@ -36,6 +44,7 @@ static bool scan_preproc_splices(TSLexer *lexer);
 static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number);
 static bool preproc_word(int32_t c, bool continuation);
 static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped, bool directive_text);
+static bool scan_preproc_raw_quote(TSLexer *lexer);
 
 static bool scan_pragma(TSLexer *lexer) {
     while (pragma_space(lexer->lookahead)) {
@@ -49,13 +58,27 @@ static bool scan_pragma_suffix(TSLexer *lexer) {
     if (!scan_pragma_spacing(lexer) || lexer->lookahead != '(') return false;
     lexer->advance(lexer, false);
     if (!scan_pragma_spacing(lexer)) return false;
+    if (!scan_pragma_argument(lexer)) return false;
+    if (!scan_pragma_spacing(lexer) || lexer->lookahead != ')') return false;
+    lexer->advance(lexer, false);
+    lexer->mark_end(lexer);
+    return true;
+}
+
+static bool scan_pragma_argument(TSLexer *lexer) {
     if (lexer->lookahead == 'L' || lexer->lookahead == 'u' || lexer->lookahead == 'U') {
         bool utf8 = lexer->lookahead == 'u';
         lexer->advance(lexer, false);
+        if (!scan_preproc_splices(lexer)) return false;
         if (utf8 && lexer->lookahead == '8') lexer->advance(lexer, false);
+        if (!scan_preproc_splices(lexer)) return false;
     }
+    bool raw = lexer->lookahead == 'R';
+    if (raw) lexer->advance(lexer, false);
+    if (!scan_preproc_splices(lexer)) return false;
     if (lexer->lookahead != '"') return false;
     lexer->advance(lexer, false);
+    if (raw) return scan_gnu_raw_string_end(lexer);
     while (lexer->lookahead != '"') {
         if (lexer->eof(lexer) || lexer->lookahead == '\n' || lexer->lookahead == '\r') return false;
         if (lexer->lookahead == '\\') {
@@ -66,9 +89,6 @@ static bool scan_pragma_suffix(TSLexer *lexer) {
         lexer->advance(lexer, false);
     }
     lexer->advance(lexer, false);
-    if (!scan_pragma_spacing(lexer) || lexer->lookahead != ')') return false;
-    lexer->advance(lexer, false);
-    lexer->mark_end(lexer);
     return true;
 }
 
@@ -114,7 +134,14 @@ static bool scan_pragma_spacing(TSLexer *lexer) {
     }
 }
 
-static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool directive_text) {
+static PreprocArgumentMode preproc_argument_mode(bool tokens, bool directive, bool lparen) {
+    if (tokens && directive && !lparen) return PREPROC_ARGUMENT_PRAGMA;
+    return !tokens && directive ? PREPROC_ARGUMENT_TEXT : PREPROC_ARGUMENT_TOKENS;
+}
+
+static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, PreprocArgumentMode mode) {
+    bool directive_text = mode != PREPROC_ARGUMENT_TOKENS;
+    bool raw_allowed = mode != PREPROC_ARGUMENT_TEXT;
     bool has_content = consumed_backslash;
     while (!has_content && pragma_space(lexer->lookahead) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         lexer->advance(lexer, true);
@@ -122,6 +149,8 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
     bool after_comment = false;
     bool in_number = false;
     bool in_identifier = consumed_backslash && scan_preproc_ucn(lexer, &in_number);
+    GnuRawStringPrefix raw_prefix = {0};
+    if (consumed_backslash) gnu_raw_string_prefix_invalidate(&raw_prefix);
     if (consumed_backslash) lexer->mark_end(lexer);
     int32_t number_last = 0;
     while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
@@ -138,6 +167,11 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
         if (digit && !in_identifier) in_number = true;
         if (word && !in_number) in_identifier = true;
         if (in_number && c != '\\') number_last = c;
+        if (c != '"' && c != '\\') {
+            if (in_number) gnu_raw_string_prefix_invalidate(&raw_prefix);
+            else if (word || digit || exponent_sign) gnu_raw_string_prefix_character(&raw_prefix, c);
+            else raw_prefix = (GnuRawStringPrefix){0};
+        }
         if (lexer->lookahead == '/') {
             lexer->advance(lexer, false);
             bool split_opener = lexer->lookahead == '\\';
@@ -187,6 +221,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
                 if (!after_comment && has_content) lexer->mark_end(lexer);
                 continue;
             }
+            gnu_raw_string_prefix_invalidate(&raw_prefix);
             if (scan_preproc_ucn(lexer, &in_number)) {
                 if (!in_number) in_identifier = true;
                 number_last = 0;
@@ -196,8 +231,9 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
             }
             has_content = true;
             after_comment = false;
-        } else if (lexer->lookahead == '"' || (!directive_text && lexer->lookahead == '\'')) {
+        } else if (lexer->lookahead == '"' || (raw_allowed && lexer->lookahead == '\'')) {
             int32_t quote = lexer->lookahead;
+            bool raw = raw_allowed && quote == '"' && gnu_raw_string_prefix(&raw_prefix);
             lexer->advance(lexer, false);
             bool escaped = false;
             if (quote == '\'' && in_number) {
@@ -216,7 +252,9 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
             }
             in_number = false;
             in_identifier = false;
-            if (!scan_preproc_quote(lexer, quote, escaped, directive_text)) return true;
+            bool quoted = raw ? scan_preproc_raw_quote(lexer) : scan_preproc_quote(lexer, quote, escaped, directive_text);
+            if (!quoted) return true;
+            raw_prefix = (GnuRawStringPrefix){0};
             has_content = true;
             after_comment = false;
         } else {
@@ -229,6 +267,13 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, bool direc
         if (!after_comment && has_content) lexer->mark_end(lexer);
     }
     return has_content;
+}
+
+static bool scan_preproc_raw_quote(TSLexer *lexer) {
+    if (scan_gnu_raw_string_end(lexer)) return true;
+    while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') lexer->advance(lexer, false);
+    lexer->mark_end(lexer);
+    return false;
 }
 
 static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped, bool directive_text) {

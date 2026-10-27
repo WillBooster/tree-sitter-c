@@ -27,6 +27,7 @@
     "src/keywords.h",
     "src/functionMacro.h",
     "src/conditionalMacro.h",
+    "src/gnuRawString.h",
     "src/scanner.c"
   ],
   "publishConfig": {

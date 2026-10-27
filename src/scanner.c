@@ -1,6 +1,7 @@
 #include "conditionalMacro.h"
+#include "gnuRawString.h"
 
-enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF };
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF, GNU_RAW_STRING_BODY, RAW_MACRO_TYPE_TAIL };
 
 static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols);
 
@@ -26,6 +27,14 @@ void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffe
 
 bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     (void)payload;
+    if (valid_symbols[GNU_RAW_STRING_BODY] && !valid_symbols[PREPROC_LPAREN]) {
+        lexer->result_symbol = GNU_RAW_STRING_BODY;
+        return scan_gnu_raw_string_token(lexer);
+    }
+    if (valid_symbols[RAW_MACRO_TYPE_TAIL] && !valid_symbols[PREPROC_LPAREN]) {
+        lexer->result_symbol = RAW_MACRO_TYPE_TAIL;
+        return scan_raw_macro_type_tail(lexer);
+    }
     if (valid_symbols[PREPROC_FUNCTION_NAME] && !valid_symbols[PREPROC_LPAREN]) {
         lexer->result_symbol = PREPROC_FUNCTION_NAME;
         return scan_function_macro_name(lexer, valid_symbols[PRAGMA_OPERATOR], PRAGMA_OPERATOR);
@@ -67,6 +76,8 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
 
 static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols) {
     bool directive_text = !valid_symbols[PREPROC_ARG] && valid_symbols[PREPROC_DIRECTIVE_ARG];
+    PreprocArgumentMode argument_mode = preproc_argument_mode(
+        valid_symbols[PREPROC_ARG], valid_symbols[PREPROC_DIRECTIVE_ARG], valid_symbols[PREPROC_LPAREN]);
     TSSymbol argument_symbol = directive_text ? PREPROC_DIRECTIVE_ARG : PREPROC_ARG;
     bool argument_valid = valid_symbols[PREPROC_ARG] || directive_text;
     while (valid_symbols[PREPROC_LPAREN] && lexer->lookahead == '\\') {
@@ -89,7 +100,7 @@ static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols) {
             lexer->mark_end(lexer);
             if (!scan_preproc_newline(lexer, true)) {
                 lexer->result_symbol = argument_symbol;
-                return argument_valid && scan_preproc_arg(lexer, true, directive_text);
+                return argument_valid && scan_preproc_arg(lexer, true, argument_mode);
             }
         }
         if (lexer->eof(lexer) || scan_preproc_newline(lexer, false)) {
@@ -100,7 +111,7 @@ static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols) {
     }
     if (argument_valid) {
         lexer->result_symbol = argument_symbol;
-        return scan_preproc_arg(lexer, false, directive_text);
+        return scan_preproc_arg(lexer, false, argument_mode);
     }
     lexer->result_symbol = PRAGMA_OPERATOR;
     return valid_symbols[PRAGMA_OPERATOR] && scan_pragma(lexer);

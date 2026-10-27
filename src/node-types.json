@@ -208,6 +208,10 @@
         "named": true
       },
       {
+        "type": "raw_string_literal",
+        "named": true
+      },
+      {
         "type": "sizeof_expression",
         "named": true
       },
@@ -548,6 +552,10 @@
         },
         {
           "type": "initializer_pair",
+          "named": true
+        },
+        {
+          "type": "preproc_arg",
           "named": true
         },
         {
@@ -1318,6 +1326,10 @@
       "types": [
         {
           "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "raw_string_literal",
           "named": true
         },
         {
@@ -2217,6 +2229,10 @@
             "named": true
           },
           {
+            "type": "raw_string_literal",
+            "named": true
+          },
+          {
             "type": "string_literal",
             "named": true
           }
@@ -2234,6 +2250,10 @@
         "types": [
           {
             "type": "concatenated_string",
+            "named": true
+          },
+          {
+            "type": "raw_string_literal",
             "named": true
           },
           {
@@ -2319,6 +2339,10 @@
         "required": true,
         "types": [
           {
+            "type": "raw_string_literal",
+            "named": true
+          },
+          {
             "type": "string_literal",
             "named": true
           }
@@ -2370,6 +2394,10 @@
         "multiple": false,
         "required": true,
         "types": [
+          {
+            "type": "raw_string_literal",
+            "named": true
+          },
           {
             "type": "string_literal",
             "named": true
@@ -2655,6 +2683,10 @@
         "required": true,
         "types": [
           {
+            "type": "raw_string_literal",
+            "named": true
+          },
+          {
             "type": "string_literal",
             "named": true
           }
@@ -2682,6 +2714,16 @@
     "type": "macro_type_specifier",
     "named": true,
     "fields": {
+      "arguments": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "argument_list",
+            "named": true
+          }
+        ]
+      },
       "name": {
         "multiple": false,
         "required": true,
@@ -2694,7 +2736,7 @@
       },
       "type": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "type_descriptor",
@@ -2945,7 +2987,7 @@
     "named": true,
     "fields": {},
     "children": {
-      "multiple": false,
+      "multiple": true,
       "required": true,
       "types": [
         {
@@ -2958,6 +3000,10 @@
         },
         {
           "type": "expression",
+          "named": true
+        },
+        {
+          "type": "preproc_arg",
           "named": true
         },
         {
@@ -3976,6 +4022,11 @@
         }
       ]
     }
+  },
+  {
+    "type": "raw_string_literal",
+    "named": true,
+    "fields": {}
   },
   {
     "type": "return_statement",
