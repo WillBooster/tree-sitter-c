@@ -1,0 +1,134 @@
+================================================================================
+Deferred statement bodies and surrounding control flow
+================================================================================
+
+void cleanup(void);
+void f(int value) {
+  _Defer cleanup();
+  defer { cleanup(); }
+  _Defer _Defer cleanup();
+  if (value) _Defer if (value > 1) cleanup(); else cleanup(); else cleanup();
+  while (value--) _Defer cleanup();
+  for (; value; value--) defer cleanup();
+  switch (value) {
+    case 1: _Defer cleanup();
+    case 2: defer { cleanup(); }
+    default: break;
+  }
+  _Defer ;
+  cleanup();
+}
+void following(void) {}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (defer_statement
+        (expression_statement
+          (call_expression
+            (identifier)
+            (argument_list))))
+      (defer_statement
+        (compound_statement
+          (expression_statement
+            (call_expression
+              (identifier)
+              (argument_list)))))
+      (defer_statement
+        (defer_statement
+          (expression_statement
+            (call_expression
+              (identifier)
+              (argument_list)))))
+      (if_statement
+        (parenthesized_expression
+          (identifier))
+        (defer_statement
+          (if_statement
+            (parenthesized_expression
+              (binary_expression
+                (identifier)
+                (number_literal)))
+            (expression_statement
+              (call_expression
+                (identifier)
+                (argument_list)))
+            (else_clause
+              (expression_statement
+                (call_expression
+                  (identifier)
+                  (argument_list))))))
+        (else_clause
+          (expression_statement
+            (call_expression
+              (identifier)
+              (argument_list)))))
+      (while_statement
+        (parenthesized_expression
+          (update_expression
+            (identifier)))
+        (defer_statement
+          (expression_statement
+            (call_expression
+              (identifier)
+              (argument_list)))))
+      (for_statement
+        (identifier)
+        (update_expression
+          (identifier))
+        (defer_statement
+          (expression_statement
+            (call_expression
+              (identifier)
+              (argument_list)))))
+      (switch_statement
+        (parenthesized_expression
+          (identifier))
+        (compound_statement
+          (case_statement
+            (number_literal)
+            (defer_statement
+              (expression_statement
+                (call_expression
+                  (identifier)
+                  (argument_list)))))
+          (case_statement
+            (number_literal)
+            (defer_statement
+              (compound_statement
+                (expression_statement
+                  (call_expression
+                    (identifier)
+                    (argument_list))))))
+          (case_statement
+            (break_statement))))
+      (defer_statement
+        (expression_statement))
+      (expression_statement
+        (call_expression
+          (identifier)
+          (argument_list)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))

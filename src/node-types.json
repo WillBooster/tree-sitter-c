@@ -262,6 +262,10 @@
         "named": true
       },
       {
+        "type": "defer_statement",
+        "named": true
+      },
+      {
         "type": "do_statement",
         "named": true
       },
@@ -1512,6 +1516,10 @@
           "named": true
         },
         {
+          "type": "defer_statement",
+          "named": true
+        },
+        {
           "type": "do_statement",
           "named": true
         },
@@ -1604,6 +1612,22 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "defer_statement",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "statement",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -4298,6 +4322,10 @@
           "named": true
         },
         {
+          "type": "defer_statement",
+          "named": true
+        },
+        {
           "type": "do_statement",
           "named": true
         },
@@ -4992,6 +5020,10 @@
     "named": false
   },
   {
+    "type": "_Defer",
+    "named": false
+  },
+  {
     "type": "_Generic",
     "named": false
   },
@@ -5206,6 +5238,10 @@
   },
   {
     "type": "default",
+    "named": false
+  },
+  {
+    "type": "defer",
     "named": false
   },
   {

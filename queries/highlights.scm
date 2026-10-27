@@ -6,6 +6,7 @@
 ((storage_class_specifier) @keyword
  (#eq? @keyword "auto"))
 "_Countof" @keyword
+"_Defer" @keyword
 "_Generic" @keyword
 "_Thread_local" @keyword
 "break" @keyword
@@ -13,6 +14,7 @@
 "const" @keyword
 "continue" @keyword
 "default" @keyword
+"defer" @keyword
 "do" @keyword
 "else" @keyword
 "enum" @keyword
