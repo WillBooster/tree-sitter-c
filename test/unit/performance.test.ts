@@ -121,38 +121,41 @@ test.each([
   }
 );
 
-test.each([
-  'int\n',
-  'int value ATTR(\n',
-  'int *value ATTR(((\n',
-  'int value ATTR((1)\n',
-  'extern FOO("a" int f(void);\n',
-  'extern FOO(R"(a) int f(void);\n',
-  'extern FOO(1) BAR(R"(a) int f(void);\n',
-  '_Pragma(R"(a) int f(void);\n',
-  'extern FOO({ "a" int f(void);\n}\n',
-  'extern FOO((struct T){ "a" int f(void);\n}\n',
-  'extern FOO(({ int value; value;\n})\n',
-  'extern FOO(({ int value; value;\n}\n',
-  'const FOO(({ int value; value;\n})\n',
-  '__declspec(dllexport) FOO(({ int value; value;\n})\n',
-  'extern FOO(({}\n',
-  'extern FOO({}\n',
-  'extern FOO(,{}\n',
-  'extern FOO((int){1}\n',
-  'extern FOO((struct T){}\n',
-  'extern FOO("a" int f(void)\n',
-  'extern FOO(1) int f(void)\n',
-  '#if FLAG\nextern FOO("a" int f(void)\n#endif\n',
-])('keeps unbalanced annotation recovery approximately linear: %s', { timeout: 60_000 }, (line) => {
-  const small = line.repeat(100);
-  const large = line.repeat(1000);
-  parseAverageCpuTime(large, true);
+test.each(
+  [
+    'int\n',
+    'int value ATTR(\n',
+    'int *value ATTR(((\n',
+    'int value ATTR((1)\n',
+    'extern FOO("a" int f(void);\n',
+    'extern FOO(R"(a) int f(void);\n',
+    'extern FOO(1) BAR(R"(a) int f(void);\n',
+    '_Pragma(R"(a) int f(void);\n',
+    'extern FOO({ "a" int f(void);\n}\n',
+    'extern FOO((struct T){ "a" int f(void);\n}\n',
+    'extern FOO(({ int value; value;\n})\n',
+    'extern FOO(({ int value; value;\n}\n',
+    'const FOO(({ int value; value;\n})\n',
+    '__declspec(dllexport) FOO(({ int value; value;\n})\n',
+    'extern FOO(({}\n',
+    'extern FOO({}\n',
+    'extern FOO(,{}\n',
+    'extern FOO((int){1}\n',
+    'extern FOO((struct T){}\n',
+    'extern FOO("a" int f(void)\n',
+    'extern FOO(1) int f(void)\n',
+    '#if FLAG\nextern FOO("a" int f(void)\n#endif\n',
+  ].flatMap((line) => (line.includes('R"') ? ['', ')"', ')")', ')");'] : ['']).map((suffix) => [line, suffix]))
+)('keeps unbalanced annotation recovery approximately linear: %s', { timeout: 60_000 }, (line, suffix) => {
+  const expectedError = !line.startsWith('_Pragma') || suffix === '' || suffix === ')"';
+  const small = line.repeat(100) + suffix;
+  const large = line.repeat(1000) + suffix;
+  parseAverageCpuTime(large, expectedError);
   let smallFastest = Infinity;
   let largeFastest = Infinity;
   for (let run = 0; run < 5; run++) {
-    smallFastest = Math.min(smallFastest, parseAverageCpuTime(small, true));
-    largeFastest = Math.min(largeFastest, parseAverageCpuTime(large, true));
+    smallFastest = Math.min(smallFastest, parseAverageCpuTime(small, expectedError));
+    largeFastest = Math.min(largeFastest, parseAverageCpuTime(large, expectedError));
   }
   expect(largeFastest / smallFastest).toBeLessThan(18);
 });
