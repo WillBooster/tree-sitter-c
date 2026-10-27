@@ -231,7 +231,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, PreprocArg
             }
             has_content = true;
             after_comment = false;
-        } else if (lexer->lookahead == '"' || (!directive_text && lexer->lookahead == '\'')) {
+        } else if (lexer->lookahead == '"' || (raw_allowed && lexer->lookahead == '\'')) {
             int32_t quote = lexer->lookahead;
             bool raw = raw_allowed && quote == '"' && gnu_raw_string_prefix(&raw_prefix);
             lexer->advance(lexer, false);

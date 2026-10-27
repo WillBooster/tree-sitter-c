@@ -763,3 +763,29 @@ void after(void) {}
         (parameter_declaration
           (primitive_type))))
     (compound_statement)))
+
+==================
+Pragma character constants keep raw-looking content inside their token
+==================
+#pragma 'R"('
+#pragma 'R"(' R"tag(real
+raw)tag"
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_call
+    (preproc_directive)
+    (preproc_arg))
+  (preproc_call
+    (preproc_directive)
+    (preproc_arg))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
