@@ -789,3 +789,54 @@ void after(void) {}
         (parameter_declaration
           (primitive_type))))
     (compound_statement)))
+
+==================
+Raw macro tails preserve leading non-splice backslashes
+==================
+#define TYPE(...) int
+extern TYPE(R"(x)" \u03B1) unicode;
+extern TYPE((R"(x)" \u03B1), const int) nested;
+extern TYPE(R"(x)" \\u03B1) discarded;
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params)
+    (preproc_arg))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (parenthesized_expression
+          (raw_string_literal)
+          (preproc_arg))
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))

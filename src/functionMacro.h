@@ -59,14 +59,7 @@ static bool function_macro_keyword(const char *word);
 static bool function_macro_word_in(const char *word, const char *const *words, unsigned count);
 
 static inline bool scan_raw_macro_type_tail(TSLexer *lexer) {
-    while (pragma_space(lexer->lookahead) || lexer->lookahead == '\\') {
-        if (lexer->lookahead == '\\') {
-            lexer->advance(lexer, true);
-            if (!scan_preproc_newline(lexer, true)) return false;
-        } else {
-            lexer->advance(lexer, true);
-        }
-    }
+    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
     if (lexer->lookahead == ')' || lexer->eof(lexer)) return false;
     unsigned depth = 1;
     MacroArgumentWord word = {0};
