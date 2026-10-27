@@ -238,6 +238,7 @@ module.exports = Object.assign(
       sym('_leading_conditional_marker_ifdef'),
       sym('_leading_conditional_marker_ifndef'),
       sym('_gnu_raw_string_body'),
+      sym('_raw_macro_type_tail'),
     ],
 
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
@@ -1890,7 +1891,7 @@ module.exports = Object.assign(
         ),
 
       _raw_string_macro_type_arguments: ($) =>
-        seq('(', $._raw_string_type_argument, repeat(seq(',', $.expression)), ')'),
+        seq('(', $._raw_string_type_argument, optional(alias(sym('_raw_macro_type_tail'), $.preproc_arg)), ')'),
 
       _raw_string_type_argument: ($) =>
         choice($.raw_string_literal, alias($._parenthesized_raw_string_type_argument, $.parenthesized_expression)),

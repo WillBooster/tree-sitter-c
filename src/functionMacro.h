@@ -11,6 +11,12 @@ typedef struct {
     GnuRawStringPrefix raw_prefix;
 } MacroArgumentWord;
 
+typedef enum {
+    MACRO_ARGUMENT_PLAIN,
+    MACRO_ARGUMENT_CONSUMED,
+    MACRO_ARGUMENT_INVALID,
+} MacroArgumentToken;
+
 typedef struct {
     bool post_type;
     bool declarator_group;
@@ -26,6 +32,8 @@ typedef struct {
     bool allow_pragma;
     bool allow_object_start;
 } MacroAttributeSymbols;
+
+static MacroArgumentToken function_macro_argument_token(TSLexer *lexer, MacroArgumentWord *word, bool *unterminated_raw);
 
 static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close, bool *literal, bool *unterminated_raw);
 static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested);
@@ -49,6 +57,32 @@ static bool function_macro_object_prefix_keyword(const char *word);
 static bool function_macro_attribute_keyword(const char *word, bool trailing);
 static bool function_macro_keyword(const char *word);
 static bool function_macro_word_in(const char *word, const char *const *words, unsigned count);
+
+static inline bool scan_raw_macro_type_tail(TSLexer *lexer) {
+    while (pragma_space(lexer->lookahead) || lexer->lookahead == '\\') {
+        if (lexer->lookahead == '\\') {
+            lexer->advance(lexer, true);
+            if (!scan_preproc_newline(lexer, true)) return false;
+        } else {
+            lexer->advance(lexer, true);
+        }
+    }
+    if (lexer->lookahead != ',') return false;
+    lexer->advance(lexer, false);
+    unsigned depth = 1;
+    MacroArgumentWord word = {0};
+    while (!lexer->eof(lexer)) {
+        int32_t c = lexer->lookahead;
+        if (c == ')' && depth == 1) break;
+        if (function_macro_argument_token(lexer, &word, NULL) != MACRO_ARGUMENT_PLAIN) continue;
+        if (c == '(') depth++;
+        else if (c == ')') depth--;
+        function_macro_argument_word(&word, c);
+        lexer->advance(lexer, false);
+    }
+    lexer->mark_end(lexer);
+    return true;
+}
 
 static bool scan_function_attribute_guard(TSLexer *lexer, bool prototype, bool require_literal, bool trailing, const MacroAttributeSymbols *symbols) {
     char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
@@ -156,26 +190,9 @@ static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close,
         int32_t c = lexer->lookahead;
         if (c == ';' || c == '{' || c == '#') return false;
         function_macro_note_literal(literal, depth, nested, &word, c);
-        if (pragma_space(c)) {
-            lexer->advance(lexer, false);
-            word = (MacroArgumentWord){0};
-            continue;
-        }
-        if (c == '/') {
-            if (!function_macro_argument_slash(lexer, true)) return false;
-            word = (MacroArgumentWord){0};
-            continue;
-        }
-        if (c == '\\') {
-            if (!function_macro_argument_escape(lexer, &word)) return false;
-            continue;
-        }
-        if (c == '"' || (c == '\'' && !word.number)) {
-            if (!function_macro_argument_quote(lexer, c,
-                c == '"' && gnu_raw_string_prefix(&word.raw_prefix), unterminated_raw)) return false;
-            word = (MacroArgumentWord){0};
-            continue;
-        }
+        MacroArgumentToken token = function_macro_argument_token(lexer, &word, unterminated_raw);
+        if (token == MACRO_ARGUMENT_INVALID) return false;
+        if (token == MACRO_ARGUMENT_CONSUMED) continue;
         function_macro_argument_word(&word, c);
         if (!function_macro_group(c, open, close, &depth, &nested)) return false;
         lexer->advance(lexer, false);
@@ -280,6 +297,26 @@ static bool function_macro_argument_escape(TSLexer *lexer, MacroArgumentWord *wo
     if (!scan_preproc_ucn(lexer, &word->number)) return false;
     word->identifier = !word->number;
     return true;
+}
+
+static MacroArgumentToken function_macro_argument_token(TSLexer *lexer, MacroArgumentWord *word, bool *unterminated_raw) {
+    int32_t c = lexer->lookahead;
+    if (pragma_space(c)) {
+        lexer->advance(lexer, false);
+        *word = (MacroArgumentWord){0};
+    } else if (c == '/') {
+        if (!function_macro_argument_slash(lexer, true)) return MACRO_ARGUMENT_INVALID;
+        *word = (MacroArgumentWord){0};
+    } else if (c == '\\') {
+        if (!function_macro_argument_escape(lexer, word)) return MACRO_ARGUMENT_INVALID;
+    } else if (c == '"' || (c == '\'' && !word->number)) {
+        if (!function_macro_argument_quote(lexer, c,
+            c == '"' && gnu_raw_string_prefix(&word->raw_prefix), unterminated_raw)) return MACRO_ARGUMENT_INVALID;
+        *word = (MacroArgumentWord){0};
+    } else {
+        return MACRO_ARGUMENT_PLAIN;
+    }
+    return MACRO_ARGUMENT_CONSUMED;
 }
 
 static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote, bool raw, bool *unterminated_raw) {

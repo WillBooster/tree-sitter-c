@@ -65,8 +65,8 @@ The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
 Keep preprocessor argument/newline handling ahead of annotation lookahead.
 Port `preproc_argument_mode` selection together with `scan_preproc_arg` so tokenized pragmas retain raw bodies.
-Append `_gnu_raw_string_body` in the inherited enum slot and port its dispatch from `src/scanner.c`.
-A derived grammar overriding `raw_string_literal` can keep its own body scanner, but must retain that enum slot.
+Append `_gnu_raw_string_body` and `_raw_macro_type_tail` in their inherited enum slots and port their dispatch from `src/scanner.c`.
+A derived grammar overriding `raw_string_literal` can keep its own body scanner, but must retain the inherited enum slots.
 Port `_conditional_marker_ifdef`, `_conditional_marker_ifndef`, `_leading_conditional_marker_ifdef`, and
 `_leading_conditional_marker_ifndef` with `scan_conditional_macro`. The leading pair checks a following type prefix;
 when both contexts are valid, choose the leading role if its type proof succeeds, otherwise use the valid

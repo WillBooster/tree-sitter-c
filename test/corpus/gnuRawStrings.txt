@@ -621,6 +621,9 @@ extern TYPE(((LR"(wide)")), 1, ignored) second;
 extern TYPE(UR"(utf32)", prefix, suffix) third;
 extern TYPE(u8R"(utf8)") fourth;
 extern va_arg(uR"(utf16)") fifth;
+extern TYPE(R"(x)",) empty;
+extern TYPE(R"(x)", const int) type_tokens;
+extern TYPE(R"(x)", +, ], {) opaque;
 void after(void) {}
 
 ---
@@ -649,8 +652,7 @@ void after(void) {}
         (parenthesized_expression
           (parenthesized_expression
             (raw_string_literal)))
-        (number_literal)
-        (identifier)))
+        (preproc_arg)))
     (identifier))
   (declaration
     (storage_class_specifier)
@@ -658,8 +660,7 @@ void after(void) {}
       (identifier)
       (argument_list
         (raw_string_literal)
-        (identifier)
-        (identifier)))
+        (preproc_arg)))
     (identifier))
   (declaration
     (storage_class_specifier)
@@ -674,6 +675,30 @@ void after(void) {}
       (identifier)
       (argument_list
         (raw_string_literal)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
     (identifier))
   (function_definition
     (primitive_type)

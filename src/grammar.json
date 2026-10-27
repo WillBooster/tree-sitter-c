@@ -18263,20 +18263,21 @@
           "name": "_raw_string_type_argument"
         },
         {
-          "type": "REPEAT",
-          "content": {
-            "type": "SEQ",
-            "members": [
-              {
-                "type": "STRING",
-                "value": ","
-              },
-              {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "ALIAS",
+              "content": {
                 "type": "SYMBOL",
-                "name": "expression"
-              }
-            ]
-          }
+                "name": "_raw_macro_type_tail"
+              },
+              "named": true,
+              "value": "preproc_arg"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         },
         {
           "type": "STRING",
@@ -18995,6 +18996,10 @@
     {
       "type": "SYMBOL",
       "name": "_gnu_raw_string_body"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_raw_macro_type_tail"
     }
   ],
   "inline": [
