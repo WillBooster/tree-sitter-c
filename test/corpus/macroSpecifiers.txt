@@ -193,7 +193,7 @@ int invoke(callback_t fn, C argument) { return fn(argument); }
     type: (primitive_type)
     declarator: (function_declarator
       declarator: (parenthesized_declarator
-        (pointer_declarator
+        declarator: (pointer_declarator
           declarator: (type_identifier)))
       parameters: (parameter_list
         (parameter_declaration
@@ -236,7 +236,7 @@ int invoke(callback_t fn, C argument) { return fn(argument); }
           type: (type_identifier)
           declarator: (abstract_function_declarator
             declarator: (abstract_parenthesized_declarator
-              (abstract_pointer_declarator))
+              declarator: (abstract_pointer_declarator))
             parameters: (parameter_list
               (parameter_declaration
                 type: (type_identifier))))))))

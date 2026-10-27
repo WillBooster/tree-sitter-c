@@ -1902,7 +1902,7 @@ function conditionalMacroRule($, ifdef, ifndef) {
  * @param {import('./types/treeSitterDsl').Rule} declarator
  */
 function parenthesizedDeclaratorRule($, declarator) {
-  const parenthesized = seq('(', optional($.ms_call_modifier), declarator, ')');
+  const parenthesized = seq('(', optional($.ms_call_modifier), field('declarator', declarator), ')');
   return choice(parenthesized, prec(2, seq($.ms_call_modifier, parenthesized)));
 }
 
