@@ -207,7 +207,7 @@ typedef void(__stdcall *fp)();
     declarator: (function_declarator
       declarator: (parenthesized_declarator
         (ms_call_modifier)
-        (identifier))
+        declarator: (identifier))
       parameters: (parameter_list))
     body: (compound_statement))
   (declaration
@@ -220,14 +220,14 @@ typedef void(__stdcall *fp)();
     type: (primitive_type)
     declarator: (parenthesized_declarator
       (ms_call_modifier)
-      (function_declarator
+      declarator: (function_declarator
         declarator: (identifier)
         parameters: (parameter_list))))
   (type_definition
     type: (primitive_type)
     declarator: (function_declarator
       declarator: (parenthesized_declarator
-        (pointer_declarator
+        declarator: (pointer_declarator
           (ms_call_modifier)
           declarator: (type_identifier)))
       parameters: (parameter_list))))
@@ -505,7 +505,7 @@ int *value;
           (ms_call_modifier)
           declarator: (function_declarator
             declarator: (parenthesized_declarator
-              (pointer_declarator
+              declarator: (pointer_declarator
                 declarator: (field_identifier)))
             parameters: (parameter_list
               (parameter_declaration
