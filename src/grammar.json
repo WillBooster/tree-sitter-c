@@ -8702,13 +8702,27 @@
                     "type": "FIELD",
                     "name": "type",
                     "content": {
-                      "type": "ALIAS",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "_guarded_macro_type_specifier"
-                      },
-                      "named": true,
-                      "value": "type_specifier"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_known_annotation_type_specifier"
+                          },
+                          "named": true,
+                          "value": "type_specifier"
+                        },
+                        {
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_guarded_macro_type_specifier"
+                          },
+                          "named": true,
+                          "value": "type_specifier"
+                        }
+                      ]
                     }
                   },
                   {

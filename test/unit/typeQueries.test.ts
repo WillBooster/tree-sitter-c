@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+
 import { Edit, Language, Parser, Query } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
@@ -177,6 +179,85 @@ void other(void);`;
         .map((node) => node.childForFieldName('declarator')?.text)
         .slice(-2)
     ).toEqual(['after', 'other(void)']);
+  } finally {
+    query.delete();
+    tree.delete();
+    parser.delete();
+  }
+});
+
+test('keeps known type constructors and keyword captures after marker prefixes', async () => {
+  await Parser.init();
+  const language = await Language.load('tree-sitter-c.wasm');
+  const parser = new Parser().setLanguage(language);
+  const keywords = ['typeof', '__typeof', '__typeof__', 'typeof_unqual', '__typeof_unqual', '__typeof_unqual__'];
+  const types = [...keywords.map((keyword) => `${keyword}(int)`), '_Atomic(int)', '_BitInt(8)', 'TYPE(int)'];
+  const parameter = 'struct { int z; } p';
+  const source = `#define MARK\n#define TYPE(...) __VA_ARGS__\n${types.map((type, index) => `MARK const ${type} f${index}(${parameter});`).join('\n')}\nint next;\n`;
+  let currentSource = source;
+  let tree = parser.parse(source)!;
+  const query = new Query(
+    language,
+    fs.readFileSync(new URL('../../queries/highlights.scm', import.meta.url), 'utf8') +
+      '\n(declaration type: (typeof_specifier) @return.type declarator: (function_declarator declarator: (identifier) @return.name))'
+  );
+  const captures = (root: typeof tree.rootNode): Array<[string, string, number, number]> =>
+    query.captures(root).map(({ name, node }) => [name, node.text, node.startIndex, node.endIndex]);
+  const check = (): void => {
+    expect(tree.rootNode.hasError).toBe(false);
+    const declarations = tree.rootNode.namedChildren.filter((node) => node.type === 'declaration');
+    expect(declarations.map((node) => node.childForFieldName('type')?.type)).toEqual([
+      ...keywords.map(() => 'typeof_specifier'),
+      'atomic_type_specifier',
+      'bit_int_specifier',
+      'macro_type_specifier',
+      'primitive_type',
+    ]);
+    expect(declarations.map((node) => node.childForFieldName('type')?.text)).toEqual([...types, 'int']);
+    expect(declarations.at(-1)?.text).toBe('int next;');
+    const result = query.captures(tree.rootNode);
+    expect(result.filter(({ name }) => name === 'return.type').map(({ node }) => node.text)).toEqual(
+      keywords.map((keyword) => `${keyword}(int)`)
+    );
+    expect(result.filter(({ name }) => name === 'return.name').map(({ node }) => node.text)).toEqual(
+      keywords.map((_, index) => `f${index}`)
+    );
+    expect(
+      result.filter(({ name, node }) => name === 'keyword' && keywords.includes(node.text)).map(({ node }) => node.text)
+    ).toEqual(keywords);
+  };
+  try {
+    check();
+    let oldParameter = parameter;
+    for (const nextParameter of ['int p', parameter]) {
+      const at = currentSource.indexOf(oldParameter);
+      const prefix = currentSource.slice(0, at);
+      const row = prefix.split('\n').length - 1;
+      const column = at - prefix.lastIndexOf('\n') - 1;
+      tree.edit(
+        new Edit({
+          startIndex: at,
+          oldEndIndex: at + oldParameter.length,
+          newEndIndex: at + nextParameter.length,
+          startPosition: { row, column },
+          oldEndPosition: { row, column: column + oldParameter.length },
+          newEndPosition: { row, column: column + nextParameter.length },
+        })
+      );
+      currentSource = currentSource.slice(0, at) + nextParameter + currentSource.slice(at + oldParameter.length);
+      const incremental = parser.parse(currentSource, tree)!;
+      tree.delete();
+      tree = incremental;
+      const fresh = parser.parse(currentSource)!;
+      try {
+        check();
+        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
+        expect(captures(tree.rootNode)).toEqual(captures(fresh.rootNode));
+      } finally {
+        fresh.delete();
+      }
+      oldParameter = nextParameter;
+    }
   } finally {
     query.delete();
     tree.delete();

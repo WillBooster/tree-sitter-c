@@ -981,7 +981,13 @@ module.exports = Object.assign(
                 repeat($._non_macro_declaration_modifiers),
                 repeat1(seq($.macro_specifier, repeat($._non_macro_declaration_modifiers))),
                 optional(sym('_braced_function_attribute_start')),
-                field('type', alias($._guarded_macro_type_specifier, $.type_specifier)),
+                field(
+                  'type',
+                  choice(
+                    alias(sym('_known_annotation_type_specifier'), $.type_specifier),
+                    alias($._guarded_macro_type_specifier, $.type_specifier)
+                  )
+                ),
                 repeat($._non_macro_declaration_modifiers)
               )
             ),
