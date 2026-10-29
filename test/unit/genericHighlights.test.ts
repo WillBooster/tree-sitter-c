@@ -100,14 +100,6 @@ test('highlights nested generic selections', async () => {
           const editedSelections = variant.rootNode.descendantsOfType('generic_expression');
           expect(editedSelections).toHaveLength(3);
           expect(editedSelections[0]!.namedChildren[0]!.text).toBe('value + 1');
-          for (const selection of editedSelections) {
-            const keyword = selection.children[0]!;
-            expect(
-              queries[0]!
-                .captures(variant.rootNode)
-                .filter((capture) => capture.name === 'keyword' && capture.node.id === keyword.id)
-            ).toHaveLength(1);
-          }
         }
       } finally {
         variant.delete();

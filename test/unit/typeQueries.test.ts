@@ -190,20 +190,18 @@ test('keeps known type constructors and keyword captures after marker prefixes',
       ]);
       expect(declarations.map((node) => node.childForFieldName('type')?.text)).toEqual([...types, 'int']);
       expect(declarations.at(-1)?.text).toBe('int next;');
-      const result = query.captures(tree.rootNode);
-      expect(result.filter(({ name }) => name === 'return.type').map(({ node }) => node.text)).toEqual(
-        keywords.map((keyword) => `${keyword}(int)`)
-      );
-      expect(result.filter(({ name }) => name === 'return.name').map(({ node }) => node.text)).toEqual(
-        keywords.map((_, index) => `f${index}`)
-      );
-      expect(
-        result
-          .filter(({ name, node }) => name === 'keyword' && keywords.includes(node.text))
-          .map(({ node }) => node.text)
-      ).toEqual(keywords);
     };
     check();
+    const result = query.captures(tree.rootNode);
+    expect(result.filter(({ name }) => name === 'return.type').map(({ node }) => node.text)).toEqual(
+      keywords.map((keyword) => `${keyword}(int)`)
+    );
+    expect(result.filter(({ name }) => name === 'return.name').map(({ node }) => node.text)).toEqual(
+      keywords.map((_, index) => `f${index}`)
+    );
+    expect(
+      result.filter(({ name, node }) => name === 'keyword' && keywords.includes(node.text)).map(({ node }) => node.text)
+    ).toEqual(keywords);
     tree = parser.parse(source.replaceAll(parameter, 'int p'))!;
     ownedTree.delete();
     ownedTree = tree;

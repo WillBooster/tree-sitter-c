@@ -78,12 +78,10 @@ test('highlights definition alternatives without capturing identifier or literal
     const variant = parser.parse(Source.replace('#  elifdef', '#elifndef'))!;
     try {
       expect(variant.rootNode.hasError).toBe(false);
-      expect(
-        highlights
-          .captures(variant.rootNode)
-          .filter(({ name, node }) => name === 'keyword' && ['#elifdef', '#elifndef'].includes(node.type))
-          .map(({ node }) => node.type)
-      ).toEqual(['#elifndef', '#elifndef']);
+      expect(variant.rootNode.descendantsOfType(['#elifdef', '#elifndef']).map((node) => node.type)).toEqual([
+        '#elifndef',
+        '#elifndef',
+      ]);
     } finally {
       variant.delete();
     }

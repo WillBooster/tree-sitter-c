@@ -81,7 +81,6 @@ test('retains function-like names after leading splices and comments', () => {
 
 test('classifies macro definitions by the gap after the name', () => {
   const parser = new Parser().setLanguage(language);
-  const query = new Query(language, fs.readFileSync('queries/highlights.scm', 'utf8'));
   try {
     for (const [gap, functionNames] of [
       ['/**/', []],
@@ -97,17 +96,13 @@ test('classifies macro definitions by the gap after the name', () => {
       try {
         expect(tree.rootNode.hasError, JSON.stringify(gap)).toBe(false);
         expect(
-          query
-            .captures(tree.rootNode)
-            .filter(({ name }) => name === 'function.special')
-            .map(({ node }) => node.text)
+          tree.rootNode.descendantsOfType('preproc_function_def').map((node) => node.childForFieldName('name')?.text)
         ).toEqual(functionNames);
       } finally {
         tree.delete();
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });

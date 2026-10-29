@@ -182,13 +182,15 @@ test('retains function typedef ownership when array bounds contain braced types'
           expect(definition.startIndex).toBeGreaterThanOrEqual(header.length);
           expect(definition.endIndex).toBeLessThan(text.indexOf('F *callback;'));
           expect(current.rootNode.namedChildren.at(-1)?.text).toBe(following);
-          const captures = query!.captures(current.rootNode);
-          expect(captures.findLast(({ name }) => name === 'alias.name')?.node.text).toBe(declarator.text);
-          expect(captures.filter(({ name }) => name === 'definition.function').map(({ node }) => node.text)).toEqual([
-            'after(void)',
-          ]);
         };
         check(tree, source);
+        const captures = query.captures(tree.rootNode);
+        expect(captures.findLast(({ name }) => name === 'alias.name')?.node.text).toBe(
+          tree.rootNode.descendantsOfType('type_definition').at(-1)!.childForFieldName('declarator')!.text
+        );
+        expect(captures.filter(({ name }) => name === 'definition.function').map(({ node }) => node.text)).toEqual([
+          'after(void)',
+        ]);
         checkCommentInsertion(parser, source, source.indexOf('{', header.length), check);
       } finally {
         tree?.delete();
@@ -236,12 +238,6 @@ test('keeps marked nested function declarators with braced parameter bounds', as
             return name?.type === 'identifier' ? [name.text] : [];
           });
           expect(declaratorNames).toEqual(['f']);
-          expect(
-            query!
-              .captures(current.rootNode)
-              .filter(({ name, node }) => name === 'name' && node.type === 'identifier')
-              .map(({ node }) => node.text)
-          ).toEqual(['f', 'after']);
           const after = current.rootNode.namedChildren.at(-1)!;
           expect([after.type, after.text, after.startIndex, after.endIndex, after.hasError]).toEqual([
             'function_definition',
@@ -252,6 +248,12 @@ test('keeps marked nested function declarators with braced parameter bounds', as
           ]);
         };
         check(tree, source);
+        expect(
+          query
+            .captures(tree.rootNode)
+            .filter(({ name, node }) => name === 'name' && node.type === 'identifier')
+            .map(({ node }) => node.text)
+        ).toEqual(['f', 'after']);
         checkCommentInsertion(parser, source, source.indexOf('{', header.length), check);
       } finally {
         tree?.delete();

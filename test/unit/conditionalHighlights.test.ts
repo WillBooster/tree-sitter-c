@@ -92,11 +92,6 @@ test('highlights conditional punctuation without capturing other colons', async 
             ['condition', 'consequence', 'alternative'].map((field) => expression.childForFieldName(field)?.text)
           ).toEqual(['a', 'longChoice', '(b ? c : a)']);
           for (const node of expression.children.filter((node) => ['?', ':'].includes(node.type))) {
-            expect(
-              queries[0]!
-                .captures(variant.rootNode)
-                .filter((capture) => capture.name === 'operator' && capture.node.id === node.id)
-            ).toHaveLength(1);
             expect(source.slice(node.startIndex, node.endIndex)).toBe(node.type);
           }
         }

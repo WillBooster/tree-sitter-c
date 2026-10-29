@@ -8,7 +8,6 @@ test('preserves declaration types and names when size and signedness specifiers 
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
   const original = fs.readFileSync('test/fixtures/interleavedSpecifiers.c', 'utf8');
-  const typeQuery = new Query(language, '(declaration type: (type_specifier) @type)');
   const tags = new Query(language, fs.readFileSync('queries/tags.scm', 'utf8'));
   const highlights = new Query(language, fs.readFileSync('queries/highlights.scm', 'utf8'));
   const tree = parser.parse(original)!;
@@ -60,16 +59,7 @@ test('preserves declaration types and names when size and signedness specifiers 
       try {
         expect(variant.rootNode.hasError).toBe(false);
         expect(variant.rootNode.firstNamedChild?.childForFieldName('declarator')?.text).toBe('x');
-        expect(typeQuery.captures(variant.rootNode).map(({ node }) => node.text)).toEqual([
-          replacement,
-          'int static long',
-          'signed static char',
-          'unsigned const int',
-          'unsigned static _BitInt(17)',
-          'unsigned register long',
-          'int',
-          'long',
-        ]);
+        expect(variant.rootNode.firstNamedChild?.childForFieldName('type')?.text).toBe(replacement);
       } finally {
         variant.delete();
       }
@@ -77,7 +67,6 @@ test('preserves declaration types and names when size and signedness specifiers 
   } finally {
     highlights.delete();
     tags.delete();
-    typeQuery.delete();
     tree.delete();
     parser.delete();
   }

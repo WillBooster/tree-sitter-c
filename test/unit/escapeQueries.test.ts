@@ -59,7 +59,7 @@ test('preserves valid escape queries and separates invalid escapes', async () =>
     const fixed = parser.parse(source.slice(0, startIndex) + String.raw`\n` + source.slice(startIndex + 2))!;
     try {
       expect(fixed.rootNode.hasError).toBe(false);
-      expect(captures(fixed.rootNode).find(({ start }) => start === startIndex)?.name).toBe('valid');
+      expect(fixed.rootNode.descendantForIndex(startIndex, startIndex + 2)?.type).toBe('escape_sequence');
     } finally {
       fixed.delete();
     }

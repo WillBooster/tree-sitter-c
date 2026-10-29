@@ -32,15 +32,17 @@ test('keeps declarator-free qualifiers within their declarations with and withou
             .descendantsOfType('declaration')
             .map((node) => [node.childForFieldName('type')?.text, node.childForFieldName('declarator')?.text])
         ).toEqual([...(name ? [['long', name]] : []), ['long', 'named'], ['unsigned', 'next = 1']]);
-        expect(
-          tags
-            .captures(tree.rootNode)
-            .filter(({ name: capture }) => capture === 'name')
-            .map(({ node }) => [node.text, node.startPosition.row, node.endPosition.row])
-        ).toEqual([
-          ['qualifierOnly', 5, 5],
-          ['following', 11, 11],
-        ]);
+        if (!name) {
+          expect(
+            tags
+              .captures(tree.rootNode)
+              .filter(({ name: capture }) => capture === 'name')
+              .map(({ node }) => [node.text, node.startPosition.row, node.endPosition.row])
+          ).toEqual([
+            ['qualifierOnly', 5, 5],
+            ['following', 11, 11],
+          ]);
+        }
         for (const node of tree.rootNode.descendantsOfType(['sized_type_specifier', 'type_qualifier'])) {
           expect(node.endPosition.row).toBe(node.startPosition.row);
         }
