@@ -125,7 +125,8 @@ public type and declarator subtype queries. Quoted punctuation and comments rema
 encountered before an unknown annotation's braced handoff reject that lookahead; directive-bearing arguments need
 separate support. The marker proof balances recognized declaration-modifier groups, including inline types inside
 attribute arguments, in one pass. Those recognized groups do not turn an attribute's internal brace into the following
-macro type's handoff.
+macro type's handoff. Type-constructor operands and tagged definition bodies in a marked prefix
+likewise keep their own braces.
 Balanced groups followed by a later braced annotation retain their original guard, so typed annotation chains remain
 annotations. Guarded macro types require a first type descriptor; additional arguments are grammar-parsed only under
 the current-group braced hint. A semicolon can terminate an anchored declaration macro without consuming the next

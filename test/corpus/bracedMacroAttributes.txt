@@ -615,3 +615,18 @@ int after;
 --------------------------------------------------------------------------------
 
 (translation_unit (preproc_def name: (identifier)) (preproc_function_def name: (identifier) parameters: (preproc_params)) (declaration (macro_specifier name: (identifier)) type: (typeof_specifier (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) (attribute_specifier name: (identifier) arguments: (argument_list (compound_literal_expression type: (type_descriptor type: (primitive_type) declarator: (abstract_array_declarator)) value: (initializer_list (number_literal))))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (declaration (macro_specifier name: (identifier)) type: (atomic_type_specifier type: (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) (attribute_specifier name: (identifier) arguments: (argument_list (initializer_list (number_literal)))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (declaration (macro_specifier name: (identifier)) type: (typeof_specifier (type_descriptor type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))))) declarator: (function_declarator declarator: (identifier) parameters: (parameter_list (parameter_declaration type: (primitive_type))))) (declaration type: (primitive_type) declarator: (identifier)))
+
+================================================================================
+Marked tagged definitions retain following braced annotations
+================================================================================
+
+#define MARK
+#define ATTR(...)
+MARK struct S { int member; } ATTR((int[]){1}) value;
+MARK struct { int member; } ATTR({ 1 }) anonymous;
+MARK const union U { int a; float b; } ATTR({ 2 }) qualified;
+int after;
+
+--------------------------------------------------------------------------------
+
+(translation_unit (preproc_def name: (identifier)) (preproc_function_def name: (identifier) parameters: (preproc_params)) (declaration (macro_specifier name: (identifier)) type: (struct_specifier name: (type_identifier) body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))) (attribute_specifier name: (identifier) arguments: (argument_list (compound_literal_expression type: (type_descriptor type: (primitive_type) declarator: (abstract_array_declarator)) value: (initializer_list (number_literal))))) declarator: (identifier)) (declaration (macro_specifier name: (identifier)) type: (struct_specifier body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)))) (attribute_specifier name: (identifier) arguments: (argument_list (initializer_list (number_literal)))) declarator: (identifier)) (declaration (macro_specifier name: (identifier)) (type_qualifier) type: (union_specifier name: (type_identifier) body: (field_declaration_list (field_declaration type: (primitive_type) declarator: (field_identifier)) (field_declaration type: (primitive_type) declarator: (field_identifier)))) (attribute_specifier name: (identifier) arguments: (argument_list (initializer_list (number_literal)))) declarator: (identifier)) (declaration type: (primitive_type) declarator: (identifier)))

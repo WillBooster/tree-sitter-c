@@ -161,6 +161,7 @@ static bool scan_braced_macro_type_start(TSLexer *lexer, const MacroAttributeSym
     bool marker = false;
     bool known_type = false;
     bool tag = false;
+    bool body = false;
     bool started = false;
     for (;;) {
         while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
@@ -168,6 +169,11 @@ static bool scan_braced_macro_type_start(TSLexer *lexer, const MacroAttributeSym
             if (!started) lexer->mark_end(lexer);
             started = true;
             if (!function_macro_bracket_attribute(lexer)) return false;
+            continue;
+        }
+        if (lexer->lookahead == '{') {
+            if (!body || !function_macro_modifier_balanced(lexer, '{', '}')) return false;
+            body = tag = false;
             continue;
         }
         char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
@@ -190,6 +196,7 @@ static bool scan_braced_macro_type_start(TSLexer *lexer, const MacroAttributeSym
             case MACRO_TYPE_PREFIX_MARKER:
                 if (known_type && !tag) return false;
                 marker |= !known_type;
+                body = tag;
                 tag = false;
                 break;
             case MACRO_TYPE_PREFIX_KNOWN_TYPE:
@@ -197,7 +204,7 @@ static bool scan_braced_macro_type_start(TSLexer *lexer, const MacroAttributeSym
             case MACRO_TYPE_PREFIX_TAGGED_TYPE:
                 if (!marker || (known_type && kind == MACRO_TYPE_PREFIX_BALANCED_TYPE)) return false;
                 known_type = true;
-                tag = kind == MACRO_TYPE_PREFIX_TAGGED_TYPE;
+                tag = body = kind == MACRO_TYPE_PREFIX_TAGGED_TYPE;
                 break;
         }
     }
@@ -324,7 +331,8 @@ static MacroGroup function_macro_group_prefix(TSLexer *lexer, int32_t open, int3
 static MacroGroup function_macro_group_contents(TSLexer *lexer, int32_t open, int32_t close, bool *literal, bool *unterminated_raw, bool type_argument, bool modifier) {
     unsigned depth = 1;
     unsigned nested = 0;
-    unsigned braces = 0;
+    // A definition body's own brace permits its member semicolons.
+    unsigned braces = open == '{';
     MacroArgumentWord word = {0};
     while (depth) {
         if (lexer->eof(lexer)) return MACRO_GROUP_INVALID;
