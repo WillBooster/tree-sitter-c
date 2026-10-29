@@ -31,16 +31,28 @@ typedef struct {
     TSSymbol object_start;
     bool allow_pragma;
     bool allow_object_start;
+    TSSymbol braced_start;
+    bool allow_braced_start;
 } MacroAttributeSymbols;
+
+typedef enum {
+    MACRO_GROUP_INVALID, MACRO_GROUP_BALANCED, MACRO_GROUP_BRACED,
+} MacroGroup;
 
 static MacroArgumentToken function_macro_argument_token(TSLexer *lexer, MacroArgumentWord *word, bool *unterminated_raw);
 
 static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close, bool *literal, bool *unterminated_raw);
-static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested);
+static bool function_macro_modifier_balanced(TSLexer *lexer, int32_t open, int32_t close);
+static MacroGroup function_macro_group_prefix(TSLexer *lexer, int32_t open, int32_t close, bool *literal, bool *unterminated_raw, bool type_argument);
+static MacroGroup function_macro_group_contents(TSLexer *lexer, int32_t open, int32_t close, bool *literal, bool *unterminated_raw, bool type_argument, bool modifier);
+static bool function_macro_group_separator(int32_t c, unsigned depth, unsigned nested, bool type_argument, unsigned braces);
+static bool function_macro_type_prefix_keyword(const MacroName *name, const char *const *reserved_words, unsigned reserved_count);
+static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested, unsigned *braces);
 static void function_macro_note_literal(bool *literal, unsigned depth, unsigned nested, const MacroArgumentWord *word, int32_t c);
 static bool function_macro_tail_word(TSLexer *lexer, bool escaped, MacroPrototypeTail *tail);
-static bool function_macro_tail_group(TSLexer *lexer, int32_t c, MacroPrototypeTail *tail);
-static bool function_macro_declaration_continues(TSLexer *lexer, bool post_type);
+static MacroGroup function_macro_tail_group(TSLexer *lexer, int32_t c, MacroPrototypeTail *tail);
+static bool function_macro_tail_punctuator(TSLexer *lexer, int32_t c, MacroPrototypeTail *tail);
+static bool function_macro_declaration_continues(TSLexer *lexer, bool post_type, bool allow_braced);
 static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote, bool raw, bool *unterminated_raw);
 static bool function_macro_argument_escape(TSLexer *lexer, MacroArgumentWord *word);
 static bool function_macro_argument_slash(TSLexer *lexer, bool allow_division);
@@ -62,12 +74,18 @@ static inline bool scan_raw_macro_type_tail(TSLexer *lexer) {
     while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
     if (lexer->lookahead == ')' || lexer->eof(lexer)) return false;
     unsigned depth = 1;
+    unsigned nested = 0;
+    unsigned braces = 0;
+    bool balanced = true;
     MacroArgumentWord word = {0};
     while (!lexer->eof(lexer)) {
         int32_t c = lexer->lookahead;
         if (c == ')' && depth == 1) break;
         if (function_macro_argument_token(lexer, &word, NULL) != MACRO_ARGUMENT_PLAIN) continue;
-        if (c == '(') depth++;
+        // Like the attribute guard, leave a balanced group's first brace and later arguments to the grammar.
+        if (c == '{' && balanced) return false;
+        if (balanced) balanced = function_macro_group(c, '(', ')', &depth, &nested, &braces);
+        else if (c == '(') depth++;
         else if (c == ')') depth--;
         function_macro_argument_word(&word, c);
         lexer->advance(lexer, false);
@@ -76,27 +94,148 @@ static inline bool scan_raw_macro_type_tail(TSLexer *lexer) {
     return true;
 }
 
-static bool scan_function_attribute_guard(TSLexer *lexer, bool prototype, bool require_literal, bool trailing, const MacroAttributeSymbols *symbols) {
-    char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
-    MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true, .lookahead_only = !trailing};
-    if (!scan_macro_name(lexer, &name)) return false;
-    if (name.ascii && strcmp(word, pragma_word) == 0) {
+static bool function_macro_first_word(TSLexer *lexer, const MacroName *name, const MacroAttributeSymbols *symbols, bool *handled) {
+    *handled = true;
+    if (name->ascii && strcmp(name->word, pragma_word) == 0) {
         lexer->result_symbol = symbols->pragma;
         return symbols->allow_pragma && scan_pragma_suffix(lexer);
     }
-    if (symbols->allow_object_start && name.ascii && function_macro_scalar_type_keyword(word)) {
+    if (symbols->allow_object_start && name->ascii && function_macro_scalar_type_keyword(name->word)) {
         lexer->result_symbol = symbols->object_start;
         return function_macro_object_prefix(lexer);
     }
+    *handled = false;
+    return false;
+}
+
+static bool scan_function_attribute_guard(TSLexer *lexer, bool prototype, bool require_literal, bool trailing, const MacroAttributeSymbols *symbols) {
+    bool braced_only = symbols->allow_braced_start && lexer->result_symbol == symbols->braced_start;
+    char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
+    MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true, .lookahead_only = !trailing};
+    if (!scan_macro_name(lexer, &name)) return false;
+    bool handled;
+    bool accepted = function_macro_first_word(lexer, &name, symbols, &handled);
+    if (handled) return accepted;
     if (lexer->result_symbol == symbols->object_start) return false;
     if (name.ascii && function_macro_attribute_keyword(word, trailing)) return false;
     if (!scan_pragma_spacing(lexer) || lexer->lookahead != '(') return false;
     if (trailing) return function_macro_trailing_argument_prefix(lexer);
     bool literal = false;
     bool unterminated_raw = false;
-    bool balanced = function_macro_balanced(lexer, '(', ')', &literal, &unterminated_raw);
-    return unterminated_raw || (balanced && (!require_literal || literal) &&
-        (!prototype || function_macro_declaration_continues(lexer, require_literal)));
+    MacroGroup group = function_macro_group_prefix(lexer, '(', ')', &literal, &unterminated_raw, false);
+    // The grammar closes braced arguments without repeated lookahead through an incomplete body.
+    if (group == MACRO_GROUP_BRACED && symbols->allow_braced_start) {
+        lexer->result_symbol = symbols->braced_start;
+        return true;
+    }
+    if (braced_only) return false;
+    if (unterminated_raw) return true;
+    if (group != MACRO_GROUP_BALANCED) return false;
+    return (!require_literal || literal) && (!prototype || function_macro_declaration_continues(lexer, require_literal, symbols->allow_braced_start));
+}
+
+static bool function_macro_bracket_attribute(TSLexer *lexer) {
+    lexer->advance(lexer, false);
+    if (!scan_pragma_spacing(lexer) || lexer->lookahead != '[') return false;
+    if (!function_macro_modifier_balanced(lexer, '[', ']') ||
+        !scan_pragma_spacing(lexer) || lexer->lookahead != ']') return false;
+    lexer->advance(lexer, false);
+    return scan_pragma_spacing(lexer);
+}
+
+static bool function_macro_type_modifier_word(const MacroName *name) {
+    return name->ascii && function_macro_word_in(name->word, function_macro_group_modifiers,
+        sizeof(function_macro_group_modifiers) / sizeof(function_macro_group_modifiers[0])) &&
+        !function_macro_word_in(name->word, function_macro_type_keywords,
+            sizeof(function_macro_type_keywords) / sizeof(function_macro_type_keywords[0]));
+}
+
+typedef enum {
+    MACRO_TYPE_PREFIX_INVALID, MACRO_TYPE_PREFIX_MODIFIER, MACRO_TYPE_PREFIX_MARKER, MACRO_TYPE_PREFIX_TYPE,
+    MACRO_TYPE_PREFIX_KNOWN_TYPE, MACRO_TYPE_PREFIX_BALANCED_TYPE, MACRO_TYPE_PREFIX_TAGGED_TYPE,
+} MacroTypePrefix;
+
+static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const MacroName *name, const char *const *reserved_words, unsigned reserved_count, bool type_argument);
+
+static bool scan_braced_macro_type_start(TSLexer *lexer, const MacroAttributeSymbols *symbols, const char *const *reserved_words, unsigned reserved_count) {
+    bool marker = false;
+    bool known_type = false;
+    bool tag = false;
+    bool body = false;
+    bool started = false;
+    for (;;) {
+        while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
+        if (lexer->lookahead == '[') {
+            if (!started) lexer->mark_end(lexer);
+            started = true;
+            if (!function_macro_bracket_attribute(lexer)) return false;
+            continue;
+        }
+        if (lexer->lookahead == '{') {
+            if (!body || !function_macro_modifier_balanced(lexer, '{', '}')) return false;
+            body = tag = false;
+            continue;
+        }
+        char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
+        MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true, .lookahead_only = true, .preserve_end = started};
+        if (!scan_macro_name(lexer, &name)) return false;
+        if (!started) {
+            bool handled;
+            bool accepted = function_macro_first_word(lexer, &name, symbols, &handled);
+            if (handled) return accepted;
+        }
+        started = true;
+        MacroTypePrefix kind = function_macro_type_prefix_item(lexer, &name, reserved_words, reserved_count, !known_type);
+        switch (kind) {
+            case MACRO_TYPE_PREFIX_INVALID:
+                return false;
+            case MACRO_TYPE_PREFIX_TYPE:
+                return marker;
+            case MACRO_TYPE_PREFIX_MODIFIER:
+                continue;
+            case MACRO_TYPE_PREFIX_MARKER:
+                if (known_type && !tag) return false;
+                marker |= !known_type;
+                body = tag;
+                tag = false;
+                break;
+            case MACRO_TYPE_PREFIX_KNOWN_TYPE:
+            case MACRO_TYPE_PREFIX_BALANCED_TYPE:
+            case MACRO_TYPE_PREFIX_TAGGED_TYPE:
+                if (!marker || (known_type && kind == MACRO_TYPE_PREFIX_BALANCED_TYPE)) return false;
+                known_type = true;
+                tag = body = kind == MACRO_TYPE_PREFIX_TAGGED_TYPE;
+                break;
+        }
+    }
+}
+
+static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const MacroName *name, const char *const *reserved_words, unsigned reserved_count, bool type_argument) {
+    if (name->ascii && strcmp(name->word, pragma_word) == 0) {
+        return scan_pragma_suffix_end(lexer, false) && scan_pragma_spacing(lexer)
+            ? MACRO_TYPE_PREFIX_MODIFIER : MACRO_TYPE_PREFIX_INVALID;
+    }
+    if (!scan_pragma_spacing(lexer)) return MACRO_TYPE_PREFIX_INVALID;
+    if (function_macro_type_modifier_word(name)) {
+        return lexer->lookahead == '(' && function_macro_modifier_balanced(lexer, '(', ')') && scan_pragma_spacing(lexer)
+            ? MACRO_TYPE_PREFIX_MODIFIER : MACRO_TYPE_PREFIX_INVALID;
+    }
+    if (name->ascii && function_macro_word_in(name->word, function_macro_type_keywords,
+        sizeof(function_macro_type_keywords) / sizeof(function_macro_type_keywords[0]))) {
+        if (lexer->lookahead == '(' && (!function_macro_modifier_balanced(lexer, '(', ')') || !scan_pragma_spacing(lexer))) return MACRO_TYPE_PREFIX_INVALID;
+        if (strcmp(name->word, "struct") == 0 || strcmp(name->word, "union") == 0 || strcmp(name->word, "enum") == 0) return MACRO_TYPE_PREFIX_TAGGED_TYPE;
+        return MACRO_TYPE_PREFIX_KNOWN_TYPE;
+    }
+    if (name->ascii && function_macro_word_in(name->word, function_macro_type_prefix_modifiers,
+        sizeof(function_macro_type_prefix_modifiers) / sizeof(function_macro_type_prefix_modifiers[0]))) return MACRO_TYPE_PREFIX_MODIFIER;
+    if (function_macro_type_prefix_keyword(name, reserved_words, reserved_count)) return MACRO_TYPE_PREFIX_INVALID;
+    if (lexer->lookahead == '(') {
+        MacroGroup group = function_macro_group_prefix(lexer, '(', ')', NULL, NULL, type_argument);
+        if (group == MACRO_GROUP_BRACED) return MACRO_TYPE_PREFIX_TYPE;
+        if (group == MACRO_GROUP_BALANCED && scan_pragma_spacing(lexer)) return MACRO_TYPE_PREFIX_BALANCED_TYPE;
+        return MACRO_TYPE_PREFIX_INVALID;
+    }
+    return MACRO_TYPE_PREFIX_MARKER;
 }
 
 static bool function_macro_trailing_argument_prefix(TSLexer *lexer) {
@@ -173,26 +312,60 @@ static bool function_macro_attribute_keyword(const char *word, bool trailing) {
 }
 
 static bool function_macro_balanced(TSLexer *lexer, int32_t open, int32_t close, bool *literal, bool *unterminated_raw) {
-    unsigned depth = 1;
-    unsigned nested = 0;
-    MacroArgumentWord word = {0};
-    lexer->advance(lexer, false);
-    while (depth) {
-        if (lexer->eof(lexer)) return false;
-        int32_t c = lexer->lookahead;
-        if (c == ';' || c == '{' || c == '#') return false;
-        function_macro_note_literal(literal, depth, nested, &word, c);
-        MacroArgumentToken token = function_macro_argument_token(lexer, &word, unterminated_raw);
-        if (token == MACRO_ARGUMENT_INVALID) return false;
-        if (token == MACRO_ARGUMENT_CONSUMED) continue;
-        function_macro_argument_word(&word, c);
-        if (!function_macro_group(c, open, close, &depth, &nested)) return false;
-        lexer->advance(lexer, false);
-    }
-    return nested == 0;
+    return function_macro_group_prefix(lexer, open, close, literal, unterminated_raw, false) == MACRO_GROUP_BALANCED;
 }
 
-static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested) {
+static bool function_macro_modifier_balanced(TSLexer *lexer, int32_t open, int32_t close) {
+    lexer->advance(lexer, false);
+    return function_macro_group_contents(lexer, open, close, NULL, NULL, false, true) == MACRO_GROUP_BALANCED;
+}
+
+static MacroGroup function_macro_group_prefix(TSLexer *lexer, int32_t open, int32_t close, bool *literal, bool *unterminated_raw, bool type_argument) {
+    lexer->advance(lexer, false);
+    if (type_argument && (!scan_pragma_spacing(lexer) || (!preproc_word(lexer->lookahead, false) && lexer->lookahead != '\\'))) {
+        return MACRO_GROUP_INVALID;
+    }
+    return function_macro_group_contents(lexer, open, close, literal, unterminated_raw, type_argument, false);
+}
+
+static MacroGroup function_macro_group_contents(TSLexer *lexer, int32_t open, int32_t close, bool *literal, bool *unterminated_raw, bool type_argument, bool modifier) {
+    unsigned depth = 1;
+    unsigned nested = 0;
+    // A definition body's own brace permits its member semicolons.
+    unsigned braces = open == '{';
+    MacroArgumentWord word = {0};
+    while (depth) {
+        if (lexer->eof(lexer)) return MACRO_GROUP_INVALID;
+        int32_t c = lexer->lookahead;
+        if (c == '{' && !modifier) return MACRO_GROUP_BRACED;
+        if (function_macro_group_separator(c, depth, nested, type_argument, braces)) return MACRO_GROUP_INVALID;
+        function_macro_note_literal(literal, depth, nested, &word, c);
+        MacroArgumentToken token = function_macro_argument_token(lexer, &word, unterminated_raw);
+        if (token == MACRO_ARGUMENT_INVALID) return MACRO_GROUP_INVALID;
+        if (token == MACRO_ARGUMENT_CONSUMED) continue;
+        function_macro_argument_word(&word, c);
+        if (!function_macro_group(c, open, close, &depth, &nested, &braces)) return MACRO_GROUP_INVALID;
+        lexer->advance(lexer, false);
+    }
+    return nested == 0 ? MACRO_GROUP_BALANCED : MACRO_GROUP_INVALID;
+}
+
+static bool function_macro_group_separator(int32_t c, unsigned depth, unsigned nested, bool type_argument, unsigned braces) {
+    return ((c == ';' || c == '#') && !braces) || (type_argument && c == ',' && depth == 1 && !nested);
+}
+
+static bool function_macro_type_prefix_keyword(const MacroName *name, const char *const *reserved_words, unsigned reserved_count) {
+    if (!name->ascii) return false;
+    if (function_macro_keyword(name->word)) return true;
+    for (unsigned i = 0; i < reserved_count; i++) {
+        if (strcmp(name->word, reserved_words[i]) == 0) return true;
+    }
+    return false;
+}
+
+static bool function_macro_group(int32_t c, int32_t open, int32_t close, unsigned *depth, unsigned *nested, unsigned *braces) {
+    if (c == '{') (*braces)++;
+    else if (c == '}' && *braces) (*braces)--;
     if (c == open) (*depth)++;
     else if (c == close) (*depth)--;
     else if (c > 0 && c < 128 && strchr("([{", c)) (*nested)++;
@@ -208,7 +381,7 @@ static void function_macro_note_literal(bool *literal, unsigned depth, unsigned 
     if (c == '"' || (c == '\'' && !word->number) || (c >= '0' && c <= '9' && !word->identifier)) *literal = true;
 }
 
-static bool function_macro_declaration_continues(TSLexer *lexer, bool post_type) {
+static bool function_macro_declaration_continues(TSLexer *lexer, bool post_type, bool allow_braced) {
     MacroPrototypeTail tail = {.post_type = post_type, .explicit_type = post_type};
     for (;;) {
         bool escaped = false;
@@ -221,26 +394,33 @@ static bool function_macro_declaration_continues(TSLexer *lexer, bool post_type)
         } else if (c <= 127 && strchr("{}#)]", c)) {
             return false;
         } else if (c == '(' || c == '[') {
-            if (!function_macro_tail_group(lexer, c, &tail)) return tail.unterminated_raw;
+            MacroGroup group = function_macro_tail_group(lexer, c, &tail);
+            if (group != MACRO_GROUP_BALANCED) return tail.unterminated_raw || (allow_braced && group == MACRO_GROUP_BRACED);
         } else if (c == '"' || c == '\'') {
             if (!function_macro_argument_quote(lexer, c, false, NULL)) return false;
-        } else {
-            if (c == '*' && tail.post_type && tail.declarator_name && !tail.declarator_group) return false;
-            lexer->advance(lexer, false);
-            tail.modifier = false;
+        } else if (!function_macro_tail_punctuator(lexer, c, &tail)) {
+            return false;
         }
     }
 }
 
-static bool function_macro_tail_group(TSLexer *lexer, int32_t c, MacroPrototypeTail *tail) {
+static bool function_macro_tail_punctuator(TSLexer *lexer, int32_t c, MacroPrototypeTail *tail) {
+    if (c == '*' && tail->post_type && tail->declarator_name && !tail->declarator_group) return false;
+    lexer->advance(lexer, false);
+    tail->modifier = false;
+    return true;
+}
+
+static MacroGroup function_macro_tail_group(TSLexer *lexer, int32_t c, MacroPrototypeTail *tail) {
     bool literal = false;
-    if (!function_macro_balanced(lexer, c, c == '(' ? ')' : ']', &literal, &tail->unterminated_raw)) return false;
+    MacroGroup group = function_macro_group_prefix(lexer, c, c == '(' ? ')' : ']', &literal, &tail->unterminated_raw, false);
+    if (group != MACRO_GROUP_BALANCED) return group;
     if (c == '(' && !tail->modifier) {
         if (literal && tail->post_type && !tail->declarator_group) tail->declarator_name = false;
         else tail->declarator_group = true;
     }
     tail->modifier = false;
-    return true;
+    return MACRO_GROUP_BALANCED;
 }
 
 static bool function_macro_tail_spacing(TSLexer *lexer, bool *escaped) {

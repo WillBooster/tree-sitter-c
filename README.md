@@ -18,7 +18,7 @@ This fork fixes parsing bugs and raises conformance with the ISO C standard
 ## Usage
 
 The npm package ships `tree-sitter-c.wasm` for
-[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 15.0.0 or later within 15.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000b`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
+[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 15.0.3 or later within 15.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000b`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
 
 ```js
 import { fileURLToPath } from 'node:url';
@@ -72,13 +72,44 @@ Port `_conditional_marker_ifdef`, `_conditional_marker_ifndef`, `_leading_condit
 when both contexts are valid, choose the leading role if its type proof succeeds, otherwise use the valid
 post-type role. Each token consumes only its opening directive keyword; the directive body, closing directive and following prefix are lookahead. Keep this dispatch ahead of
 the function-annotation guards and return immediately after a failed directive scan.
-The hidden `_function_attribute_start`, `_post_type_function_attribute_start`, and
-`_post_type_function_attribute_suffix` guards look ahead before the ordinary identifier token;
-keep them outside the name field so identifier leaves and ordinary C lexing retain their shape.
+The hidden `_function_attribute_start`, `_post_type_function_attribute_start`,
+`_post_type_function_attribute_suffix`, and `_braced_function_attribute_start` guards look ahead before the ordinary
+identifier token. Keep them outside the name field so identifier leaves and ordinary C lexing retain their shape.
 Port `scan_function_attribute_guard`, its `MacroAttributeSymbols` context, and the name-range handling in `pragma.h`.
+Set `braced_start` to the inherited braced token and `allow_braced_start` from its valid-symbol entry.
+Omitting these fields disables braced handoff in the current argument group and in prototype-tail lookahead.
+Preserve the inherited external-token order before adding tokens specific to the derived grammar.
+
+Port `_braced_macro_type_start` and `scan_braced_macro_type_start` before function-annotation lookahead.
+This separate zero-width guard proves marker words followed by a braced macro-type argument; the grammar still
+consumes each marker and validates its type. Keep `MacroName.preserve_end` in `pragma.h` so scanning subsequent words
+does not move the guard's end. Its default is false for ordinary name scans. Derived grammars can supply reserved
+starter words and the same `MacroAttributeSymbols` context to the guard helper; the C scanner supplies an empty table.
+The helper shares pragma and scalar-object dispatch with annotation guards. Copy both `functionMacro.h` and `pragma.h`
+when porting this dispatch. Later pragma lookahead must preserve the zero-width token end.
+
+When overriding declarations or function definitions, retain both guarded ordinary-type/declarator alternatives and
+annotation alternatives in ordinary, block, and for-declaration builders. Accept the matching passive guard after calling conventions and before ordinary, builtin,
+and initialized declarators. Derived custom declaration builders also need `_guarded_type_specifiers` and
+`_marked_macro_type_specifiers`; adapt their conflicts alongside these productions. Recognized GNU and C23 attributes
+also anchor the guarded type route. Retain that route in custom block and for-declaration builders. Keep the marked-type rule's
+ordinary type and annotation alternatives after the prefix guard, so typedef-return prototypes remain prototypes.
+Guard-owned initialized declarators also need their `_declarator` supertype alias; accepting the syntax alone does not
+preserve subtype queries. Keep ordinary initializers on their existing declarator family. Custom declaration builders
+must admit `_bare_marker_initializer_declaration` where they need the published bare-name initializer preference.
+If their ordinary function declarators reject C's opaque trailing identifiers, adapt that private initializer route
+separately and retain its `_declarator` alias.
+If a derived `type_specifier` omits C macro types, its anchored `_guarded_type_specifier` must explicitly retain them
+to preserve braced macro-return function bodies. Its annotation type preguard must retain the derived grammar's
+anchor policy as well, so unanchored recovery keeps the complete return prefix. These adaptations do not enable
+unanchored macro types globally.
+Without these adapters, braced parameters, default arguments, or direct initializers can become annotations and lose
+their declaration boundaries. Copy the scanner headers from the same published C version
+as the grammar, update its external-token enum, then regenerate the derived parser.
 The `_trailing_object_declaration_start` guard checks an object prefix before declaration parsing;
 `_trailing_macro_attribute_name` consumes only the annotation name and preserves its ordinary identifier leaf.
 Keep the shared first-word dispatch so a failed lookahead never falls back from an advanced lexer cursor.
+When both post-type guards are valid, prefer the continuation suffix so annotation chains remain on their existing path.
 First prototype guards check the prototype tail; post-type continuation guards inspect only their own argument group.
 Regenerate Unicode and keyword tables from the derived grammar's metadata.
 The generation source is `script/generateIdentifierRanges.js` in this repository.
@@ -86,13 +117,43 @@ The primitive keyword data shared by grammar generation and object-prefix classi
 The `_preproc_function_name` token ends before splices used to determine adjacency, so the `_preproc_lparen`
 scanner must skip those splices again to reach `(`.
 
-Prototype annotation lookahead accepts argument/prototype groups without unquoted braces, semicolons or preprocessing directives.
-Quoted punctuation remains literal content. GNU statement-expression, inline-tag, compound-literal
-and directive-bearing annotation arguments need a separate grammar design to keep malformed-input recovery bounded.
+Annotation lookahead hands the first unquoted brace in an argument group to the grammar instead of scanning the
+whole braced body. The argument grammar handles compound literals, inline types, aggregate initializers, and GNU
+statement expressions. Proved braced arguments also accept named declarations such as `register int a[sizeof(struct { int m; })]`,
+including declaration specifiers and trailing GNU attributes. Their `parameter_declaration` nodes require a name and retain
+public type and declarator subtype queries. Quoted punctuation and comments remain literal content. Semicolons and preprocessing directives
+encountered before an unknown annotation's braced handoff reject that lookahead; directive-bearing arguments need
+separate support. The marker proof balances recognized declaration-modifier groups, including inline types inside
+attribute arguments, in one pass. Those recognized groups do not turn an attribute's internal brace into the following
+macro type's handoff. Type-constructor operands and tagged definition bodies in a marked prefix
+likewise keep their own braces.
+Balanced groups followed by a later braced annotation retain their original guard, so typed annotation chains remain
+annotations. Guarded macro types require a first type descriptor; additional arguments are grammar-parsed only under
+the current-group braced hint. A semicolon can terminate an anchored declaration macro without consuming the next
+declaration.
 
-Header annotation declarations use `_macro_modified_declaration`, `_macro_declaration_specifiers`,
+Bare initialized names remain ambiguous without preprocessing or name binding: `Word ATTR(struct { int m; }) value = {0};`
+can declare an integer when `Word` is a typedef and `ATTR` is empty, or a structure when `Word` is empty and `ATTR`
+selects its argument. For a genuinely bare prefix with an initialized first declarator, the grammar preserves the
+published first type-name preference, even though the remaining declarator can be approximate. Uninitialized marked
+types and prefixes with recognized declaration attributes or known specifiers keep the concrete macro-type route.
+This preference preserves query fields; it does not resolve both macro expansions semantically.
+
+A proved braced macro call can also supply a declarator. Its `function_declarator` keeps the macro name in `declarator`
+and the structural argument group in `parameters`, so a physical semicolon, comma, initializer or function body
+terminates that role without absorbing the next declaration or statement. Retain this guarded alternative and its
+`_declarator` supertype alias in custom declaration-item and function-definition builders. Derived grammars with
+constructor syntax keep their ordinary constructor preference; use guarded macro-call initializer/body alternatives
+where that ordinary route cannot complete. The call ends at its argument group; a following identifier still needs
+the annotation alternative. Normal and old-style GNU nested
+function definitions retain the same guarded/marked type and annotation alternatives as top-level definitions. Macro calls and
+marked function headers remain structural; they do not resolve preprocessing or name bindings.
+
+Annotation declarations use `_macro_modified_declaration`, `_macro_declaration_specifiers`,
 `_macro_declaration_declarator`, and `_header_preproc_item`. Adapt these rules alongside public declaration/type
-overrides when extending C. The annotation declarator uses `function_declarator` to retain trailing macro calls.
+overrides when extending C. Keep `_macro_only_declaration` as a complete semicolon-terminated item in header, block and for-declaration contexts. Allow
+`_macro_declaration_specifiers` in function definitions so their bodies stay attached. The annotation declarator uses
+`function_declarator` to retain trailing macro calls.
 The separate `_trailing_macro_modified_declaration` route uses public declaration specifiers and
 `_trailing_macro_object_declarator` / `_trailing_macro_pointer_declarator`; adapt these header rules when
 overriding declaration or declarator behavior.
@@ -122,12 +183,12 @@ arrays, parenthesized/function declarators, initializers and multiple declarator
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
-fuzzed with, at version 15.0.0 or later within 15.x. No other runtime loads the parser:
+fuzzed with, at version 15.0.3 or later within 15.x. No other runtime loads the parser:
 
 ```toml
 [dependencies]
-tree-sitter = { package = "willbooster-tree-sitter", version = "15.0.0" }
-tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "18" }
+tree-sitter = { package = "willbooster-tree-sitter", version = "15.0.3" }
+tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "20" }
 ```
 
 ```rust

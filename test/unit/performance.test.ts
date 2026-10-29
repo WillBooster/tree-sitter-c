@@ -46,6 +46,19 @@ test('keeps nested ordinary calls approximately linear', { timeout: 60_000 }, ()
   expect(largeFastest / smallFastest).toBeLessThan(18);
 });
 
+test('keeps nested opaque parameter types approximately linear', { timeout: 60_000 }, () => {
+  const small = nestedTypeSource(100);
+  const large = nestedTypeSource(1000);
+  parseAverageCpuTime(large);
+  let smallFastest = Infinity;
+  let largeFastest = Infinity;
+  for (let run = 0; run < 5; run++) {
+    smallFastest = Math.min(smallFastest, parseAverageCpuTime(small));
+    largeFastest = Math.min(largeFastest, parseAverageCpuTime(large));
+  }
+  expect(largeFastest / smallFastest).toBeLessThan(18);
+});
+
 test.each(['leading', 'post-type', 'trailing', 'object'])(
   'keeps flat %s annotation chains approximately linear',
   { timeout: 60_000 },
@@ -196,4 +209,10 @@ function parseAverageCpuTime(source: string, expectedError = false): number {
 
 function nestedCallSource(depth: number): string {
   return `int call(int); void run(void) { ${'call('.repeat(depth)}0${')'.repeat(depth)}; }`;
+}
+
+function nestedTypeSource(count: number): string {
+  let type = 'int';
+  for (let index = 0; index < count; index++) type = `int (*)(const TYPE(${type}))`;
+  return `void f(const TYPE(${type}) value);`;
 }

@@ -12,6 +12,9 @@ export default defineConfig({
         test: {
           name: 'node',
           globalSetup: 'test/helpers/installCli.ts',
+          // Each `Query` construction analyzes the whole parse table (over 25,000 states), which alone can exceed
+          // Vitest's 5-second default on slower CI runners such as macOS Intel while tests run in parallel.
+          testTimeout: 60_000,
           include: ['test/{unit,e2e}/**/*.test.ts'],
           exclude: BrowserTests,
         },

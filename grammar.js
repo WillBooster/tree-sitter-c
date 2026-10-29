@@ -8,7 +8,7 @@
 // @ts-check
 
 // Tree-sitter injects its DSL before loading this CommonJS grammar.
-const { grammar, alias, choice, field, optional, prec, repeat, repeat1, seq, sym, token } =
+const { grammar, alias, choice, field, optional, prec, repeat, repeat1, reserved, seq, sym, token } =
   /** @type {typeof globalThis & typeof import('./types/treeSitterDsl')} */ (globalThis);
 
 // oxlint-disable-next-line unicorn/prefer-module -- Tree-sitter loads this grammar as CommonJS.
@@ -72,6 +72,205 @@ module.exports = Object.assign(
     name: 'c',
 
     conflicts: ($) => [
+      [$._declaration_modifiers, $._empty_declaration],
+      [$.type_definition, $._declaration_modifiers, $._empty_declaration],
+      [
+        $._statement_declaration,
+        $._statement_type_definition,
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+        $._guarded_type_specifiers,
+      ],
+      [
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._case_body_attributed_statement,
+        $._case_label_attributes,
+      ],
+      [
+        $._statement_declaration,
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+        $._guarded_type_specifiers,
+      ],
+      [
+        $._statement_declaration,
+        $._statement_type_definition,
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._statement_empty_declaration,
+      ],
+      [
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+        $._guarded_type_specifiers,
+      ],
+      [
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._statement_empty_declaration,
+      ],
+      [
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+        $._guarded_type_specifiers,
+        $.attributed_statement,
+        $.case_statement,
+      ],
+      [$._macro_declaration_specifiers, $._statement_declaration_modifiers, $._guarded_type_specifiers],
+      [$._declarator, sym('_braced_macro_function_declarator')],
+      [
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $.attributed_statement,
+        $.case_statement,
+      ],
+      [$._sized_bit_int_type_name, $._sized_bit_int_specifier],
+      [$.type_specifier, $._type_name_specifier, $._sized_bit_int_type_name, $._sized_bit_int_specifier],
+      [$._declaration_modifiers, $.type_descriptor],
+      [$.type_specifier, $._type_name_specifier, $.macro_specifier],
+      [$.type_specifier, $._type_name_specifier, $.expression, $.macro_specifier],
+      [$.type_specifier, $._type_name_specifier, $.expression, $.macro_type_specifier],
+      [$.type_specifier, $._type_name_specifier, $._sized_type_name, $.sized_type_specifier],
+      [$._sized_type_name, $._sized_bit_int_type_name, $.sized_type_specifier, $._sized_bit_int_specifier],
+      [$._sized_type_name, $.sized_type_specifier],
+      [$.storage_class_specifier, $.type_specifier, $._type_name_specifier, $.expression],
+      [$.storage_class_specifier, $.type_specifier, $._type_name_specifier],
+      [$.type_specifier, $._type_name_specifier, $.expression, $.va_arg_expression, $.macro_type_specifier],
+      [$.type_specifier, $._type_name_specifier],
+      [$.type_specifier, $._type_name_specifier, $.expression],
+      [$._known_annotation_type_specifier, $.sized_type_specifier],
+      [$._known_annotation_type_specifier, $._sized_bit_int_specifier],
+      [$._braced_macro_attribute_argument_list, $._variadic_macro_type_specifier],
+      [$._braced_macro_attribute_argument_list, $.macro_type_specifier],
+      [$._annotation_type_specifier, $.macro_specifier],
+      [$._macro_attribute_specifier, $._braced_leading_macro_attribute_specifier],
+      [$._annotation_type_specifier, $.sized_type_specifier],
+      [$._annotation_type_specifier, $._sized_bit_int_specifier],
+      [$._bare_initializer_type, $._annotation_type_specifier, $.type_specifier],
+      [$._bare_initializer_type, $._annotation_type_specifier, $.type_specifier, $.macro_specifier],
+      [$._annotation_type_specifier, $.type_specifier, $.macro_specifier],
+      [$._annotation_type_specifier, $.type_specifier, $.expression, $.macro_specifier],
+      [$.type_definition, $._annotation_type_specifier, $.type_specifier, $.sized_type_specifier],
+      [$.type_definition, $._annotation_type_specifier, $.type_specifier, $._sized_bit_int_specifier],
+      [$.type_definition, $._annotation_type_specifier, $.type_specifier],
+      [$._statement_type_definition, $._annotation_type_specifier, $.type_specifier, $.sized_type_specifier],
+      [$._statement_type_definition, $._annotation_type_specifier, $.type_specifier, $._sized_bit_int_specifier],
+      [$._statement_type_definition, $._annotation_type_specifier, $.type_specifier],
+      [$._annotation_type_specifier, $.type_specifier, $.sized_type_specifier],
+      [$._annotation_type_specifier, $.type_specifier, $._sized_bit_int_specifier],
+      [$._annotation_type_specifier, $.type_specifier, $.expression],
+      [$._annotation_type_specifier, $.type_specifier],
+      [
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+        $._case_body_attributed_statement,
+        $._case_label_attributes,
+      ],
+      [$._statement_declaration, $._macro_declaration_specifiers, $._statement_declaration_modifiers],
+      [
+        $._statement_declaration,
+        $._statement_type_definition,
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+        $._statement_empty_declaration,
+      ],
+      [
+        $._statement_declaration,
+        $._statement_type_definition,
+        $._macro_declaration_specifiers,
+        $._statement_declaration_modifiers,
+      ],
+      [$._macro_declaration_specifiers, $._statement_declaration_modifiers, $._statement_empty_declaration],
+      [$._macro_declaration_specifiers, $._statement_declaration_modifiers],
+      [$._macro_declaration_specifiers, $._statement_declaration_modifiers, $.attributed_statement, $.case_statement],
+      [$._bare_initializer_type, $.macro_specifier],
+      [$.declaration, $._declaration_modifiers, $._marked_macro_type_specifiers],
+      [$._bare_initializer_type, $.type_specifier, $.macro_specifier],
+      [$._bare_initializer_type, $.type_specifier, $.macro_type_specifier],
+      [$._bare_initializer_type, $.type_specifier],
+      [$._guarded_macro_type_specifier, $.type_specifier],
+      [$._macro_declaration_specifiers, $._guarded_type_specifiers],
+      [$._macro_declaration_specifiers, $._guarded_type_specifiers, $._marked_macro_type_specifiers],
+      [$._macro_only_declaration, $._macro_declaration_specifiers, $._guarded_type_specifiers],
+      [$._macro_declaration_specifiers, $._declaration_modifiers, $._marked_macro_type_specifiers],
+      [
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._marked_macro_type_specifiers,
+      ],
+      [$._declaration_modifiers, $._marked_macro_type_specifiers],
+      [$.declaration, $._macro_declaration_specifiers, $._declaration_modifiers],
+      [$.declaration, $._macro_declaration_specifiers, $._declaration_modifiers, $._guarded_type_specifiers],
+      [
+        $.declaration,
+        $.type_definition,
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._statement_empty_declaration,
+      ],
+      [
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._empty_declaration,
+        $._statement_empty_declaration,
+      ],
+      [
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+      ],
+      [
+        $._macro_only_declaration,
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._statement_empty_declaration,
+      ],
+      [$._macro_attribute_specifier, $.type_specifier, $.macro_type_specifier],
+      [$.type_specifier, $.macro_type_specifier, $._variadic_macro_type_specifier],
+      [$._macro_declaration_specifiers],
+      [$._macro_attribute_argument_list, $.macro_type_specifier],
+      [
+        $._macro_attribute_specifier,
+        $._braced_leading_macro_attribute_specifier,
+        $.type_specifier,
+        $.macro_type_specifier,
+        $._variadic_macro_type_specifier,
+      ],
+      [$.declaration, $._declaration_modifiers, $._guarded_type_specifiers],
+      [$._declaration_modifiers, $._guarded_type_specifiers],
+      // Required by derived C++ declarations although unnecessary in C alone.
+      [
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._empty_declaration,
+        $._statement_empty_declaration,
+      ],
+      [$._macro_declaration_specifiers, $._declaration_modifiers, $._guarded_type_specifiers],
+      // Required by derived C++ declarations although unnecessary in C alone.
+      [
+        $._macro_declaration_specifiers,
+        $._declaration_modifiers,
+        $._guarded_type_specifiers,
+        $._statement_empty_declaration,
+      ],
       [$._string, $._raw_string_type_argument],
       [
         $._conditional_function_specifiers,
@@ -107,42 +306,21 @@ module.exports = Object.assign(
       [$.type_specifier, $._sized_type_identifier, $.macro_specifier],
       [$.type_specifier, $._sized_type_identifier],
       [$._sized_type_identifier, $.macro_specifier],
-      [$._declaration_modifiers, $._empty_declaration],
-      [$._statement_declaration, $._statement_declaration_modifiers],
       [$.declaration, $._declaration_modifiers],
-      [$._statement_declaration, $._statement_type_definition, $._statement_declaration_modifiers],
-      [
-        $._statement_declaration,
-        $._statement_type_definition,
-        $._statement_declaration_modifiers,
-        $._statement_empty_declaration,
-      ],
       [$.type_definition, $.type_specifier],
-      [$.type_definition, $._macro_declaration_specifiers],
       [$._macro_declaration_specifiers, $._declaration_modifiers, $.attributed_statement, $.case_statement],
-      [$._macro_declaration_specifiers, $.type_specifier, $.expression, $.macro_specifier],
-      [$._macro_declaration_specifiers, $.type_specifier, $.macro_specifier],
       [$.macro_specifier, $._type_declarator],
       [$.macro_specifier, $._field_declarator],
       [$.macro_specifier, $._declarator],
       [$.macro_specifier, $._declarator, $.attributed_declarator, $.type_specifier],
       [$.macro_specifier, $._declarator, $.attributed_declarator],
-      [$._macro_declaration_specifiers, $.type_specifier, $.sized_type_specifier],
-      [$.type_definition, $._macro_declaration_specifiers, $.type_specifier, $.sized_type_specifier],
-      [$._macro_declaration_specifiers, $.type_specifier, $._sized_bit_int_specifier],
-      [$.type_definition, $._macro_declaration_specifiers, $.type_specifier, $._sized_bit_int_specifier],
       [$._statement_type_definition, $.type_specifier, $.sized_type_specifier],
       [$._statement_type_definition, $.type_specifier, $._sized_bit_int_specifier],
-      [$._macro_declaration_specifiers, $.sized_type_specifier],
-      [$.type_definition, $._macro_declaration_specifiers, $.sized_type_specifier],
       [$.type_definition, $.type_specifier, $.sized_type_specifier],
       [$.type_definition, $.type_specifier, $._sized_bit_int_specifier],
       [$._type_declarator, $.sized_type_specifier],
       [$.macro_specifier, $.expression],
       [$.macro_specifier, $.type_specifier],
-      [$._macro_declaration_specifiers, $.type_definition, $.type_specifier],
-      [$._macro_declaration_specifiers, $.type_specifier, $.expression],
-      [$._macro_declaration_specifiers, $.type_specifier],
       [$._macro_declaration_specifiers, $._declaration_modifiers],
       [$.preproc_include_argument],
       [$._preproc_include_token, $.preproc_argument_list],
@@ -156,7 +334,6 @@ module.exports = Object.assign(
       [sym('preproc_else_in_statement'), sym('preproc_else_in_initializer_list')],
       [sym('preproc_elif_in_statement'), sym('preproc_elif_in_initializer_list')],
       [sym('preproc_elifdef_in_statement'), sym('preproc_elifdef_in_initializer_list')],
-
       [$.type_specifier, $.expression, $.va_arg_expression, $.macro_type_specifier],
       [$.va_arg_expression, $.expression],
       [$.type_definition, $._declaration_modifiers],
@@ -165,7 +342,6 @@ module.exports = Object.assign(
       [$.type_definition, $.type_qualifier, $.extension_expression],
       [$._statement_type_definition, $.type_qualifier, $.extension_expression],
       [$.type_definition, $.type_qualifier],
-      [$.type_definition, $._declaration_modifiers, $._empty_declaration],
       [$._statement_type_definition, $.type_qualifier],
       [$._statement_declaration_modifiers, $._statement_empty_declaration],
       [$.declaration, $.storage_class_specifier],
@@ -185,8 +361,6 @@ module.exports = Object.assign(
       [$.type_definition, $.sized_type_specifier],
       [$.type_definition, $._sized_bit_int_specifier],
       [$.case_statement],
-      [$._statement_declaration_modifiers, $._case_body_attributed_statement, $._case_label_attributes],
-      [$._statement_declaration_modifiers, $.attributed_statement, $.case_statement],
       [$.enum_specifier],
       [sym('preproc_if_in_enumerator_list'), sym('preproc_if_in_enumerator_list_no_comma')],
       [sym('preproc_ifdef_in_enumerator_list'), sym('preproc_ifdef_in_enumerator_list_no_comma')],
@@ -219,6 +393,16 @@ module.exports = Object.assign(
       [$._declaration_modifiers, $._field_declaration_list_item],
       [$._declaration_specifiers],
       [$._compound_literal_constexpr_specifier, $.type_qualifier],
+      [$._marked_macro_type_specifiers],
+      [$._braced_leading_macro_attribute_specifier, $._post_type_macro_attribute_specifier],
+      [$._annotation_type_specifier, $._known_annotation_type_specifier, $.type_specifier, $._sized_bit_int_specifier],
+      [$._annotation_type_specifier, $._known_annotation_type_specifier, $.type_specifier],
+      [$._annotation_type_specifier, $._known_annotation_type_specifier, $.type_specifier, $.sized_type_specifier],
+      [$._annotation_type_specifier, $._macro_attribute_suffix, $.macro_type_specifier],
+      [$._annotation_type_specifier, $.macro_type_specifier],
+      [$._known_annotation_type_specifier, $.type_specifier, $.sized_type_specifier],
+      [$._known_annotation_type_specifier, $.type_specifier, $._sized_bit_int_specifier],
+      [$._known_annotation_type_specifier, $.type_specifier],
     ],
 
     externals: () => [
@@ -239,11 +423,14 @@ module.exports = Object.assign(
       sym('_leading_conditional_marker_ifndef'),
       sym('_gnu_raw_string_body'),
       sym('_raw_macro_type_tail'),
+      sym('_braced_function_attribute_start'),
+      sym('_braced_macro_type_start'),
     ],
 
     extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
 
     inline: ($) => [
+      $._bare_marker_initializer_declaration,
       $._unattributed_non_case_statement,
       $._single_unattributed_non_case_statement,
       $._unlabeled_non_case_statement,
@@ -274,14 +461,23 @@ module.exports = Object.assign(
       $._case_label_chain_statement,
       $.type_specifier,
       $._type_name_specifier,
+      $._guarded_type_specifier,
+      sym('_annotation_type_specifier'),
+      sym('_known_annotation_type_specifier'),
+      $._guarded_macro_type_specifier,
+      sym('_bare_initializer_type'),
       $._declarator,
       $._old_style_declarator,
       $._initialized_declarator,
+      sym('_guarded_initialized_declarator'),
+      sym('_braced_macro_declarator'),
       $._initialized_parenthesized_content,
       $._field_declarator,
       $._type_declarator,
       $._abstract_declarator,
     ],
+
+    reserved: { global: () => [], marker: ($) => [$.primitive_type] },
 
     word: ($) => $.identifier,
 
@@ -297,6 +493,7 @@ module.exports = Object.assign(
           $.linkage_specification,
           $.declaration,
           alias(sym('_macro_modified_declaration'), $.declaration),
+          alias(sym('_macro_only_declaration'), $.declaration),
           alias(sym('_trailing_macro_modified_declaration'), $.declaration),
           alias(sym('_conditional_declaration'), $.declaration),
           $._top_level_statement,
@@ -337,6 +534,7 @@ module.exports = Object.assign(
           $.linkage_specification,
           $.declaration,
           alias(sym('_macro_modified_declaration'), $.declaration),
+          alias(sym('_macro_only_declaration'), $.declaration),
           alias(sym('_trailing_macro_modified_declaration'), $.declaration),
           alias(sym('_conditional_declaration'), $.declaration),
           $.statement,
@@ -512,11 +710,14 @@ module.exports = Object.assign(
         );
       },
 
-      function_definition: ($) => functionDefinitionRule($, $._declaration_specifiers, false),
-      _statement_function_definition: ($) => functionDefinitionRule($, $._statement_declaration_specifiers, false),
-      _old_style_function_definition: ($) => functionDefinitionRule($, $._declaration_specifiers, true),
+      function_definition: ($) =>
+        functionDefinitionRule($, functionDefinitionSpecifiers($, declarationSpecifiers($, true)), false),
+      _statement_function_definition: ($) =>
+        functionDefinitionRule($, functionDefinitionSpecifiers($, $._statement_declaration_specifiers), false),
+      _old_style_function_definition: ($) =>
+        functionDefinitionRule($, functionDefinitionSpecifiers($, declarationSpecifiers($, true)), true),
       _statement_old_style_function_definition: ($) =>
-        functionDefinitionRule($, $._statement_declaration_specifiers, true),
+        functionDefinitionRule($, functionDefinitionSpecifiers($, $._statement_declaration_specifiers), true),
 
       _old_style_declarator: ($) =>
         choice(
@@ -561,9 +762,40 @@ module.exports = Object.assign(
           repeat(choice($._non_macro_declaration_modifiers, $._conditional_macro_specifier))
         ),
 
-      declaration: ($) => declarationRule($, $._declaration_specifiers, $._declaration_modifiers),
+      declaration: ($) =>
+        choice(
+          declarationRule(
+            $,
+            choice(declarationSpecifiers($, true), $._guarded_type_specifiers, $._marked_macro_type_specifiers),
+            $._declaration_modifiers
+          ),
+          sym('_bare_marker_initializer_declaration')
+        ),
       _statement_declaration: ($) =>
-        declarationRule($, $._statement_declaration_specifiers, $._statement_declaration_modifiers),
+        choice(
+          declarationRule(
+            $,
+            choice($._statement_declaration_specifiers, $._guarded_type_specifiers, $._marked_macro_type_specifiers),
+            $._statement_declaration_modifiers
+          ),
+          sym('_bare_marker_initializer_declaration'),
+          $._macro_modified_declaration,
+          $._macro_only_declaration
+        ),
+      _bare_marker_initializer_declaration: ($) =>
+        declarationRule(
+          $,
+          seq(
+            sym('_braced_macro_type_start'),
+            repeat($.macro_specifier),
+            field('type', alias(sym('_bare_initializer_type'), $.type_specifier))
+          ),
+          $._statement_declaration_modifiers,
+          false,
+          $._declaration_declarator,
+          { guard: sym('_braced_function_attribute_start'), bareMarkerInitializer: true }
+        ),
+      _bare_initializer_type: ($) => $._type_identifier,
 
       type_definition: ($) => typeDefinitionRule($, $._declaration_modifiers, true),
       _statement_type_definition: ($) => typeDefinitionRule($, $._statement_declaration_modifiers, false),
@@ -574,7 +806,17 @@ module.exports = Object.assign(
           $._macro_declaration_specifiers,
           $._non_macro_declaration_modifiers,
           false,
-          $._macro_declaration_declarator
+          $._macro_declaration_declarator,
+          { guard: choice(sym('_post_type_function_attribute_suffix'), sym('_braced_function_attribute_start')) }
+        ),
+
+      _macro_only_declaration: ($) =>
+        seq(
+          choice($.storage_class_specifier, $.type_qualifier, $.ms_declspec_modifier),
+          repeat($._non_macro_declaration_modifiers),
+          alias($._macro_attribute_specifier, $.attribute_specifier),
+          repeat(choice($._non_macro_declaration_modifiers, alias($._macro_attribute_suffix, $.attribute_specifier))),
+          ';'
         ),
 
       _conditional_declaration: ($) =>
@@ -583,7 +825,7 @@ module.exports = Object.assign(
       _trailing_macro_modified_declaration: ($) =>
         seq(
           sym('_trailing_object_declaration_start'),
-          $._declaration_specifiers,
+          declarationSpecifiers($, true),
           field('declarator', $._trailing_macro_object_declarator),
           repeat1(alias($._trailing_macro_attribute_specifier, $.attribute_specifier)),
           ';'
@@ -607,20 +849,44 @@ module.exports = Object.assign(
           seq(
             choice($.storage_class_specifier, $.type_qualifier, $.ms_declspec_modifier),
             repeat($._non_macro_declaration_modifiers),
-            alias($._macro_attribute_specifier, $.attribute_specifier),
-            repeat(modifier),
-            field('type', $._non_identifier_type_specifier),
+            choice(
+              seq(
+                alias($._macro_attribute_specifier, $.attribute_specifier),
+                repeat(modifier),
+                field('type', alias(sym('_known_annotation_type_specifier'), $.type_specifier))
+              ),
+              seq(
+                alias(sym('_braced_leading_macro_attribute_specifier'), $.attribute_specifier),
+                repeat(modifier),
+                field(
+                  'type',
+                  choice(
+                    alias(sym('_annotation_type_specifier'), $.type_specifier),
+                    alias($._guarded_macro_type_specifier, $.type_specifier)
+                  )
+                )
+              )
+            ),
             repeat(postModifier)
           ),
           seq(
             repeat($._non_macro_declaration_modifiers),
-            field('type', choice($._non_identifier_type_specifier, $._type_identifier)),
+            choice(
+              field('type', alias(sym('_annotation_type_specifier'), $.type_specifier)),
+              seq(
+                optional(choice(sym('_function_attribute_start'), sym('_braced_function_attribute_start'))),
+                field('type', alias($._guarded_macro_type_specifier, $.type_specifier))
+              )
+            ),
             repeat($._non_macro_declaration_modifiers),
             alias($._post_type_macro_attribute_specifier, $.attribute_specifier),
             repeat(postModifier)
           )
         );
       },
+
+      _annotation_type_specifier: ($) => choice($._non_identifier_type_specifier, $._type_identifier),
+      _known_annotation_type_specifier: ($) => $._non_identifier_type_specifier,
 
       _type_definition_type: ($) =>
         seq(
@@ -644,12 +910,74 @@ module.exports = Object.assign(
           $.ms_declspec_modifier
         ),
 
-      _declaration_specifiers: ($) =>
-        seq(
-          repeat($._declaration_modifiers),
-          field('type', $.type_specifier),
-          repeat($._non_macro_declaration_modifiers)
+      _declaration_specifiers: ($) => declarationSpecifiers($),
+
+      _guarded_type_specifiers: ($) =>
+        prec.dynamic(
+          1,
+          seq(
+            $._non_macro_declaration_modifiers,
+            repeat($._non_macro_declaration_modifiers),
+            choice(
+              seq(sym('_function_attribute_start'), field('type', $.type_specifier)),
+              seq(
+                sym('_braced_function_attribute_start'),
+                field('type', alias($._guarded_type_specifier, $.type_specifier))
+              )
+            ),
+            repeat(choice($._non_macro_declaration_modifiers, $._conditional_macro_specifier))
+          )
         ),
+
+      _marked_macro_type_specifiers: ($) =>
+        seq(
+          sym('_braced_macro_type_start'),
+          choice(
+            prec.dynamic(
+              2,
+              seq(
+                repeat($._non_macro_declaration_modifiers),
+                repeat1(seq($.macro_specifier, repeat($._non_macro_declaration_modifiers))),
+                optional(sym('_braced_function_attribute_start')),
+                field(
+                  'type',
+                  choice(
+                    alias(sym('_known_annotation_type_specifier'), $.type_specifier),
+                    alias($._guarded_macro_type_specifier, $.type_specifier)
+                  )
+                ),
+                repeat($._non_macro_declaration_modifiers)
+              )
+            ),
+            declarationSpecifiers($, true),
+            $._guarded_type_specifiers,
+            $._macro_declaration_specifiers,
+            seq(
+              repeat($._declaration_modifiers),
+              field(
+                'type',
+                choice(
+                  alias(sym('_known_annotation_type_specifier'), $.type_specifier),
+                  alias($._guarded_macro_type_specifier, $.type_specifier)
+                )
+              ),
+              repeat($._non_macro_declaration_modifiers),
+              alias(sym('_braced_leading_macro_attribute_specifier'), $.attribute_specifier),
+              repeat(
+                choice(
+                  $._non_macro_declaration_modifiers,
+                  $.macro_specifier,
+                  alias($._post_type_macro_attribute_suffix, $.attribute_specifier)
+                )
+              )
+            )
+          )
+        ),
+
+      _guarded_macro_type_specifier: ($) => $.macro_type_specifier,
+
+      _guarded_type_specifier: ($) =>
+        choice($.type_specifier, alias($._variadic_macro_type_specifier, $.macro_type_specifier)),
 
       _field_declaration_specifiers: ($) =>
         seq(
@@ -676,6 +1004,8 @@ module.exports = Object.assign(
 
       _macro_attribute_specifier: ($) => macroAttributeRule($, 'leading'),
 
+      _braced_leading_macro_attribute_specifier: ($) => macroAttributeRule($, 'braced-leading'),
+
       _post_type_macro_attribute_specifier: ($) => macroAttributeRule($, 'post-type'),
 
       _macro_attribute_suffix: ($) => macroAttributeRule($, 'continuation'),
@@ -684,10 +1014,14 @@ module.exports = Object.assign(
 
       _post_type_macro_attribute_suffix: ($) => macroAttributeRule($, 'post-type-continuation'),
 
-      _macro_attribute_argument_list: ($) => {
-        const argument = macroAttributeArgument($);
-        return seq('(', optional(argument), repeat(seq(',', optional(argument))), ')');
-      },
+      _macro_attribute_parameter: ($) =>
+        seq($._declaration_specifiers, field('declarator', $._declarator), repeat($.attribute_specifier)),
+
+      _macro_attribute_argument_list: ($) => macroAttributeArgumentList(macroAttributeArgument($)),
+      _braced_macro_attribute_argument_list: ($) =>
+        macroAttributeArgumentList(
+          choice(macroAttributeArgument($), alias(sym('_macro_attribute_parameter'), $.parameter_declaration))
+        ),
 
       attribute: ($) =>
         seq(optional(seq(field('prefix', $.identifier), '::')), field('name', $.identifier), optional($.argument_list)),
@@ -737,6 +1071,13 @@ module.exports = Object.assign(
         declarationDeclaratorRule($, alias($._function_declaration_declarator, $.function_declarator)),
 
       _macro_declaration_declarator: ($) => declarationDeclaratorRule($, $.function_declarator),
+
+      _braced_macro_declarator: ($) => alias(sym('_braced_macro_function_declarator'), $.function_declarator),
+      _braced_macro_function_declarator: ($) =>
+        seq(
+          field('declarator', $.identifier),
+          field('parameters', alias(sym('_braced_macro_attribute_argument_list'), $.parameter_list))
+        ),
 
       _field_declarator: ($) =>
         choice(alias($.attributed_field_declarator, $.attributed_declarator), $._unattributed_field_declarator),
@@ -927,12 +1268,13 @@ module.exports = Object.assign(
           )
         ),
 
-      init_declarator: ($) =>
-        seq(
-          field('declarator', alias($._initialized_declarator, $._declarator)),
-          '=',
-          field('value', choice($.initializer_list, $.expression))
-        ),
+      init_declarator: ($) => initDeclaratorRule($, alias($._initialized_declarator, $._declarator)),
+      _guarded_init_declarator: ($) =>
+        initDeclaratorRule($, alias(sym('_guarded_initialized_declarator'), $._declarator)),
+      _guarded_initialized_declarator: ($) => $._declaration_declarator,
+
+      _braced_macro_init_declarator: ($) =>
+        initDeclaratorRule($, alias(sym('_braced_macro_declarator'), $._declarator)),
 
       _initialized_declarator: ($) =>
         choice(
@@ -1868,7 +2210,7 @@ module.exports = Object.assign(
           ';'
         ),
 
-      macro_specifier: ($) => prec.dynamic(-2, field('name', $.identifier)),
+      macro_specifier: ($) => prec.dynamic(-2, field('name', reserved('marker', $.identifier))),
 
       _conditional_macro_specifier: () => alias(sym('_marker_preproc_ifdef'), sym('preproc_ifdef')),
       _leading_conditional_macro_specifier: () => alias(sym('_leading_marker_preproc_ifdef'), sym('preproc_ifdef')),
@@ -1890,14 +2232,40 @@ module.exports = Object.assign(
           )
         ),
 
+      _variadic_macro_type_specifier: ($) =>
+        prec.dynamic(
+          -2,
+          seq(
+            field('name', choice($.identifier, alias(VA_ARG_KEYWORDS, $.identifier))),
+            '(',
+            field('type', $.type_descriptor),
+            repeat1(seq(',', optional(macroAttributeArgument($)))),
+            ')'
+          )
+        ),
+
       _raw_string_macro_type_arguments: ($) =>
-        seq('(', $._raw_string_type_argument, optional(alias(sym('_raw_macro_type_tail'), $.preproc_arg)), ')'),
+        seq('(', $._raw_string_type_argument, optional($._raw_string_type_tail), ')'),
 
       _raw_string_type_argument: ($) =>
         choice($.raw_string_literal, alias($._parenthesized_raw_string_type_argument, $.parenthesized_expression)),
 
       _parenthesized_raw_string_type_argument: ($) =>
-        seq('(', $._raw_string_type_argument, optional(alias(sym('_raw_macro_type_tail'), $.preproc_arg)), ')'),
+        seq('(', $._raw_string_type_argument, optional($._raw_string_type_tail), ')'),
+
+      // The opaque tail scanner stops before a balanced group's first brace, so those arguments are parsed here.
+      _raw_string_type_tail: ($) =>
+        choice(
+          alias(sym('_raw_macro_type_tail'), $.preproc_arg),
+          repeat1(
+            seq(
+              ',',
+              optional(
+                choice(macroAttributeArgument($), alias(sym('_macro_attribute_parameter'), $.parameter_declaration))
+              )
+            )
+          )
+        ),
 
       _preproc_number: () =>
         /(\d|\.\d)([\p{XID_Continue}.]|[eEpP][+-]|'[_a-zA-Z0-9]|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8})*/u,
@@ -1905,8 +2273,23 @@ module.exports = Object.assign(
       comment: () => token(choice(LINE_COMMENT, seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
     },
   }),
-  { PREC, preprocIf, preprocessor, commaSep, commaSep1 }
+  { PREC, preprocIf, preprocessor, commaSep, commaSep1, declarationSpecifiers }
 );
+
+/**
+ * Build declaration specifiers, optionally retaining real types after a braced group guard.
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'_declaration_specifiers' | '_declaration_modifiers' | 'type_specifier' | '_non_macro_declaration_modifiers'>} $
+ * @param {boolean} [braced=false] Enable the guard for declaration owners; parameter and annotation readers keep it off.
+ */
+function declarationSpecifiers($, braced = false) {
+  const specifiers = seq(
+    repeat($._declaration_modifiers),
+    ...(braced ? [sym('_braced_function_attribute_start')] : []),
+    field('type', $.type_specifier),
+    repeat($._non_macro_declaration_modifiers)
+  );
+  return braced ? choice($._declaration_specifiers, specifiers) : specifiers;
+}
 
 /**
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'comment' | 'pragma_operator' | 'preproc_arg'>} $
@@ -1972,6 +2355,14 @@ function pointerDeclaratorRule($, declarator) {
 }
 
 /**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'_guarded_type_specifiers' | '_marked_macro_type_specifiers' | '_macro_declaration_specifiers'>} $
+ * @param {import('./types/treeSitterDsl').Rule} ordinary
+ */
+function functionDefinitionSpecifiers($, ordinary) {
+  return choice(ordinary, $._guarded_type_specifiers, $._marked_macro_type_specifiers, $._macro_declaration_specifiers);
+}
+
+/**
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'ms_call_modifier' | '_old_style_declarator' | '_declarator' | 'declaration' | 'compound_statement'>} $
  * @param {import('./types/treeSitterDsl').Rule} specifiers
  * @param {boolean} oldStyle
@@ -1981,20 +2372,54 @@ function functionDefinitionRule($, specifiers, oldStyle) {
     optional($.ms_call_modifier),
     specifiers,
     ...(oldStyle ? [] : [optional($.ms_call_modifier)]),
-    field('declarator', oldStyle ? alias($._old_style_declarator, $._declarator) : $._declarator),
+    choice(
+      seq(
+        optional(choice(sym('_post_type_function_attribute_start'), sym('_braced_function_attribute_start'))),
+        field('declarator', oldStyle ? alias($._old_style_declarator, $._declarator) : $._declarator)
+      ),
+      seq(
+        sym('_braced_function_attribute_start'),
+        field('declarator', alias(sym('_braced_macro_declarator'), $._declarator))
+      )
+    ),
     ...(oldStyle ? [repeat1($.declaration)] : []),
     field('body', $.compound_statement)
   );
 }
 
 /**
- * @param {import('./types/treeSitterDsl').GrammarSymbols<'storage_class_specifier' | 'ms_call_modifier' | '_declaration_declarator' | 'gnu_asm_expression' | 'init_declarator' | 'type_qualifier' | 'identifier'>} $
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'storage_class_specifier' | 'ms_call_modifier' | '_declaration_declarator' | '_declarator' | 'gnu_asm_expression' | 'init_declarator' | 'type_qualifier' | 'identifier'>} $
  * @param {import('./types/treeSitterDsl').Rule} specifiers
  * @param {import('./types/treeSitterDsl').Rule} modifiers
  * @param {boolean} allowInferredType
  * @param {import('./types/treeSitterDsl').Rule} declarator
+ * @param {{guard?: import('./types/treeSitterDsl').Rule, bareMarkerInitializer?: boolean}} options
  */
-function declarationRule($, specifiers, modifiers, allowInferredType = true, declarator = $._declaration_declarator) {
+function declarationRule(
+  $,
+  specifiers,
+  modifiers,
+  allowInferredType = true,
+  declarator = $._declaration_declarator,
+  {
+    guard = choice(sym('_post_type_function_attribute_start'), sym('_braced_function_attribute_start')),
+    bareMarkerInitializer = false,
+  } = {}
+) {
+  const initialized = choice(
+    bareMarkerInitializer
+      ? seq(optional(guard), $.init_declarator)
+      : choice($.init_declarator, seq(guard, alias(sym('_guarded_init_declarator'), $.init_declarator))),
+    seq(sym('_braced_function_attribute_start'), alias(sym('_braced_macro_init_declarator'), $.init_declarator))
+  );
+  const item = choice(
+    seq(optional($.ms_call_modifier), optional(guard), declarator, optional($.gnu_asm_expression)),
+    seq(sym('_braced_function_attribute_start'), alias(sym('_braced_macro_declarator'), $._declarator)),
+    initialized
+  );
+  const items = bareMarkerInitializer
+    ? seq(field('declarator', initialized), repeat(seq(',', field('declarator', item))))
+    : commaSep1(field('declarator', item));
   return choice(
     seq(
       prec.dynamic(
@@ -2009,18 +2434,21 @@ function declarationRule($, specifiers, modifiers, allowInferredType = true, dec
             )
           : specifiers
       ),
-      commaSep1(
-        field(
-          'declarator',
-          choice(seq(optional($.ms_call_modifier), declarator, optional($.gnu_asm_expression)), $.init_declarator)
-        )
-      ),
+      items,
       ';'
     ),
     ...(allowInferredType
       ? [seq(repeat1($.type_qualifier), commaSep1(field('declarator', choice($.identifier, $.init_declarator))), ';')]
       : [])
   );
+}
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'initializer_list' | 'expression'>} $
+ * @param {import('./types/treeSitterDsl').Rule} declarator
+ */
+function initDeclaratorRule($, declarator) {
+  return seq(field('declarator', declarator), '=', field('value', choice($.initializer_list, $.expression)));
 }
 
 /**
@@ -2066,13 +2494,25 @@ function declarationDeclaratorRule($, functionDeclarator) {
 
 /**
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'identifier' | 'argument_list' | '_macro_attribute_argument_list'>} $
- * @param {'leading' | 'post-type' | 'continuation' | 'post-type-continuation' | 'trailing'} context
+ * @param {'leading' | 'braced-leading' | 'post-type' | 'continuation' | 'post-type-continuation' | 'trailing'} context
  */
 function macroAttributeRule($, context) {
-  const guard =
-    context === 'continuation' || context === 'trailing'
-      ? []
-      : [
+  const name = field(
+    'name',
+    context === 'trailing' ? alias(sym('_trailing_macro_attribute_name'), $.identifier) : $.identifier
+  );
+  const ordinary = seq(name, field('arguments', alias($._macro_attribute_argument_list, $.argument_list)));
+  if (context === 'trailing') return prec.dynamic(-2, ordinary);
+  const braced = seq(
+    sym('_braced_function_attribute_start'),
+    name,
+    field('arguments', alias(sym('_braced_macro_attribute_argument_list'), $.argument_list))
+  );
+  if (context === 'braced-leading') return prec.dynamic(-2, braced);
+  const guarded =
+    context === 'continuation'
+      ? ordinary
+      : seq(
           sym(
             context === 'leading'
               ? '_function_attribute_start'
@@ -2080,20 +2520,26 @@ function macroAttributeRule($, context) {
                 ? '_post_type_function_attribute_start'
                 : '_post_type_function_attribute_suffix'
           ),
-        ];
-  return prec.dynamic(
-    -2,
-    seq(
-      ...guard,
-      field('name', context === 'trailing' ? alias(sym('_trailing_macro_attribute_name'), $.identifier) : $.identifier),
-      field('arguments', alias($._macro_attribute_argument_list, $.argument_list))
-    )
-  );
+          ordinary
+        );
+  return prec.dynamic(-2, choice(guarded, braced));
 }
 
-/** @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'type_descriptor' | '_preproc_number' | 'number_literal'>} $ */
+/** @param {import('./types/treeSitterDsl').Rule} argument */
+function macroAttributeArgumentList(argument) {
+  return seq('(', optional(argument), repeat(seq(',', optional(argument))), ')');
+}
+
+/** @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'parameter_declaration' | 'type_descriptor' | '_preproc_number' | 'number_literal' | 'compound_statement' | 'initializer_pair' | 'initializer_list'>} $ */
 function macroAttributeArgument($) {
-  return choice($.expression, prec.dynamic(-1, $.type_descriptor), alias($._preproc_number, $.number_literal));
+  return choice(
+    $.expression,
+    prec.dynamic(-1, $.type_descriptor),
+    alias($._preproc_number, $.number_literal),
+    $.compound_statement,
+    $.initializer_pair,
+    prec.dynamic(-1, $.initializer_list)
+  );
 }
 
 /**
