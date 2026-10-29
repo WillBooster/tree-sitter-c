@@ -351,7 +351,7 @@ static MacroGroup function_macro_group_contents(TSLexer *lexer, int32_t open, in
 }
 
 static bool function_macro_group_separator(int32_t c, unsigned depth, unsigned nested, bool type_argument, unsigned braces) {
-    return (c == ';' && !braces) || c == '#' || (type_argument && c == ',' && depth == 1 && !nested);
+    return ((c == ';' || c == '#') && !braces) || (type_argument && c == ',' && depth == 1 && !nested);
 }
 
 static bool function_macro_type_prefix_keyword(const MacroName *name, const char *const *reserved_words, unsigned reserved_count) {
