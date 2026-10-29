@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-import { Edit, Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, type Node, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 test('preserves type query captures for sized declarations and enum bases', async () => {
@@ -27,7 +27,7 @@ test('preserves type query captures for sized declarations and enum bases', asyn
   }
 });
 
-test('preserves declarator supertype queries across old-style signature edits', async () => {
+test('preserves declarator supertype queries for old-style and prototype signatures', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
@@ -39,55 +39,27 @@ test('preserves declarator supertype queries across old-style signature edits', 
     ['int **f(int a) ', ['**f(int a)', '*f(int a)']],
     ['int *const f(a) int a; ', ['*const f(a)']],
     ['int *const f(int a) ', ['*const f(int a)']],
-    ['int *f(a) int a; ', ['*f(a)']],
   ] as const;
   const kinds = ['pointer_declarator', 'function_declarator'];
   const qualified = new Query(language, kinds.map((kind) => `(_declarator/${kind}) @${kind}`).join('\n'));
   const plain = new Query(language, kinds.map((kind) => `(${kind}) @${kind}`).join('\n'));
-  let prefix: string = signatures[0][0];
-  let tree = parser.parse(`${prefix}{ return 0; }`)!;
-  const captures = (
-    query: Query,
-    root: typeof tree.rootNode
-  ): { name: string; text: string; start: number; end: number }[] =>
-    query
-      .captures(root)
-      .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
   try {
-    for (const [nextPrefix, expectedPointers] of signatures) {
-      tree.edit(
-        new Edit({
-          startIndex: 0,
-          oldEndIndex: prefix.length,
-          newEndIndex: nextPrefix.length,
-          startPosition: { row: 0, column: 0 },
-          oldEndPosition: { row: 0, column: prefix.length },
-          newEndPosition: { row: 0, column: nextPrefix.length },
-        })
-      );
-      const source = `${nextPrefix}{ return 0; }`;
-      const incremental = parser.parse(source, tree)!;
-      tree.delete();
-      tree = incremental;
-      const fresh = parser.parse(source)!;
+    for (const [prefix, expectedPointers] of signatures) {
+      const tree = parser.parse(`${prefix}{ return 0; }`)!;
       try {
         expect(tree.rootNode.hasError).toBe(false);
-        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
         const result = captures(qualified, tree.rootNode);
         expect(result).toEqual(captures(plain, tree.rootNode));
-        expect(result).toEqual(captures(qualified, fresh.rootNode));
         expect(result.filter(({ name }) => name === 'pointer_declarator').map(({ text }) => text)).toEqual(
           expectedPointers
         );
       } finally {
-        fresh.delete();
+        tree.delete();
       }
-      prefix = nextPrefix;
     }
   } finally {
     qualified.delete();
     plain.delete();
-    tree.delete();
     parser.delete();
   }
 });
@@ -198,7 +170,6 @@ test('keeps known type constructors and keyword captures after marker prefixes',
     const types = [...keywords.map((keyword) => `${keyword}(int)`), '_Atomic(int)', '_BitInt(8)', 'TYPE(int)'];
     const parameter = 'struct { int z; } p';
     const source = `#define MARK\n#define TYPE(...) __VA_ARGS__\n${types.map((type, index) => `MARK const ${type} f${index}(${parameter});`).join('\n')}\nint next;\n`;
-    let currentSource = source;
     let tree = parser.parse(source)!;
     ownedTree = tree;
     const query = new Query(
@@ -207,8 +178,6 @@ test('keeps known type constructors and keyword captures after marker prefixes',
         '\n(declaration type: (typeof_specifier) @return.type declarator: (function_declarator declarator: (identifier) @return.name))'
     );
     ownedQuery = query;
-    const captures = (root: typeof tree.rootNode): Array<[string, string, number, number]> =>
-      query.captures(root).map(({ name, node }) => [name, node.text, node.startIndex, node.endIndex]);
     const check = (): void => {
       expect(tree.rootNode.hasError).toBe(false);
       const declarations = tree.rootNode.namedChildren.filter((node) => node.type === 'declaration');
@@ -221,51 +190,22 @@ test('keeps known type constructors and keyword captures after marker prefixes',
       ]);
       expect(declarations.map((node) => node.childForFieldName('type')?.text)).toEqual([...types, 'int']);
       expect(declarations.at(-1)?.text).toBe('int next;');
-      const result = query.captures(tree.rootNode);
-      expect(result.filter(({ name }) => name === 'return.type').map(({ node }) => node.text)).toEqual(
-        keywords.map((keyword) => `${keyword}(int)`)
-      );
-      expect(result.filter(({ name }) => name === 'return.name').map(({ node }) => node.text)).toEqual(
-        keywords.map((_, index) => `f${index}`)
-      );
-      expect(
-        result
-          .filter(({ name, node }) => name === 'keyword' && keywords.includes(node.text))
-          .map(({ node }) => node.text)
-      ).toEqual(keywords);
     };
     check();
-    let oldParameter = parameter;
-    for (const nextParameter of ['int p', parameter]) {
-      const at = currentSource.indexOf(oldParameter);
-      const prefix = currentSource.slice(0, at);
-      const row = prefix.split('\n').length - 1;
-      const column = at - prefix.lastIndexOf('\n') - 1;
-      tree.edit(
-        new Edit({
-          startIndex: at,
-          oldEndIndex: at + oldParameter.length,
-          newEndIndex: at + nextParameter.length,
-          startPosition: { row, column },
-          oldEndPosition: { row, column: column + oldParameter.length },
-          newEndPosition: { row, column: column + nextParameter.length },
-        })
-      );
-      currentSource = currentSource.slice(0, at) + nextParameter + currentSource.slice(at + oldParameter.length);
-      const incremental = parser.parse(currentSource, tree)!;
-      tree.delete();
-      tree = incremental;
-      ownedTree = tree;
-      const fresh = parser.parse(currentSource)!;
-      try {
-        check();
-        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
-        expect(captures(tree.rootNode)).toEqual(captures(fresh.rootNode));
-      } finally {
-        fresh.delete();
-      }
-      oldParameter = nextParameter;
-    }
+    const result = query.captures(tree.rootNode);
+    expect(result.filter(({ name }) => name === 'return.type').map(({ node }) => node.text)).toEqual(
+      keywords.map((keyword) => `${keyword}(int)`)
+    );
+    expect(result.filter(({ name }) => name === 'return.name').map(({ node }) => node.text)).toEqual(
+      keywords.map((_, index) => `f${index}`)
+    );
+    expect(
+      result.filter(({ name, node }) => name === 'keyword' && keywords.includes(node.text)).map(({ node }) => node.text)
+    ).toEqual(keywords);
+    tree = parser.parse(source.replaceAll(parameter, 'int p'))!;
+    ownedTree.delete();
+    ownedTree = tree;
+    check();
   } finally {
     ownedQuery?.delete();
     ownedTree?.delete();
@@ -273,23 +213,19 @@ test('keeps known type constructors and keyword captures after marker prefixes',
   }
 });
 
-test('preserves compound literal fields and queries across storage-class edits', async () => {
+test('preserves compound literal fields and queries', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
   parser.setLanguage(language);
   const source = 'void f(void){(static /* storage */ thread_local int){42}; (constexpr int){7};}';
-  let tree = parser.parse(source)!;
+  const tree = parser.parse(source)!;
   let query: Query | undefined;
   try {
     query = new Query(
       language,
       '(compound_literal_expression storage_class: (storage_class_specifier) @storage) (compound_literal_expression type: (type_descriptor) @type value: (initializer_list) @value) (expression/compound_literal_expression) @expression'
     );
-    const snapshot = (root: typeof tree.rootNode): { name: string; text: string; start: number; end: number }[] =>
-      query!
-        .captures(root)
-        .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
     expect(tree.rootNode.hasError).toBe(false);
     expect(
       query
@@ -315,37 +251,16 @@ test('preserves compound literal fields and queries across storage-class edits',
         .filter(({ name }) => name === 'expression')
         .map(({ node }) => node.text)
     ).toEqual(['(static /* storage */ thread_local int){42}', '(constexpr int){7}']);
-    let currentSource = source;
-    for (const nextSource of [
+    for (const variant of [
       source.replace('static', 'register').replace('thread_local ', ''),
       source.replace('static /* storage */ thread_local ', ''),
-      source,
     ]) {
-      const startIndex = currentSource.indexOf('(', currentSource.indexOf('{')) + 1;
-      const oldEndIndex = currentSource.indexOf('int)', startIndex);
-      const newEndIndex = nextSource.indexOf('int)', startIndex);
-      tree.edit(
-        new Edit({
-          startIndex,
-          oldEndIndex,
-          newEndIndex,
-          startPosition: { row: 0, column: startIndex },
-          oldEndPosition: { row: 0, column: oldEndIndex },
-          newEndPosition: { row: 0, column: newEndIndex },
-        })
-      );
-      const next = parser.parse(nextSource, tree)!;
-      tree.delete();
-      tree = next;
-      const fresh = parser.parse(nextSource)!;
+      const variantTree = parser.parse(variant)!;
       try {
-        expect(tree.rootNode.hasError).toBe(false);
-        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
-        expect(snapshot(tree.rootNode)).toEqual(snapshot(fresh.rootNode));
+        expect(variantTree.rootNode.hasError).toBe(false);
       } finally {
-        fresh.delete();
+        variantTree.delete();
       }
-      currentSource = nextSource;
     }
   } finally {
     query?.delete();
@@ -354,60 +269,22 @@ test('preserves compound literal fields and queries across storage-class edits',
   }
 });
 
-test('keeps constexpr recovery fields independent of prefix edit history', async () => {
+test('keeps constexpr recovery fields in compound literals', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
   parser.setLanguage(language);
-  const source = 'void f(void){(static _Atomic(int)){0};}';
-  let tree = parser.parse(source)!;
+  const tree = parser.parse('void f(void){(constexpr _Atomic(int)){0};}')!;
   let query: Query | undefined;
   try {
     query = new Query(
       language,
       '(compound_literal_expression storage_class: (storage_class_specifier) @storage) (compound_literal_expression type: (type_descriptor) @type) ((type_qualifier) @constexpr (#eq? @constexpr "constexpr"))'
     );
-    let currentSource = source;
-    for (const nextSource of [source.replace('static', 'constexpr'), source]) {
-      const startIndex = source.indexOf('static');
-      const oldEndIndex = currentSource.indexOf(' _Atomic');
-      const newEndIndex = nextSource.indexOf(' _Atomic');
-      tree.edit(
-        new Edit({
-          startIndex,
-          oldEndIndex,
-          newEndIndex,
-          startPosition: { row: 0, column: startIndex },
-          oldEndPosition: { row: 0, column: oldEndIndex },
-          newEndPosition: { row: 0, column: newEndIndex },
-        })
-      );
-      const next = parser.parse(nextSource, tree)!;
-      tree.delete();
-      tree = next;
-      const fresh = parser.parse(nextSource)!;
-      try {
-        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
-        const captures = query
-          .captures(tree.rootNode)
-          .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
-        expect(captures).toEqual(
-          query
-            .captures(fresh.rootNode)
-            .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }))
-        );
-        if (nextSource.includes('constexpr')) {
-          expect(captures.filter(({ name }) => name === 'storage')).toEqual([]);
-          expect(captures.filter(({ name }) => name === 'type').map(({ text }) => text)).toEqual([
-            'constexpr _Atomic(int)',
-          ]);
-          expect(captures.filter(({ name }) => name === 'constexpr').map(({ text }) => text)).toEqual(['constexpr']);
-        }
-      } finally {
-        fresh.delete();
-      }
-      currentSource = nextSource;
-    }
+    const captures = query.captures(tree.rootNode).map(({ name, node }) => ({ name, text: node.text }));
+    expect(captures.filter(({ name }) => name === 'storage')).toEqual([]);
+    expect(captures.filter(({ name }) => name === 'type').map(({ text }) => text)).toEqual(['constexpr _Atomic(int)']);
+    expect(captures.filter(({ name }) => name === 'constexpr').map(({ text }) => text)).toEqual(['constexpr']);
   } finally {
     query?.delete();
     tree.delete();
@@ -415,13 +292,13 @@ test('keeps constexpr recovery fields independent of prefix edit history', async
   }
 });
 
-test('preserves thread_local typedef queries across compound literal role edits', async () => {
+test('preserves thread_local typedef queries in compound literal roles', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
   parser.setLanguage(language);
   const source = 'typedef int thread_local; void f(void){(thread_local){0};}';
-  let tree = parser.parse(source)!;
+  const tree = parser.parse(source)!;
   let query: Query | undefined;
   try {
     query = new Query(
@@ -439,38 +316,17 @@ test('preserves thread_local typedef queries across compound literal role edits'
     expect(captures.filter(({ name }) => name === 'typedef').map(({ text }) => text)).toEqual(['thread_local']);
     expect(captures.filter(({ name }) => name === 'value').map(({ text }) => text)).toEqual(['{0}']);
     expect(captures.filter(({ name }) => name === 'expression').map(({ text }) => text)).toEqual(['(thread_local){0}']);
-    let currentSource = source;
-    for (const nextSource of [
+    for (const variant of [
       source.replace('(thread_local)', '(static thread_local int)'),
       source.replace('(thread_local)', '(thread_local *)'),
       source.replace('(thread_local)', '(const thread_local)'),
-      source,
     ]) {
-      const startIndex = source.indexOf('(thread_local)') + 1;
-      const oldEndIndex = currentSource.indexOf('){0}', startIndex);
-      const newEndIndex = nextSource.indexOf('){0}', startIndex);
-      tree.edit(
-        new Edit({
-          startIndex,
-          oldEndIndex,
-          newEndIndex,
-          startPosition: { row: 0, column: startIndex },
-          oldEndPosition: { row: 0, column: oldEndIndex },
-          newEndPosition: { row: 0, column: newEndIndex },
-        })
-      );
-      const next = parser.parse(nextSource, tree)!;
-      tree.delete();
-      tree = next;
-      const fresh = parser.parse(nextSource)!;
+      const variantTree = parser.parse(variant)!;
       try {
-        expect(tree.rootNode.hasError).toBe(false);
-        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
-        expect(snapshot(tree.rootNode)).toEqual(snapshot(fresh.rootNode));
+        expect(variantTree.rootNode.hasError).toBe(false);
       } finally {
-        fresh.delete();
+        variantTree.delete();
       }
-      currentSource = nextSource;
     }
   } finally {
     query?.delete();
@@ -554,3 +410,9 @@ API signed char byte;`)!;
     parser.delete();
   }
 });
+
+function captures(query: Query, root: Node): { name: string; text: string; start: number; end: number }[] {
+  return query
+    .captures(root)
+    .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
+}

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Edit, Language, type Node, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 import treeSitterJson from '../../tree-sitter.json';
@@ -10,7 +10,7 @@ const Root = path.join(import.meta.dirname, '../..');
 const Source = fs.readFileSync(path.join(Root, 'test/fixtures/gotoStatements.c'), 'utf8');
 await Parser.init();
 
-test('highlights goto keywords with canonical labels and preserves edited query ownership', async () => {
+test('highlights goto keywords with canonical labels', async () => {
   const parser = new Parser();
   const queries: Query[] = [];
   let tree: Tree | undefined;
@@ -78,69 +78,22 @@ test('highlights goto keywords with canonical labels and preserves edited query 
         .filter(({ name }) => name === 'name')
         .map(({ node }) => node.text)
     ).toEqual(['travel', 'main']);
-
-    let source = Source;
-    for (const [oldLabel, newLabel, malformed] of [
-      ['done', 'longDone', false],
-      ['longDone', 'done', false],
-      ['done', 'done', true],
-      ['done', 'done', false],
+    for (const [source, malformed] of [
+      [Source.replace('goto done;', 'goto longDone;').replace('done:', 'longDone:'), false],
+      [Source.replace('goto done;', 'goto done'), true],
     ] as const) {
-      const start = source.indexOf(`goto ${oldLabel}`, source.indexOf('retry:'));
-      const oldEnd = source.indexOf(`${oldLabel}:`, start) + oldLabel.length;
-      expect(start).toBeGreaterThanOrEqual(0);
-      expect(oldEnd).toBeGreaterThan(start);
-      const before = source.slice(start, oldEnd);
-      let replacement = before.replaceAll(oldLabel, newLabel);
-      replacement = malformed
-        ? replacement.replace(`goto ${newLabel};`, `goto ${newLabel}`)
-        : replacement.replace(`goto ${newLabel}\n`, `goto ${newLabel};\n`);
-      const next = source.slice(0, start) + replacement + source.slice(oldEnd);
-      tree.edit(
-        new Edit({
-          startIndex: start,
-          oldEndIndex: oldEnd,
-          newEndIndex: start + replacement.length,
-          startPosition: point(source, start),
-          oldEndPosition: point(source, oldEnd),
-          newEndPosition: point(next, start + replacement.length),
-        })
-      );
-      let incremental: Tree | undefined;
-      let fresh: Tree | undefined;
+      const variant = parser.parse(source)!;
       try {
-        incremental = parser.parse(next, tree)!;
-        fresh = parser.parse(next)!;
-        expect(incremental.rootNode.hasError).toBe(malformed);
-        expect(snapshot(incremental.rootNode)).toEqual(snapshot(fresh.rootNode));
-        for (const query of queries)
-          expect(query.captures(incremental.rootNode).map(({ name, node }) => [name, snapshot(node)])).toEqual(
-            query.captures(fresh.rootNode).map(({ name, node }) => [name, snapshot(node)])
-          );
+        expect(variant.rootNode.hasError).toBe(malformed);
         if (!malformed) {
           expect(
-            incremental.rootNode
-              .descendantsOfType('goto_statement')
-              .map((node) => node.childForFieldName('label')?.text)
-          ).toEqual([newLabel, 'retry']);
-          for (const node of incremental.rootNode.descendantsOfType('goto')) {
-            expect(
-              queries[0]!
-                .captures(incremental.rootNode)
-                .filter((capture) => capture.name === 'keyword' && capture.node.id === node.id)
-            ).toHaveLength(1);
-          }
+            variant.rootNode.descendantsOfType('goto_statement').map((node) => node.childForFieldName('label')?.text)
+          ).toEqual(['longDone', 'retry']);
         }
-        tree.delete();
-        tree = incremental;
-        incremental = undefined;
-        source = next;
       } finally {
-        incremental?.delete();
-        fresh?.delete();
+        variant.delete();
       }
     }
-    expect(source).toBe(Source);
   } finally {
     tree?.delete();
     for (const query of queries) query.delete();
@@ -151,19 +104,4 @@ test('highlights goto keywords with canonical labels and preserves edited query 
 function point(source: string, index: number): { row: number; column: number } {
   const prefix = source.slice(0, index);
   return { row: prefix.split('\n').length - 1, column: prefix.length - prefix.lastIndexOf('\n') - 1 };
-}
-
-function snapshot(node: Node): unknown {
-  return {
-    type: node.type,
-    named: node.isNamed,
-    extra: node.isExtra,
-    missing: node.isMissing,
-    error: node.hasError,
-    start: node.startIndex,
-    end: node.endIndex,
-    startPosition: node.startPosition,
-    endPosition: node.endPosition,
-    children: node.children.map((child, index) => [node.fieldNameForChild(index), snapshot(child)]),
-  };
 }

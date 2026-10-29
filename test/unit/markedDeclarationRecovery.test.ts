@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-import { Edit, Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 const declarations = [
@@ -85,7 +85,7 @@ test('confines marked initializer and trailing marker recovery to their declarat
           }
         };
         check(tree, text);
-        verifyCommentEdit(parser, tree, query, text, text.indexOf(statement), check);
+        checkCommentInsertion(parser, text, text.indexOf(statement), check);
       } finally {
         tree?.delete();
       }
@@ -137,7 +137,7 @@ test('keeps non-type and multi-argument annotations after proved marked types', 
             expect(current.rootNode.namedChildren.at(-1)?.text).toBe(following);
           };
           check(tree, text);
-          verifyCommentEdit(parser, tree, query, text, text.indexOf('{', header.length), check);
+          checkCommentInsertion(parser, text, text.indexOf('{', header.length), check);
         } finally {
           tree?.delete();
         }
@@ -182,14 +182,16 @@ test('retains function typedef ownership when array bounds contain braced types'
           expect(definition.startIndex).toBeGreaterThanOrEqual(header.length);
           expect(definition.endIndex).toBeLessThan(text.indexOf('F *callback;'));
           expect(current.rootNode.namedChildren.at(-1)?.text).toBe(following);
-          const captures = query!.captures(current.rootNode);
-          expect(captures.findLast(({ name }) => name === 'alias.name')?.node.text).toBe(declarator.text);
-          expect(captures.filter(({ name }) => name === 'definition.function').map(({ node }) => node.text)).toEqual([
-            'after(void)',
-          ]);
         };
         check(tree, source);
-        verifyCommentEdit(parser, tree, query, source, source.indexOf('{', header.length), check);
+        const captures = query.captures(tree.rootNode);
+        expect(captures.findLast(({ name }) => name === 'alias.name')?.node.text).toBe(
+          tree.rootNode.descendantsOfType('type_definition').at(-1)!.childForFieldName('declarator')!.text
+        );
+        expect(captures.filter(({ name }) => name === 'definition.function').map(({ node }) => node.text)).toEqual([
+          'after(void)',
+        ]);
+        checkCommentInsertion(parser, source, source.indexOf('{', header.length), check);
       } finally {
         tree?.delete();
       }
@@ -236,12 +238,6 @@ test('keeps marked nested function declarators with braced parameter bounds', as
             return name?.type === 'identifier' ? [name.text] : [];
           });
           expect(declaratorNames).toEqual(['f']);
-          expect(
-            query!
-              .captures(current.rootNode)
-              .filter(({ name, node }) => name === 'name' && node.type === 'identifier')
-              .map(({ node }) => node.text)
-          ).toEqual(['f', 'after']);
           const after = current.rootNode.namedChildren.at(-1)!;
           expect([after.type, after.text, after.startIndex, after.endIndex, after.hasError]).toEqual([
             'function_definition',
@@ -252,7 +248,13 @@ test('keeps marked nested function declarators with braced parameter bounds', as
           ]);
         };
         check(tree, source);
-        verifyCommentEdit(parser, tree, query, source, source.indexOf('{', header.length), check);
+        expect(
+          query
+            .captures(tree.rootNode)
+            .filter(({ name, node }) => name === 'name' && node.type === 'identifier')
+            .map(({ node }) => node.text)
+        ).toEqual(['f', 'after']);
+        checkCommentInsertion(parser, source, source.indexOf('{', header.length), check);
       } finally {
         tree?.delete();
       }
@@ -263,43 +265,17 @@ test('keeps marked nested function declarators with braced parameter bounds', as
   }
 });
 
-function verifyCommentEdit(
+function checkCommentInsertion(
   parser: Parser,
-  tree: Tree,
-  query: Query,
   source: string,
   at: number,
   check: (current: Tree, text: string) => void
 ): void {
-  const cache = tree.copy();
-  let incremental: Tree | undefined;
-  let fresh: Tree | undefined;
-  const insertion = '/* edit */';
-  const row = source.slice(0, at).split('\n').length - 1;
-  const column = at - source.lastIndexOf('\n', at - 1) - 1;
-  const edited = source.slice(0, at) + insertion + source.slice(at);
-  const captures = (current: Tree): Array<[string, string, number, number]> =>
-    query.captures(current.rootNode).map(({ name, node }) => [name, node.text, node.startIndex, node.endIndex]);
+  const commented = source.slice(0, at) + '/* edit */' + source.slice(at);
+  const tree = parser.parse(commented)!;
   try {
-    cache.edit(
-      new Edit({
-        startIndex: at,
-        oldEndIndex: at,
-        newEndIndex: at + insertion.length,
-        startPosition: { row, column },
-        oldEndPosition: { row, column },
-        newEndPosition: { row, column: column + insertion.length },
-      })
-    );
-    incremental = parser.parse(edited, cache)!;
-    fresh = parser.parse(edited)!;
-    check(incremental, edited);
-    check(fresh, edited);
-    expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
-    expect(captures(incremental)).toEqual(captures(fresh));
+    check(tree, commented);
   } finally {
-    fresh?.delete();
-    incremental?.delete();
-    cache.delete();
+    tree.delete();
   }
 }

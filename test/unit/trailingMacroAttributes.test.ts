@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Edit, Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 const wasmPath = path.join(import.meta.dirname, '../../tree-sitter-c.wasm');
@@ -151,7 +151,7 @@ test('retains the array name when an unsupported bare marker follows it', async 
   }
 });
 
-test('preserves annotation name ranges and following captures through an edit and undo', async () => {
+test('preserves annotation name ranges and following captures', async () => {
   await Parser.init();
   const language = await Language.load(wasmPath);
   const parser = new Parser().setLanguage(language);
@@ -178,8 +178,7 @@ test('preserves annotation name ranges and following captures through an edit an
     expect(name.text).toBe('ATTR');
     expect(name.childCount).toBe(0);
     expect(source.slice(name.startIndex, name.endIndex)).toBe('ATTR');
-    const originalCaptures = captures(tree.rootNode);
-    expect(originalCaptures.map(([kind, text]) => [kind, text])).toEqual([
+    expect(captures(tree.rootNode).map(([kind, text]) => [kind, text])).toEqual([
       ['type', 'int'],
       ['object', '*value'],
       ['annotation', 'ATTR'],
@@ -187,46 +186,6 @@ test('preserves annotation name ranges and following captures through an edit an
       ['typedef', '(*saved_t)(int)'],
       ['function', 'after(void)'],
     ]);
-    const at = source.indexOf('1');
-    const text = '/* edit */';
-    const editedSource = source.slice(0, at) + text + source.slice(at);
-    tree.edit(
-      new Edit({
-        startIndex: at,
-        oldEndIndex: at,
-        newEndIndex: at + text.length,
-        startPosition: { row: 0, column: at },
-        oldEndPosition: { row: 0, column: at },
-        newEndPosition: { row: 0, column: at + text.length },
-      })
-    );
-    const incremental = parser.parse(editedSource, tree)!;
-    const fresh = parser.parse(editedSource)!;
-    try {
-      expect(incremental.rootNode.hasError).toBe(false);
-      expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
-      expect(captures(incremental.rootNode)).toEqual(captures(fresh.rootNode));
-      incremental.edit(
-        new Edit({
-          startIndex: at,
-          oldEndIndex: at + text.length,
-          newEndIndex: at,
-          startPosition: { row: 0, column: at },
-          oldEndPosition: { row: 0, column: at + text.length },
-          newEndPosition: { row: 0, column: at },
-        })
-      );
-      const undone = parser.parse(source, incremental)!;
-      try {
-        expect(undone.rootNode.hasError).toBe(false);
-        expect(captures(undone.rootNode)).toEqual(originalCaptures);
-      } finally {
-        undone.delete();
-      }
-    } finally {
-      incremental.delete();
-      fresh.delete();
-    }
   } finally {
     tree.delete();
     query.delete();

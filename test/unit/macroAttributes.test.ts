@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Edit, Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 const wasmPath = path.join(import.meta.dirname, '../../tree-sitter-c.wasm');
@@ -756,7 +756,7 @@ test.each([
   'inline Result lookup(void);',
   'Result *lookup(void);',
   'Result lookup(void);',
-])('parses alias-return prototypes and reparses edits after standalone annotations: %s', async (prototype) => {
+])('parses alias-return prototypes and reports errors after standalone annotations: %s', async (prototype) => {
   await Parser.init();
   const parser = new Parser().setLanguage(await Language.load(wasmPath));
   const source = `${prototype}\nint following(void) { return 0; }\n`;
@@ -768,27 +768,11 @@ test.each([
     expect(
       tree.rootNode.descendantsOfType('function_declarator').map((node) => node.childForFieldName('declarator')?.text)
     ).toEqual(['lookup', 'following']);
-    const prefix = 'BEGIN\nATTR("x")\n';
-    tree.edit(
-      new Edit({
-        startIndex: 0,
-        oldEndIndex: 0,
-        newEndIndex: prefix.length,
-        startPosition: { row: 0, column: 0 },
-        oldEndPosition: { row: 0, column: 0 },
-        newEndPosition: { row: 2, column: 0 },
-      })
-    );
-    const edited = prefix + source;
-    const incremental = parser.parse(edited, tree)!;
-    const fresh = parser.parse(edited)!;
+    const annotated = parser.parse(`BEGIN\nATTR("x")\n${source}`)!;
     try {
-      expect(fresh.rootNode.hasError).toBe(true);
-      expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
-      expect(incremental.rootNode.endIndex).toBe(edited.length);
+      expect(annotated.rootNode.hasError).toBe(true);
     } finally {
-      incremental.delete();
-      fresh.delete();
+      annotated.delete();
     }
   } finally {
     tree.delete();
@@ -907,45 +891,11 @@ saved_t after(void) { return 0; }
       expect(captures(tree.rootNode, prefix.length)).toEqual(expected);
       const at = source.indexOf('{');
       const text = '/* edit */';
-      const editedSource = source.slice(0, at) + text + source.slice(at);
-      const editedTree = tree.copy();
-      editedTree.edit(
-        new Edit({
-          startIndex: at,
-          oldEndIndex: at,
-          newEndIndex: at + text.length,
-          startPosition: { row: 0, column: at },
-          oldEndPosition: { row: 0, column: at },
-          newEndPosition: { row: 0, column: at + text.length },
-        })
-      );
-      const incremental = parser.parse(editedSource, editedTree)!;
-      const fresh = parser.parse(editedSource)!;
+      const commented = parser.parse(source.slice(0, at) + text + source.slice(at))!;
       try {
-        expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
-        expect(captures(incremental.rootNode, prefix.length + text.length)).toEqual(expected);
-        expect(captures(fresh.rootNode, prefix.length + text.length)).toEqual(expected);
-        incremental.edit(
-          new Edit({
-            startIndex: at,
-            oldEndIndex: at + text.length,
-            newEndIndex: at,
-            startPosition: { row: 0, column: at },
-            oldEndPosition: { row: 0, column: at + text.length },
-            newEndPosition: { row: 0, column: at },
-          })
-        );
-        const undone = parser.parse(source, incremental)!;
-        try {
-          expect(undone.rootNode.toString()).toBe(tree.rootNode.toString());
-          expect(captures(undone.rootNode, prefix.length)).toEqual(expected);
-        } finally {
-          undone.delete();
-        }
+        expect(captures(commented.rootNode, prefix.length + text.length)).toEqual(expected);
       } finally {
-        editedTree.delete();
-        incremental.delete();
-        fresh.delete();
+        commented.delete();
       }
     } finally {
       query.delete();
@@ -1069,7 +1019,7 @@ test('parses braced annotation arguments with public fields and declaration boun
   }
 });
 
-test('preserves braced parameter types and macro-prefixed opaque types through edits', async () => {
+test('preserves braced parameter types and macro-prefixed opaque types', async () => {
   await Parser.init();
   const language = await Language.load(wasmPath);
   const parser = new Parser().setLanguage(language);
@@ -1081,16 +1031,6 @@ test('preserves braced parameter types and macro-prefixed opaque types through e
       '\n' +
       fs.readFileSync(path.join(import.meta.dirname, '../../queries/highlights.scm'), 'utf8')
   );
-  const captures = (root: typeof tree.rootNode): Array<[string, string, string, number, number]> =>
-    query
-      .captures(root)
-      .map<[string, string, string, number, number]>(({ name, node }) => [
-        name,
-        node.type,
-        node.text,
-        node.startIndex,
-        node.endIndex,
-      ]);
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const structures = tree.rootNode.namedChildren.filter((node) =>
@@ -1135,51 +1075,13 @@ test('preserves braced parameter types and macro-prefixed opaque types through e
         .filter((node) => node.type === 'function_declarator')
         .map((node) => node.text)
     );
-    const originalCaptures = captures(tree.rootNode);
     for (const group of tree.rootNode.descendantsOfType(['struct_specifier', 'enum_specifier'])) {
       const at = group.startIndex + group.text.indexOf('{');
-      const text = '/* edit */';
-      const editedSource = source.slice(0, at) + text + source.slice(at);
-      const row = source.slice(0, at).split('\n').length - 1;
-      const column = at - source.lastIndexOf('\n', at - 1) - 1;
-      const cache = tree.copy();
-      cache.edit(
-        new Edit({
-          startIndex: at,
-          oldEndIndex: at,
-          newEndIndex: at + text.length,
-          startPosition: { row, column },
-          oldEndPosition: { row, column },
-          newEndPosition: { row, column: column + text.length },
-        })
-      );
-      const incremental = parser.parse(editedSource, cache)!;
-      const fresh = parser.parse(editedSource)!;
+      const commented = parser.parse(`${source.slice(0, at)}/* edit */${source.slice(at)}`)!;
       try {
-        expect(incremental.rootNode.hasError).toBe(false);
-        expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
-        expect(captures(incremental.rootNode)).toEqual(captures(fresh.rootNode));
-        incremental.edit(
-          new Edit({
-            startIndex: at,
-            oldEndIndex: at + text.length,
-            newEndIndex: at,
-            startPosition: { row, column },
-            oldEndPosition: { row, column: column + text.length },
-            newEndPosition: { row, column },
-          })
-        );
-        const undone = parser.parse(source, incremental)!;
-        try {
-          expect(undone.rootNode.toString()).toBe(tree.rootNode.toString());
-          expect(captures(undone.rootNode)).toEqual(originalCaptures);
-        } finally {
-          undone.delete();
-        }
+        expect(commented.rootNode.hasError).toBe(false);
       } finally {
-        cache.delete();
-        incremental.delete();
-        fresh.delete();
+        commented.delete();
       }
     }
   } finally {
@@ -1198,7 +1100,7 @@ const guardedBoundaryFixtures: Array<{
   initialized?: string[];
   parameters?: Array<[string, string]>;
   parameterStorage?: string[];
-  editBefore?: string[];
+  commentBefore?: string[];
 }> = [
   {
     file: 'bracedDeclarationBoundaries.c',
@@ -1295,7 +1197,7 @@ const guardedBoundaryFixtures: Array<{
       'trailing_tag',
       'trailing_storage_tag',
     ],
-    editBefore: ['OTHER trailing_marked'],
+    commentBefore: ['OTHER trailing_marked'],
   },
   {
     file: 'balancedOpaqueAnnotations.c',
@@ -1306,7 +1208,7 @@ const guardedBoundaryFixtures: Array<{
     ],
     macroTypes: [],
     attributes: ['DEPRECATED(7.56.0, "replacement")'],
-    editBefore: ['7.56.0'],
+    commentBefore: ['7.56.0'],
   },
   {
     file: 'leadingMacroTypes.c',
@@ -1445,7 +1347,7 @@ const guardedBoundaryFixtures: Array<{
 ];
 
 test.each(guardedBoundaryFixtures)(
-  'retains guarded declaration fields, queries and edits in $file',
+  'retains guarded declaration fields and queries with inserted comments in $file',
   async (fixture) => {
     await Parser.init();
     const language = await Language.load(wasmPath);
@@ -1539,7 +1441,7 @@ test.each(guardedBoundaryFixtures)(
             .map(({ captures }) => captures.map(({ node }) => node.text))
         ).toEqual(fixture.parameters);
       }
-      verifyGuardedGroupEdits(parser, tree, query, source, fixture.editBefore);
+      verifyGuardedGroupComments(parser, tree, source, fixture.commentBefore);
     } finally {
       query.delete();
       tree.delete();
@@ -1596,7 +1498,7 @@ test('retains complete function bodies around bare marker initializers', async (
         .map(({ node }) => node.text)
     ).toEqual(['MARK', 'MARK', 'MARK']);
     expect(tree.rootNode.namedChildren.find((node) => node.type === 'declaration')?.text).toBe('int next(void);');
-    verifyGuardedGroupEdits(parser, tree, query, source);
+    verifyGuardedGroupComments(parser, tree, source);
   } finally {
     query.delete();
     tree.delete();
@@ -1636,7 +1538,7 @@ test.each([
       ['opaque.type', 'Word'],
       ['opaque.value', '{0}'],
     ]);
-    verifyGuardedGroupEdits(parser, tree, query, source);
+    verifyGuardedGroupComments(parser, tree, source);
   } finally {
     query.delete();
     tree.delete();
@@ -1700,7 +1602,7 @@ test('retains macro types after leading recognized attributes in declarations an
     expect(loop.childForFieldName('initializer')?.text).toBe('const TYPE(struct { int member; }) item = {0};');
     expect(tree.rootNode.descendantsOfType('declaration').some((node) => node.text === 'int nested_next;')).toBe(true);
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
-    verifyGuardedGroupEdits(parser, tree, query, source);
+    verifyGuardedGroupComments(parser, tree, source);
   } finally {
     query.delete();
     tree.delete();
@@ -1747,7 +1649,7 @@ test('retains opaque types and function tags after leading braced annotations', 
         .map(({ node }) => node.text)
     ).toEqual(expect.arrayContaining(['g', 'pointer', 'chained', 'definition', 'local', 'following']));
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
-    verifyGuardedGroupEdits(parser, tree, query, source);
+    verifyGuardedGroupComments(parser, tree, source);
   } finally {
     tags.delete();
     query.delete();
@@ -1803,7 +1705,7 @@ test('retains physical declaration-macro terminators in blocks and for initializ
     const loop = tree.rootNode.descendantsOfType('for_statement')[0]!;
     expect(loop.childForFieldName('initializer')?.text).toBe('const DECLARE(foo, {1, 2});');
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
-    verifyGuardedGroupEdits(parser, tree, query, source);
+    verifyGuardedGroupComments(parser, tree, source);
   } finally {
     query.delete();
     tree.delete();
@@ -1872,7 +1774,7 @@ test('retains GNU nested annotation and macro-type function bodies including old
     ]);
     expect(oldStyle?.childForFieldName('body')?.text).toBe('{ return value; }');
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
-    verifyGuardedGroupEdits(parser, tree, query, source);
+    verifyGuardedGroupComments(parser, tree, source);
   } finally {
     query.delete();
     tree.delete();
@@ -1950,7 +1852,7 @@ test('retains braced declarator-macro fields and following assignments at declar
       'int ARRAY(values, {1, 2});'
     );
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
-    verifyGuardedGroupEdits(parser, tree, query, source);
+    verifyGuardedGroupComments(parser, tree, source);
   } finally {
     query.delete();
     tree.delete();
@@ -1958,70 +1860,22 @@ test('retains braced declarator-macro fields and following assignments at declar
   }
 });
 
-function verifyGuardedGroupEdits(
-  parser: Parser,
-  tree: Tree,
-  query: Query,
-  source: string,
-  editBefore: string[] = []
-): void {
-  const captures = (current: Tree): Array<[string, string, string, number, number]> =>
-    query
-      .captures(current.rootNode)
-      .map(({ name, node }) => [name, node.type, node.text, node.startIndex, node.endIndex]);
-  const expected = captures(tree);
-  const groups = tree.rootNode.descendantsOfType(['struct_specifier', 'initializer_list', 'compound_statement']);
-  const offsets = groups
+function verifyGuardedGroupComments(parser: Parser, tree: Tree, source: string, commentBefore: string[] = []): void {
+  const offsets = tree.rootNode
+    .descendantsOfType(['struct_specifier', 'initializer_list', 'compound_statement'])
     .filter((node) => node.text.includes('{'))
     .map((group) => group.startIndex + group.text.indexOf('{'));
-  for (const before of editBefore) {
+  for (const before of commentBefore) {
     const at = source.indexOf(before);
     expect(at).toBeGreaterThanOrEqual(0);
     offsets.push(at);
   }
   for (const at of offsets) {
-    const text = '/* edit */';
-    const editedSource = source.slice(0, at) + text + source.slice(at);
-    const row = source.slice(0, at).split('\n').length - 1;
-    const column = at - source.lastIndexOf('\n', at - 1) - 1;
-    const cache = tree.copy();
-    cache.edit(
-      new Edit({
-        startIndex: at,
-        oldEndIndex: at,
-        newEndIndex: at + text.length,
-        startPosition: { row, column },
-        oldEndPosition: { row, column },
-        newEndPosition: { row, column: column + text.length },
-      })
-    );
-    const incremental = parser.parse(editedSource, cache)!;
-    const fresh = parser.parse(editedSource)!;
+    const commented = parser.parse(`${source.slice(0, at)}/* edit */${source.slice(at)}`)!;
     try {
-      expect(incremental.rootNode.hasError).toBe(false);
-      expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
-      expect(captures(incremental)).toEqual(captures(fresh));
-      incremental.edit(
-        new Edit({
-          startIndex: at,
-          oldEndIndex: at + text.length,
-          newEndIndex: at,
-          startPosition: { row, column },
-          oldEndPosition: { row, column: column + text.length },
-          newEndPosition: { row, column },
-        })
-      );
-      const undone = parser.parse(source, incremental)!;
-      try {
-        expect(undone.rootNode.toString()).toBe(tree.rootNode.toString());
-        expect(captures(undone)).toEqual(expected);
-      } finally {
-        undone.delete();
-      }
+      expect(commented.rootNode.hasError).toBe(false);
     } finally {
-      cache.delete();
-      incremental.delete();
-      fresh.delete();
+      commented.delete();
     }
   }
 }

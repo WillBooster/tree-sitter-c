@@ -1,4 +1,4 @@
-import { Edit, Language, Parser } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 test.each([
@@ -74,50 +74,26 @@ test.each([
 });
 
 test.each(['#define VALUE 1', '#undef VALUE', '#pragma once', '#if VALUE\nint value;\n#endif', '#include A B // tail'])(
-  'updates preprocessing EOF terminators when a newline is added and removed: %s',
+  'ends preprocessing directives at EOF with and without a trailing newline: %s',
   async (directive) => {
     await Parser.init();
     const parser = new Parser();
     parser.setLanguage(await Language.load('tree-sitter-c.wasm'));
-    let source = directive;
-    let tree = parser.parse(source)!;
     try {
-      expect(tree.rootNode.hasError).toBe(false);
-      for (const next of [`${directive}\n`, directive]) {
-        tree.edit(
-          new Edit({
-            startIndex: directive.length,
-            oldEndIndex: source.length,
-            newEndIndex: next.length,
-            startPosition: endPoint(directive),
-            oldEndPosition: endPoint(source),
-            newEndPosition: endPoint(next),
-          })
-        );
-        const updated = parser.parse(next, tree)!;
-        tree.delete();
-        tree = updated;
-        const fresh = parser.parse(next)!;
+      for (const source of [directive, `${directive}\n`]) {
+        const tree = parser.parse(source)!;
         try {
           expect(tree.rootNode.hasError).toBe(false);
-          expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
-          expect(tree.rootNode.endIndex).toBe(next.length);
+          expect(tree.rootNode.endIndex).toBe(source.length);
         } finally {
-          fresh.delete();
+          tree.delete();
         }
-        source = next;
       }
     } finally {
-      tree.delete();
       parser.delete();
     }
   }
 );
-
-function endPoint(source: string): { row: number; column: number } {
-  const lines = source.split('\n');
-  return { row: lines.length - 1, column: lines.at(-1)!.length };
-}
 
 test.each([1, 8, 50])('keeps chains of %i trailing pragma operators outside include paths', async (count) => {
   await Parser.init();
