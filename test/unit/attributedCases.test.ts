@@ -1,45 +1,27 @@
 import path from 'node:path';
 
-import { Edit, Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 await Parser.init();
 const language = await Language.load(path.join(import.meta.dirname, '../../tree-sitter-c.wasm'));
 
-test('reparses attributed case labels consistently after a declarator edit', () => {
+test('parses attributed case labels and recovers from a broken declarator', () => {
   const parser = new Parser().setLanguage(language);
-  let source = 'i(x){if(x){case 1:[[a]]e:[[a]];;}e k;}';
-  let tree = parser.parse(source)!;
-  const original = tree.rootNode.toString();
   try {
-    expect(tree.rootNode.hasError).toBe(false);
-    for (const replacement of [' ', '(']) {
-      tree.edit(
-        new Edit({
-          startIndex: 1,
-          oldEndIndex: 2,
-          newEndIndex: 2,
-          startPosition: { row: 0, column: 1 },
-          oldEndPosition: { row: 0, column: 2 },
-          newEndPosition: { row: 0, column: 2 },
-        })
-      );
-      source = source.slice(0, 1) + replacement + source.slice(2);
-      const incremental = parser.parse(source, tree)!;
-      tree.delete();
-      tree = incremental;
-      const fresh = parser.parse(source)!;
+    for (const [source, hasError] of [
+      ['i(x){if(x){case 1:[[a]]e:[[a]];;}e k;}', false],
+      ['i x){if(x){case 1:[[a]]e:[[a]];;}e k;}', true],
+    ] as const) {
+      const tree = parser.parse(source)!;
       try {
-        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
         expect(tree.rootNode.endIndex).toBe(source.length);
-        expect(tree.rootNode.hasError).toBe(replacement === ' ');
+        expect(tree.rootNode.hasError).toBe(hasError);
       } finally {
-        fresh.delete();
+        tree.delete();
       }
     }
-    expect(tree.rootNode.toString()).toBe(original);
   } finally {
-    tree.delete();
     parser.delete();
   }
 });

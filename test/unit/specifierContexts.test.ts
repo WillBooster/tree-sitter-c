@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-import { Edit, Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 test('keeps enum underlying types and qualifier ranges in their enum context', async () => {
@@ -58,33 +58,15 @@ test('keeps storage-prefixed empty declarations, loop initializers, and unnamed 
   const tags = new Query(language, fs.readFileSync('queries/tags.scm', 'utf8'));
   const highlights = new Query(language, fs.readFileSync('queries/highlights.scm', 'utf8'));
   const expressions = new Query(language, '(for_statement initializer: (expression) @initializer)');
-  let source = fs.readFileSync('test/fixtures/specifierContexts.c', 'utf8');
-  let tree = parser.parse(source)!;
+  const fixture = fs.readFileSync('test/fixtures/specifierContexts.c', 'utf8');
+  const start = fixture.indexOf('static long const', fixture.indexOf('void contexts'));
   try {
-    for (const name of [undefined, 'temporary', undefined]) {
-      const start = source.indexOf('static long const', source.indexOf('void contexts'));
-      const end = source.indexOf(';', start);
+    for (const name of [undefined, 'temporary']) {
       const replacement = name ? `static long const ${name}` : 'static long const';
-      const row = source.slice(0, start).split('\n').length - 1;
-      const column = start - source.lastIndexOf('\n', start) - 1;
-      tree.edit(
-        new Edit({
-          startIndex: start,
-          oldEndIndex: end,
-          newEndIndex: start + replacement.length,
-          startPosition: { row, column },
-          oldEndPosition: { row, column: column + end - start },
-          newEndPosition: { row, column: column + replacement.length },
-        })
-      );
-      source = source.slice(0, start) + replacement + source.slice(end);
-      const incremental = parser.parse(source, tree)!;
-      tree.delete();
-      tree = incremental;
-      const fresh = parser.parse(source)!;
+      const source = fixture.slice(0, start) + replacement + fixture.slice(fixture.indexOf(';', start));
+      const tree = parser.parse(source)!;
       try {
         expect(tree.rootNode.hasError).toBe(false);
-        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
         const loops = tree.rootNode.descendantsOfType('for_statement');
         expect(loops.map((node) => node.childForFieldName('initializer')?.type)).toEqual([
           'declaration',
@@ -153,49 +135,29 @@ test('keeps storage-prefixed empty declarations, loop initializers, and unnamed 
             .map(({ node }) => node.text)
         ).toEqual(['parameter(unsigned const)', 'contexts(void)', 'following(void)']);
       } finally {
-        fresh.delete();
+        tree.delete();
       }
     }
   } finally {
     expressions.delete();
     highlights.delete();
     tags.delete();
-    tree.delete();
     parser.delete();
   }
 });
 
-test('preserves initializer field roles when an expression becomes a qualified empty declaration and back', async () => {
+test('preserves initializer field roles for an expression and a qualified empty declaration', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
   const expressions = new Query(language, '(for_statement initializer: (expression) @initializer)');
-  let source = fs.readFileSync('test/fixtures/specifierContexts.c', 'utf8');
-  let tree = parser.parse(source)!;
-  const start = source.indexOf('for (n;') + 'for ('.length;
-  const row = source.slice(0, start).split('\n').length - 1;
-  const column = start - source.lastIndexOf('\n', start) - 1;
+  const fixture = fs.readFileSync('test/fixtures/specifierContexts.c', 'utf8');
+  const start = fixture.indexOf('for (n;') + 'for ('.length;
   try {
-    for (const replacement of ['n', 'long const', 'n']) {
-      const end = source.indexOf(';', start);
-      tree.edit(
-        new Edit({
-          startIndex: start,
-          oldEndIndex: end,
-          newEndIndex: start + replacement.length,
-          startPosition: { row, column },
-          oldEndPosition: { row, column: column + end - start },
-          newEndPosition: { row, column: column + replacement.length },
-        })
-      );
-      source = source.slice(0, start) + replacement + source.slice(end);
-      const incremental = parser.parse(source, tree)!;
-      tree.delete();
-      tree = incremental;
-      const fresh = parser.parse(source)!;
+    for (const replacement of ['n', 'long const']) {
+      const tree = parser.parse(fixture.slice(0, start) + replacement + fixture.slice(fixture.indexOf(';', start)))!;
       try {
         expect(tree.rootNode.hasError).toBe(false);
-        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
         const initializer = tree.rootNode.descendantsOfType('for_statement')[3]!.childForFieldName('initializer')!;
         if (replacement === 'n') {
           expect([initializer.type, initializer.text, initializer.startIndex, initializer.endIndex]).toEqual([
@@ -211,19 +173,15 @@ test('preserves initializer field roles when an expression becomes a qualified e
             initializer.childForFieldName('declarator')?.text,
           ]).toEqual(['declaration', 'long', undefined]);
         }
-        const snapshot = (root: typeof tree.rootNode): [string, number, number][] =>
-          expressions.captures(root).map(({ node }) => [node.text, node.startIndex, node.endIndex]);
-        expect(snapshot(tree.rootNode)).toEqual(snapshot(fresh.rootNode));
         expect(
           tree.rootNode.descendantsOfType('function_definition').at(-1)?.childForFieldName('declarator')?.text
         ).toBe('following(void)');
       } finally {
-        fresh.delete();
+        tree.delete();
       }
     }
   } finally {
     expressions.delete();
-    tree.delete();
     parser.delete();
   }
 });

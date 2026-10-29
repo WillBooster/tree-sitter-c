@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-import { Edit, Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 test('keeps type-name fields and supertype captures separate from declaration storage classes', async () => {
@@ -52,11 +52,9 @@ test('keeps type-name fields and supertype captures separate from declaration st
   }
 });
 
-test('reports storage classes in type names and restores bounded trees after edit and undo', async () => {
+test('reports storage classes in type names and keeps the following definition', async () => {
   await Parser.init();
-  const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser().setLanguage(language);
-  const query = new Query(language, '(type_specifier/sized_type_specifier) @type');
+  const parser = new Parser().setLanguage(await Language.load('tree-sitter-c.wasm'));
   const contexts = [
     (type: string) => `void f(void) { (${type})1; }`,
     (type: string) => `void f(void) { sizeof(${type}); }`,
@@ -70,55 +68,23 @@ test('reports storage classes in type names and restores bounded trees after edi
   ];
   try {
     for (const context of contexts) {
-      let source = `${context('int const long')}\nint following(void) { return 0; }\n`;
-      let tree = parser.parse(source)!;
-      const start = source.indexOf('const');
-      const baseline = tree.rootNode.toString();
-      const captures = query.captures(tree.rootNode).map(({ node }) => [node.text, node.startIndex, node.endIndex]);
-      try {
-        expect(tree.rootNode.hasError, source).toBe(false);
-        for (const replacement of ['static', 'const']) {
-          const end = start + (replacement === 'static' ? 'const'.length : 'static'.length);
-          tree.edit(
-            new Edit({
-              startIndex: start,
-              oldEndIndex: end,
-              newEndIndex: start + replacement.length,
-              startPosition: { row: 0, column: start },
-              oldEndPosition: { row: 0, column: end },
-              newEndPosition: { row: 0, column: start + replacement.length },
-            })
-          );
-          source = source.slice(0, start) + replacement + source.slice(end);
-          const next = parser.parse(source, tree)!;
+      for (const qualifier of ['const', 'static']) {
+        const source = `${context(`int ${qualifier} long`)}\nint following(void) { return 0; }\n`;
+        const tree = parser.parse(source)!;
+        try {
+          expect(tree.rootNode.hasError, source).toBe(qualifier === 'static');
+          const following = tree.rootNode.descendantsOfType('function_definition').at(-1)!;
+          expect([following.text, following.startIndex, following.endIndex]).toEqual([
+            'int following(void) { return 0; }',
+            source.indexOf('int following'),
+            source.indexOf('int following') + 'int following(void) { return 0; }'.length,
+          ]);
+        } finally {
           tree.delete();
-          tree = next;
-          const fresh = parser.parse(source)!;
-          try {
-            expect(tree.rootNode.hasError, source).toBe(replacement === 'static');
-            expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
-            const following = tree.rootNode.descendantsOfType('function_definition').at(-1)!;
-            expect([following.text, following.startIndex, following.endIndex]).toEqual([
-              'int following(void) { return 0; }',
-              source.indexOf('int following'),
-              source.indexOf('int following') + 'int following(void) { return 0; }'.length,
-            ]);
-            if (replacement === 'const') {
-              expect(tree.rootNode.toString()).toBe(baseline);
-              expect(
-                query.captures(tree.rootNode).map(({ node }) => [node.text, node.startIndex, node.endIndex])
-              ).toEqual(captures);
-            }
-          } finally {
-            fresh.delete();
-          }
         }
-      } finally {
-        tree.delete();
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });

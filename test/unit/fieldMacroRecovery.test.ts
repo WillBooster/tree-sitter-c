@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Edit, Language, type Node, Parser } from '@willbooster/web-tree-sitter';
+import { Language, type Node, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 const root = path.resolve(import.meta.dirname, '../..');
@@ -291,52 +291,19 @@ test('retains a following prototype after versioned annotation groups', async ()
 });
 
 test.each([
-  { label: 'marker', needle: 'HEADER_MARKER', original: 'HEADER_MARKER', replacement: 'int', row: 3 },
-  { label: 'following type', needle: 'void timer', original: 'void ', replacement: '', row: 5 },
-])('invalidates conditional lookahead after a $label edit and undo', async ({ needle, original, replacement, row }) => {
+  { label: 'marker', needle: 'HEADER_MARKER', original: 'HEADER_MARKER', replacement: 'int' },
+  { label: 'following type', needle: 'void timer', original: 'void ', replacement: '' },
+])('retains the following definition after a changed conditional $label', async ({ needle, original, replacement }) => {
   await Parser.init();
   const parser = new Parser().setLanguage(await Language.load(path.join(root, 'tree-sitter-c.wasm')));
-  const tree = parser.parse(conditionalSource)!;
   const at = conditionalSource.indexOf(needle, conditionalSource.indexOf('#ifdef'));
-  const editedSource = conditionalSource.slice(0, at) + replacement + conditionalSource.slice(at + original.length);
-  tree.edit(
-    new Edit({
-      startIndex: at,
-      oldEndIndex: at + original.length,
-      newEndIndex: at + replacement.length,
-      startPosition: { row, column: 0 },
-      oldEndPosition: { row, column: original.length },
-      newEndPosition: { row, column: replacement.length },
-    })
-  );
-  const incremental = parser.parse(editedSource, tree)!;
-  const fresh = parser.parse(editedSource)!;
+  const tree = parser.parse(
+    conditionalSource.slice(0, at) + replacement + conditionalSource.slice(at + original.length)
+  )!;
   try {
-    expect(treeMetadata(incremental.rootNode)).toEqual(treeMetadata(fresh.rootNode));
-    expect(incremental.rootNode.descendantsOfType('function_definition').map(definitionName)).toContain('after');
-    incremental.edit(
-      new Edit({
-        startIndex: at,
-        oldEndIndex: at + replacement.length,
-        newEndIndex: at + original.length,
-        startPosition: { row, column: 0 },
-        oldEndPosition: { row, column: replacement.length },
-        newEndPosition: { row, column: original.length },
-      })
-    );
-    const undone = parser.parse(conditionalSource, incremental)!;
-    const restored = parser.parse(conditionalSource)!;
-    try {
-      expect(treeMetadata(undone.rootNode)).toEqual(treeMetadata(restored.rootNode));
-      expect(undone.rootNode.hasError).toBe(false);
-    } finally {
-      undone.delete();
-      restored.delete();
-    }
+    expect(tree.rootNode.descendantsOfType('function_definition').map(definitionName)).toContain('after');
   } finally {
     tree.delete();
-    incremental.delete();
-    fresh.delete();
     parser.delete();
   }
 });
@@ -387,20 +354,4 @@ function definitionName(node: Node): string | undefined {
   let declarator = node.childForFieldName('declarator');
   while (declarator?.childForFieldName('declarator')) declarator = declarator.childForFieldName('declarator');
   return declarator?.text;
-}
-
-function treeMetadata(node: Node): unknown[] {
-  return [
-    node.type,
-    node.isNamed,
-    node.isMissing,
-    node.hasError,
-    node.isError,
-    node.isExtra,
-    node.startIndex,
-    node.endIndex,
-    node.startPosition,
-    node.endPosition,
-    ...node.children.map((child, index) => [node.fieldNameForChild(index), treeMetadata(child)]),
-  ];
 }

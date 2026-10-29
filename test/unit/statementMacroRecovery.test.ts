@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Edit, Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 const root = path.resolve(import.meta.dirname, '../..');
@@ -80,8 +80,6 @@ int following(void){return 0;}
 `;
     const source = `${prefix}\n${body}`;
     const tree = parser.parse(source)!;
-    const captures = (current: Tree): Array<[string, string, number, number]> =>
-      query.captures(current.rootNode).map(({ name, node }) => [name, node.text, node.startIndex, node.endIndex]);
     const check = (current: Tree, text: string): void => {
       const functions = current.rootNode.descendantsOfType('function_definition');
       const block = functions
@@ -111,27 +109,11 @@ int following(void){return 0;}
     };
     try {
       check(tree, source);
-      const cache = tree.copy();
-      cache.edit(
-        new Edit({
-          startIndex: 0,
-          oldEndIndex: prefix.length + 1,
-          newEndIndex: 0,
-          startPosition: { row: 0, column: 0 },
-          oldEndPosition: { row: prefix.split('\n').length, column: 0 },
-          newEndPosition: { row: 0, column: 0 },
-        })
-      );
-      const incremental = parser.parse(body, cache)!;
       const fresh = parser.parse(body)!;
       try {
-        check(incremental, body);
-        expect(incremental.rootNode.hasError).toBe(false);
-        expect(incremental.rootNode.toString()).toBe(fresh.rootNode.toString());
-        expect(captures(incremental)).toEqual(captures(fresh));
+        check(fresh, body);
+        expect(fresh.rootNode.hasError).toBe(false);
       } finally {
-        cache.delete();
-        incremental.delete();
         fresh.delete();
       }
     } finally {

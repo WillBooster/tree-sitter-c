@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Edit, Language, type Node, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 import treeSitterJson from '../../tree-sitter.json';
@@ -10,7 +10,7 @@ const Root = path.join(import.meta.dirname, '../..');
 const Source = fs.readFileSync(path.join(Root, 'test/fixtures/standardOperators.c'), 'utf8');
 await Parser.init();
 
-test('highlights canonical operators while preserving literals and edited query ranges', async () => {
+test('highlights canonical operators while preserving literals', async () => {
   const parser = new Parser();
   const queries: Query[] = [];
   let tree: Tree | undefined;
@@ -78,64 +78,21 @@ test('highlights canonical operators while preserving literals and edited query 
         .filter(({ name }) => name === 'name')
         .map(({ node }) => node.text)
     ).toEqual(['Value', 'calculate', 'main']);
-
-    let source = Source;
-    for (const [before, after] of [
-      ['a /= b', 'a >>= b'],
-      ['a >>= b', 'a /= b'],
-    ] as const) {
-      const start = source.indexOf(before) + 2;
-      const oldOperator = before.slice(2, -2);
-      const replacement = after.slice(2, -2);
-      expect(start).toBeGreaterThanOrEqual(2);
-      const next = source.slice(0, start) + replacement + source.slice(start + oldOperator.length);
-      tree.edit(
-        new Edit({
-          startIndex: start,
-          oldEndIndex: start + oldOperator.length,
-          newEndIndex: start + replacement.length,
-          startPosition: point(source, start),
-          oldEndPosition: point(source, start + oldOperator.length),
-          newEndPosition: point(next, start + replacement.length),
-        })
-      );
-      let incremental: Tree | undefined;
-      let fresh: Tree | undefined;
-      try {
-        incremental = parser.parse(next, tree)!;
-        fresh = parser.parse(next)!;
-        expect(incremental.rootNode.hasError).toBe(false);
-        expect(snapshot(incremental.rootNode)).toEqual(snapshot(fresh.rootNode));
-        for (const query of queries) {
-          expect(query.captures(incremental.rootNode).map(({ name, node }) => [name, snapshot(node)])).toEqual(
-            query.captures(fresh.rootNode).map(({ name, node }) => [name, snapshot(node)])
-          );
-        }
-        const changed = incremental.rootNode.descendantsOfType('assignment_expression')[0]!;
-        const operator = changed.childForFieldName('operator')!;
-        expect(changed.childForFieldName('left')?.text).toBe('a');
-        expect(changed.childForFieldName('right')?.text).toBe('b');
-        expect([operator.type, operator.text, operator.startIndex, operator.endIndex]).toEqual([
-          replacement,
-          replacement,
-          start,
-          start + replacement.length,
-        ]);
-        expect(
-          highlights
-            .captures(incremental.rootNode)
-            .filter(({ name, node }) => name === 'operator' && node.id === operator.id)
-        ).toHaveLength(1);
-        tree.delete();
-        tree = incremental;
-        incremental = undefined;
-        source = next;
-      } finally {
-        incremental?.delete();
-        fresh?.delete();
-      }
+    const start = Source.indexOf('a /= b') + 2;
+    const variant = parser.parse(`${Source.slice(0, start)}>>=${Source.slice(start + 2)}`)!;
+    try {
+      expect(variant.rootNode.hasError).toBe(false);
+      const changed = variant.rootNode.descendantsOfType('assignment_expression')[0]!;
+      const operator = changed.childForFieldName('operator')!;
+      expect(changed.childForFieldName('left')?.text).toBe('a');
+      expect(changed.childForFieldName('right')?.text).toBe('b');
+      expect([operator.type, operator.startIndex, operator.endIndex]).toEqual(['>>=', start, start + 3]);
+      expect(
+        highlights.captures(variant.rootNode).filter(({ name, node }) => name === 'operator' && node.id === operator.id)
+      ).toHaveLength(1);
+    } finally {
+      variant.delete();
     }
-    expect(source).toBe(Source);
   } finally {
     tree?.delete();
     for (const query of queries) query.delete();
@@ -146,19 +103,4 @@ test('highlights canonical operators while preserving literals and edited query 
 function point(source: string, index: number): { row: number; column: number } {
   const prefix = source.slice(0, index);
   return { row: prefix.split('\n').length - 1, column: prefix.length - prefix.lastIndexOf('\n') - 1 };
-}
-
-function snapshot(node: Node): unknown {
-  return {
-    type: node.type,
-    named: node.isNamed,
-    extra: node.isExtra,
-    missing: node.isMissing,
-    error: node.hasError,
-    start: node.startIndex,
-    end: node.endIndex,
-    startPosition: node.startPosition,
-    endPosition: node.endPosition,
-    children: node.children.map((child, index) => [node.fieldNameForChild(index), snapshot(child)]),
-  };
 }

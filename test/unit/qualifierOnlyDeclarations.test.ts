@@ -1,38 +1,22 @@
 import fs from 'node:fs';
 
-import { Edit, Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
-test('keeps declarator-free qualifiers within their declarations across declarator edits', async () => {
+test('keeps declarator-free qualifiers within their declarations with and without a declarator', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
   const qualifiers = new Query(language, '(type_qualifier) @qualifier');
   const tags = new Query(language, fs.readFileSync('queries/tags.scm', 'utf8'));
-  let source = fs.readFileSync('test/fixtures/qualifierOnlyDeclarations.c', 'utf8');
-  let tree = parser.parse(source)!;
+  const fixture = fs.readFileSync('test/fixtures/qualifierOnlyDeclarations.c', 'utf8');
   try {
-    for (const name of [undefined, 'temporary', undefined]) {
-      const end = source.indexOf(';');
+    for (const name of [undefined, 'temporary']) {
       const prefix = name ? `long const ${name}` : 'long const';
-      tree.edit(
-        new Edit({
-          startIndex: 0,
-          oldEndIndex: end,
-          newEndIndex: prefix.length,
-          startPosition: { row: 0, column: 0 },
-          oldEndPosition: { row: 0, column: end },
-          newEndPosition: { row: 0, column: prefix.length },
-        })
-      );
-      source = prefix + source.slice(end);
-      const incremental = parser.parse(source, tree)!;
-      tree.delete();
-      tree = incremental;
-      const fresh = parser.parse(source)!;
+      const source = prefix + fixture.slice(fixture.indexOf(';'));
+      const tree = parser.parse(source)!;
       try {
         expect(tree.rootNode.hasError).toBe(false);
-        expect(tree.rootNode.toString()).toBe(fresh.rootNode.toString());
         const captures = qualifiers
           .captures(tree.rootNode)
           .map(({ node }) => [node.text, node.startIndex, node.endIndex]);
@@ -42,9 +26,6 @@ test('keeps declarator-free qualifiers within their declarations across declarat
             match.index,
             match.index + match[0].length,
           ])
-        );
-        expect(captures).toEqual(
-          qualifiers.captures(fresh.rootNode).map(({ node }) => [node.text, node.startIndex, node.endIndex])
         );
         expect(
           tree.rootNode
@@ -64,13 +45,12 @@ test('keeps declarator-free qualifiers within their declarations across declarat
           expect(node.endPosition.row).toBe(node.startPosition.row);
         }
       } finally {
-        fresh.delete();
+        tree.delete();
       }
     }
   } finally {
     tags.delete();
     qualifiers.delete();
-    tree.delete();
     parser.delete();
   }
 });

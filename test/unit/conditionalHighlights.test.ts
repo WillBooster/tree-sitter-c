@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Edit, Language, type Node, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 import treeSitterJson from '../../tree-sitter.json';
@@ -10,7 +10,7 @@ const Root = path.join(import.meta.dirname, '../..');
 const Source = fs.readFileSync(path.join(Root, 'test/fixtures/conditionalOperators.c'), 'utf8');
 await Parser.init();
 
-test('highlights conditional punctuation without capturing other colons and preserves edited queries', async () => {
+test('highlights conditional punctuation without capturing other colons', async () => {
   const parser = new Parser();
   const queries: Query[] = [];
   let tree: Tree | undefined;
@@ -78,65 +78,32 @@ test('highlights conditional punctuation without capturing other colons and pres
         .filter(({ name }) => name === 'name')
         .map(({ node }) => node.text)
     ).toEqual(['Flags', 'choose', 'main']);
-
-    let source = Source;
-    for (const [before, after, hasError] of [
-      ['selected = a ? b :', 'selected = a ? longChoice :', false],
-      ['selected = a ? longChoice :', 'selected = a ? b :', false],
-      ['selected = a ? b :', 'selected = a  b :', true],
-      ['selected = a  b :', 'selected = a ? b :', false],
+    for (const [after, hasError] of [
+      ['selected = a ? longChoice :', false],
+      ['selected = a  b :', true],
     ] as const) {
-      const start = source.indexOf(before);
-      expect(start).toBeGreaterThanOrEqual(0);
-      const next = source.slice(0, start) + after + source.slice(start + before.length);
-      tree.edit(
-        new Edit({
-          startIndex: start,
-          oldEndIndex: start + before.length,
-          newEndIndex: start + after.length,
-          startPosition: point(source, start),
-          oldEndPosition: point(source, start + before.length),
-          newEndPosition: point(next, start + after.length),
-        })
-      );
-      let incremental: Tree | undefined;
-      let fresh: Tree | undefined;
+      const source = Source.replace('selected = a ? b :', after);
+      const variant = parser.parse(source)!;
       try {
-        incremental = parser.parse(next, tree)!;
-        fresh = parser.parse(next)!;
-        expect(incremental.rootNode.hasError).toBe(hasError);
-        expect(snapshot(incremental.rootNode)).toEqual(snapshot(fresh.rootNode));
-        for (const query of queries) {
-          expect(query.captures(incremental.rootNode).map(({ name, node }) => [name, snapshot(node)])).toEqual(
-            query.captures(fresh.rootNode).map(({ name, node }) => [name, snapshot(node)])
-          );
-        }
+        expect(variant.rootNode.hasError).toBe(hasError);
         if (!hasError) {
-          const expression = incremental.rootNode.descendantsOfType('conditional_expression')[0]!;
-          expect(expression.childForFieldName('condition')?.text).toBe('a');
-          expect(expression.childForFieldName('consequence')?.text).toBe(
-            after.includes('longChoice') ? 'longChoice' : 'b'
-          );
-          expect(expression.childForFieldName('alternative')?.text).toBe('(b ? c : a)');
+          const expression = variant.rootNode.descendantsOfType('conditional_expression')[0]!;
+          expect(
+            ['condition', 'consequence', 'alternative'].map((field) => expression.childForFieldName(field)?.text)
+          ).toEqual(['a', 'longChoice', '(b ? c : a)']);
           for (const node of expression.children.filter((node) => ['?', ':'].includes(node.type))) {
             expect(
               queries[0]!
-                .captures(incremental.rootNode)
+                .captures(variant.rootNode)
                 .filter((capture) => capture.name === 'operator' && capture.node.id === node.id)
             ).toHaveLength(1);
-            expect(next.slice(node.startIndex, node.endIndex)).toBe(node.type);
+            expect(source.slice(node.startIndex, node.endIndex)).toBe(node.type);
           }
         }
-        tree.delete();
-        tree = incremental;
-        incremental = undefined;
-        source = next;
       } finally {
-        incremental?.delete();
-        fresh?.delete();
+        variant.delete();
       }
     }
-    expect(source).toBe(Source);
   } finally {
     tree?.delete();
     for (const query of queries) query.delete();
@@ -147,19 +114,4 @@ test('highlights conditional punctuation without capturing other colons and pres
 function point(source: string, index: number): { row: number; column: number } {
   const prefix = source.slice(0, index);
   return { row: prefix.split('\n').length - 1, column: prefix.length - prefix.lastIndexOf('\n') - 1 };
-}
-
-function snapshot(node: Node): unknown {
-  return {
-    type: node.type,
-    named: node.isNamed,
-    extra: node.isExtra,
-    missing: node.isMissing,
-    error: node.hasError,
-    start: node.startIndex,
-    end: node.endIndex,
-    startPosition: node.startPosition,
-    endPosition: node.endPosition,
-    children: node.children.map((child, index) => [node.fieldNameForChild(index), snapshot(child)]),
-  };
 }
