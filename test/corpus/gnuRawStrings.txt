@@ -1,0 +1,842 @@
+==================
+GNU raw string encoding prefixes
+==================
+
+__auto_type a = R"(plain\text)";
+__auto_type b = LR"tag(wide
+text)tag";
+__auto_type c = uR"(utf16)";
+__auto_type d = UR"(utf32)";
+__auto_type e = u8R"(utf8 λ)";
+void after(void) {}
+
+---
+
+(translation_unit
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+GNU raw string exact delimiter matching
+==================
+
+const char *a = R"0123456789abcdef(a)0123456789abcdeX" b)0123456789abcdef";
+const char *b = R""(quoted delimiter)"";
+const char *c = R"tag(first)tagX" second))tag";
+void after(void) {}
+
+---
+
+(translation_unit
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (raw_string_literal)))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (raw_string_literal)))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (raw_string_literal)))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+GNU raw string concatenation with macros
+==================
+
+#define SUFFIX "tail"
+const char *a = "head" R"(middle)" SUFFIX;
+const char *b = SUFFIX R"tag(one)tag" R"(two)" "last";
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (concatenated_string
+        (string_literal
+          (string_content))
+        (raw_string_literal)
+        (identifier))))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (concatenated_string
+        (identifier)
+        (raw_string_literal)
+        (raw_string_literal)
+        (string_literal
+          (string_content)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+GNU raw strings keep punctuation and preprocessing text literal
+==================
+
+const char *text(void) {
+  return R"tag(_Pragma("unexpanded")
+#endif
+/* text, not a comment */
+\
+"quotes" )wrong" )tag";
+}
+void after(void) {}
+
+---
+
+(translation_unit
+  (function_definition
+    (type_qualifier)
+    (primitive_type)
+    (pointer_declarator
+      (function_declarator
+        (identifier)
+        (parameter_list
+          (parameter_declaration
+            (primitive_type)))))
+    (compound_statement
+      (return_statement
+        (raw_string_literal))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+Raw prefix names remain identifiers
+==================
+
+int R = 1, LR = 2, uR = 3, UR = 4, u8R = 5;
+int names(void) { return R + LR + uR + UR + u8R; }
+const char *ordinary = "body";
+
+---
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (number_literal))
+    (init_declarator
+      (identifier)
+      (number_literal))
+    (init_declarator
+      (identifier)
+      (number_literal))
+    (init_declarator
+      (identifier)
+      (number_literal))
+    (init_declarator
+      (identifier)
+      (number_literal)))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (binary_expression
+          (binary_expression
+            (binary_expression
+              (binary_expression
+                (identifier)
+                (identifier))
+              (identifier))
+            (identifier))
+          (identifier)))))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (string_literal
+        (string_content)))))
+
+==================
+GNU raw strings in anchored annotation arguments
+==================
+
+#define ATTR(...)
+extern ATTR(R"tag(a " (b) {c} )tag") int first(void);
+extern ATTR(LR"(wide)") int second(void);
+extern ATTR(uR"(utf16)") int third(void);
+extern ATTR(UR"(utf32)") int fourth(void);
+extern ATTR(u8R"(utf8)") int fifth(void);
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params))
+  (declaration
+    (storage_class_specifier)
+    (attribute_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)))
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (declaration
+    (storage_class_specifier)
+    (attribute_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)))
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (declaration
+    (storage_class_specifier)
+    (attribute_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)))
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (declaration
+    (storage_class_specifier)
+    (attribute_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)))
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (declaration
+    (storage_class_specifier)
+    (attribute_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)))
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+GNU raw strings in multiline preprocessing replacements
+==================
+
+#define TEXT R"tag(first " (b) {c}
+#endif
+second)tag"
+#define WIDE LR"(first
+second)"
+const char *text = TEXT;
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (identifier)))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+GNU raw strings in preprocessing calls and assembly
+==================
+
+#define YES(...) 1
+#if YES(R"(text)")
+int enabled;
+#endif
+int symbol asm(R"(renamed_symbol)");
+void operands(int a) {
+  int b;
+  __asm__(R"(nop)" : R"(=r)"(b) : R"(r)"(a));
+}
+_Static_assert(1, R"(message)");
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params)
+    (preproc_arg))
+  (preproc_if
+    (call_expression
+      (identifier)
+      (argument_list
+        (raw_string_literal)))
+    (declaration
+      (primitive_type)
+      (identifier)))
+  (declaration
+    (primitive_type)
+    (identifier)
+    (gnu_asm_expression
+      (raw_string_literal)))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (declaration
+        (primitive_type)
+        (identifier))
+      (expression_statement
+        (gnu_asm_expression
+          (raw_string_literal)
+          (gnu_asm_output_operand_list
+            (gnu_asm_output_operand
+              (raw_string_literal)
+              (identifier)))
+          (gnu_asm_input_operand_list
+            (gnu_asm_input_operand
+              (raw_string_literal)
+              (identifier)))))))
+  (expression_statement
+    (call_expression
+      (identifier)
+      (argument_list
+        (number_literal)
+        (raw_string_literal))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+Raw prefix lookalikes keep ordinary quoted macro arguments
+==================
+
+#define ATTR(...)
+#define NAME_R
+#define R
+extern ATTR(NAME_R"(escaped\" ) })") int long_name(void);
+extern ATTR(R "(escaped\" ) })") int spaced_name(void);
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params))
+  (preproc_def
+    (identifier))
+  (preproc_def
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (attribute_specifier
+      (identifier)
+      (argument_list
+        (concatenated_string
+          (identifier)
+          (string_literal
+            (string_content)
+            (escape_sequence)
+            (string_content)))))
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (declaration
+    (storage_class_specifier)
+    (attribute_specifier
+      (identifier)
+      (argument_list
+        (concatenated_string
+          (identifier)
+          (string_literal
+            (string_content)
+            (escape_sequence)
+            (string_content)))))
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+GNU raw string pragma arguments preserve following declarations
+==================
+
+_Pragma(R"(GCC diagnostic push)")
+_Pragma(R"tag(GCC diagnostic ignored "-Wunused-parameter")tag")
+int f(void) { return 1; }
+_Pragma(R"(GCC diagnostic pop)")
+void after(void) {}
+
+---
+
+(translation_unit
+  (pragma_operator)
+  (pragma_operator)
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (number_literal))))
+  (pragma_operator)
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+GNU raw string encoding prefixes allow physical line splices
+==================
+const char *a = R\
+"(first)";
+__auto_type b = L\
+R"(wide)";
+__auto_type c = u\
+R"(utf16)";
+__auto_type d = U\
+R\
+"(utf32)";
+__auto_type e = u\
+8\
+R\
+"(utf8)";
+void after(void) {}
+
+---
+
+(translation_unit
+  (declaration
+    (type_qualifier)
+    (primitive_type)
+    (init_declarator
+      (pointer_declarator
+        (identifier))
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (declaration
+    (type_identifier)
+    (init_declarator
+      (identifier)
+      (raw_string_literal)))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+GNU raw strings in pragma directive arguments
+==================
+#pragma message(R"tag(first
+second)tag")
+# pragma message(R"(third
+fourth)")
+int after(void) { return 0; }
+
+---
+
+(translation_unit
+  (preproc_call
+    (preproc_directive)
+    (preproc_arg))
+  (preproc_call
+    (preproc_directive)
+    (preproc_arg))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement
+      (return_statement
+        (number_literal)))))
+
+==================
+GNU raw literals remain arguments of type-producing macros
+==================
+#define TYPE(...) int
+#define va_arg(...) int
+extern TYPE(R"(x)") first;
+extern TYPE(((LR"(wide)")), 1, ignored) second;
+extern TYPE(UR"(utf32)", prefix, suffix) third;
+extern TYPE(u8R"(utf8)") fourth;
+extern va_arg(uR"(utf16)") fifth;
+extern TYPE(R"(x)",) empty;
+extern TYPE(R"(x)", const int) type_tokens;
+extern TYPE(R"(x)", +, ], {) opaque;
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params)
+    (preproc_arg))
+  (preproc_function_def
+    (identifier)
+    (preproc_params)
+    (preproc_arg))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (parenthesized_expression
+          (parenthesized_expression
+            (raw_string_literal)))
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+Raw first-argument tails preserve discarded preprocessing tokens
+==================
+#define TYPE(...) int
+extern TYPE(R"(x)" "tail") joined;
+extern TYPE((R"(x)" + 1), const int) expression;
+extern TYPE(((R"(x)" "tail") + 1) suffix, ], {) nested;
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params)
+    (preproc_arg))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (parenthesized_expression
+          (raw_string_literal)
+          (preproc_arg))
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (parenthesized_expression
+          (parenthesized_expression
+            (raw_string_literal)
+            (preproc_arg))
+          (preproc_arg))
+        (preproc_arg)))
+    (identifier))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+Pragma character constants keep raw-looking content inside their token
+==================
+#pragma 'R"('
+#pragma 'R"(' R"tag(real
+raw)tag"
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_call
+    (preproc_directive)
+    (preproc_arg))
+  (preproc_call
+    (preproc_directive)
+    (preproc_arg))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))
+
+==================
+Raw macro tails preserve leading non-splice backslashes
+==================
+#define TYPE(...) int
+extern TYPE(R"(x)" \u03B1) unicode;
+extern TYPE((R"(x)" \u03B1), const int) nested;
+extern TYPE(R"(x)" \\u03B1) discarded;
+void after(void) {}
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params)
+    (preproc_arg))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (parenthesized_expression
+          (raw_string_literal)
+          (preproc_arg))
+        (preproc_arg)))
+    (identifier))
+  (declaration
+    (storage_class_specifier)
+    (macro_type_specifier
+      (identifier)
+      (argument_list
+        (raw_string_literal)
+        (preproc_arg)))
+    (identifier))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (compound_statement)))

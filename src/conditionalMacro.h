@@ -134,14 +134,14 @@ static bool conditional_macro_modifier_group(TSLexer *lexer, const char *word, b
         sizeof(function_macro_group_modifiers) / sizeof(function_macro_group_modifiers[0]));
     if (!grouped || lexer->lookahead != '(') return true;
     bool literal = false;
-    return function_macro_balanced(lexer, '(', ')', &literal) && conditional_macro_skip_lines(lexer, escaped);
+    return function_macro_balanced(lexer, '(', ')', &literal, NULL) && conditional_macro_skip_lines(lexer, escaped);
 }
 
 static bool conditional_macro_attribute_declaration(TSLexer *lexer, bool *escaped) {
     lexer->advance(lexer, false);
     if (!conditional_macro_skip_lines(lexer, escaped) || lexer->lookahead != '[') return false;
     bool literal = false;
-    if (!function_macro_balanced(lexer, '[', ']', &literal) ||
+    if (!function_macro_balanced(lexer, '[', ']', &literal, NULL) ||
         !conditional_macro_skip_lines(lexer, escaped) || lexer->lookahead != ']') return false;
     lexer->advance(lexer, false);
     return conditional_macro_skip_lines(lexer, escaped);

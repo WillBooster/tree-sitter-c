@@ -10,6 +10,13 @@ test.each([
   ['int *value', '(1)', '*value'],
   ['int value', '1', 'value'],
   ['int *deprecated_value', '"use replacement"', '*deprecated_value'],
+  ...['R', 'LR', 'uR', 'UR', 'u8R'].flatMap((prefix) =>
+    [prefix, prefix.split('').join('\\\n') + '\\\n'].map((encoding) => [
+      'int *raw_value',
+      `${encoding}"tag(a " (b) {c})tag"`,
+      '*raw_value',
+    ])
+  ),
   ['int versioned', '7.56.0', 'versioned'],
   ['int empty_slots', ', 1, ,', 'empty_slots'],
   ['int fractional', '.5', 'fractional'],
@@ -51,6 +58,7 @@ int *create(options_t *);
 int *create_int(int);
 int *create_void(void);
 int *factory(int (*callback)(int));
+int literal_type(typeof(R"(type)") value);
 int run(int value) { return callback(value); }
 `;
   const tree = parser.parse(source)!;
@@ -59,7 +67,7 @@ int run(int value) { return callback(value); }
     expect(tree.rootNode.descendantsOfType('attribute_specifier')).toHaveLength(0);
     expect(
       tree.rootNode.descendantsOfType('function_declarator').map((node) => node.childForFieldName('declarator')?.text)
-    ).toEqual(['create', 'create_int', 'create_void', 'factory', '(*callback)', 'run']);
+    ).toEqual(['create', 'create_int', 'create_void', 'factory', '(*callback)', 'literal_type', 'run']);
     expect(tree.rootNode.descendantsOfType('type_identifier').some((node) => node.text === 'options_t')).toBe(true);
     expect(tree.rootNode.descendantsOfType('call_expression').map((node) => node.text)).toEqual(['callback(value)']);
   } finally {
