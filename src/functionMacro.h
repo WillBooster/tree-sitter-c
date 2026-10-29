@@ -82,7 +82,7 @@ static inline bool scan_raw_macro_type_tail(TSLexer *lexer) {
         int32_t c = lexer->lookahead;
         if (c == ')' && depth == 1) break;
         if (function_macro_argument_token(lexer, &word, NULL) != MACRO_ARGUMENT_PLAIN) continue;
-        // Like the attribute guard, hand the first brace of a balanced group to the braced-annotation grammar.
+        // Like the attribute guard, leave a balanced group's first brace and later arguments to the grammar.
         if (c == '{' && balanced) return false;
         if (balanced) balanced = function_macro_group(c, '(', ')', &depth, &nested, &braces);
         else if (c == '(') depth++;

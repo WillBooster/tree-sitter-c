@@ -21009,13 +21009,8 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "ALIAS",
-              "content": {
-                "type": "SYMBOL",
-                "name": "_raw_macro_type_tail"
-              },
-              "named": true,
-              "value": "preproc_arg"
+              "type": "SYMBOL",
+              "name": "_raw_string_type_tail"
             },
             {
               "type": "BLANK"
@@ -21061,13 +21056,8 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "ALIAS",
-              "content": {
-                "type": "SYMBOL",
-                "name": "_raw_macro_type_tail"
-              },
-              "named": true,
-              "value": "preproc_arg"
+              "type": "SYMBOL",
+              "name": "_raw_string_type_tail"
             },
             {
               "type": "BLANK"
@@ -21077,6 +21067,82 @@
         {
           "type": "STRING",
           "value": ")"
+        }
+      ]
+    },
+    "_raw_string_type_tail": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_raw_macro_type_tail"
+          },
+          "named": true,
+          "value": "preproc_arg"
+        },
+        {
+          "type": "REPEAT1",
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "STRING",
+                "value": ","
+              },
+              {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "expression"
+                      },
+                      {
+                        "type": "PREC_DYNAMIC",
+                        "value": -1,
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "type_descriptor"
+                        }
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_preproc_number"
+                        },
+                        "named": true,
+                        "value": "number_literal"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "compound_statement"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "initializer_pair"
+                      },
+                      {
+                        "type": "PREC_DYNAMIC",
+                        "value": -1,
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "initializer_list"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "BLANK"
+                  }
+                ]
+              }
+            ]
+          }
         }
       ]
     },
