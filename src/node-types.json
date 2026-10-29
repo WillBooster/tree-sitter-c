@@ -3033,6 +3033,10 @@
           "named": true
         },
         {
+          "type": "parameter_declaration",
+          "named": true
+        },
+        {
           "type": "preproc_arg",
           "named": true
         },

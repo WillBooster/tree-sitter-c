@@ -21098,41 +21098,55 @@
                     "type": "CHOICE",
                     "members": [
                       {
-                        "type": "SYMBOL",
-                        "name": "expression"
-                      },
-                      {
-                        "type": "PREC_DYNAMIC",
-                        "value": -1,
-                        "content": {
-                          "type": "SYMBOL",
-                          "name": "type_descriptor"
-                        }
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "SYMBOL",
+                            "name": "expression"
+                          },
+                          {
+                            "type": "PREC_DYNAMIC",
+                            "value": -1,
+                            "content": {
+                              "type": "SYMBOL",
+                              "name": "type_descriptor"
+                            }
+                          },
+                          {
+                            "type": "ALIAS",
+                            "content": {
+                              "type": "SYMBOL",
+                              "name": "_preproc_number"
+                            },
+                            "named": true,
+                            "value": "number_literal"
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "compound_statement"
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "initializer_pair"
+                          },
+                          {
+                            "type": "PREC_DYNAMIC",
+                            "value": -1,
+                            "content": {
+                              "type": "SYMBOL",
+                              "name": "initializer_list"
+                            }
+                          }
+                        ]
                       },
                       {
                         "type": "ALIAS",
                         "content": {
                           "type": "SYMBOL",
-                          "name": "_preproc_number"
+                          "name": "_macro_attribute_parameter"
                         },
                         "named": true,
-                        "value": "number_literal"
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "compound_statement"
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "initializer_pair"
-                      },
-                      {
-                        "type": "PREC_DYNAMIC",
-                        "value": -1,
-                        "content": {
-                          "type": "SYMBOL",
-                          "name": "initializer_list"
-                        }
+                        "value": "parameter_declaration"
                       }
                     ]
                   },

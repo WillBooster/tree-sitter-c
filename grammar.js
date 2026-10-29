@@ -2257,7 +2257,14 @@ module.exports = Object.assign(
       _raw_string_type_tail: ($) =>
         choice(
           alias(sym('_raw_macro_type_tail'), $.preproc_arg),
-          repeat1(seq(',', optional(macroAttributeArgument($))))
+          repeat1(
+            seq(
+              ',',
+              optional(
+                choice(macroAttributeArgument($), alias(sym('_macro_attribute_parameter'), $.parameter_declaration))
+              )
+            )
+          )
         ),
 
       _preproc_number: () =>
