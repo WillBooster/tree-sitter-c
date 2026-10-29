@@ -215,7 +215,7 @@ static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const Mac
     }
     if (name->ascii && function_macro_word_in(name->word, function_macro_type_keywords,
         sizeof(function_macro_type_keywords) / sizeof(function_macro_type_keywords[0]))) {
-        if (lexer->lookahead == '(' && (!function_macro_balanced(lexer, '(', ')', NULL, NULL) || !scan_pragma_spacing(lexer))) return MACRO_TYPE_PREFIX_INVALID;
+        if (lexer->lookahead == '(' && (!function_macro_modifier_balanced(lexer, '(', ')') || !scan_pragma_spacing(lexer))) return MACRO_TYPE_PREFIX_INVALID;
         if (strcmp(name->word, "struct") == 0 || strcmp(name->word, "union") == 0 || strcmp(name->word, "enum") == 0) return MACRO_TYPE_PREFIX_TAGGED_TYPE;
         return MACRO_TYPE_PREFIX_KNOWN_TYPE;
     }
