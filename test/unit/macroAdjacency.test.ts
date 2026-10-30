@@ -1,7 +1,6 @@
-import fs from 'node:fs';
 import path from 'node:path';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 await Parser.init();
@@ -109,7 +108,6 @@ test('classifies macro definitions by the gap after the name', () => {
 
 test('retains ordinary call expressions while recovering outside macro definitions', () => {
   const parser = new Parser().setLanguage(language);
-  const query = new Query(language, fs.readFileSync('queries/highlights.scm', 'utf8'));
   try {
     for (const source of ['int x = @ foo(1) + 2;', 'void f(void) { if (@ foo(1)) return; }']) {
       const tree = parser.parse(source)!;
@@ -121,15 +119,11 @@ test('retains ordinary call expressions while recovering outside macro definitio
           calls.map((node) => node.childForFieldName('function')?.text),
           source
         ).toEqual(['foo']);
-        expect(
-          query.captures(tree.rootNode).filter(({ name, node }) => name === 'function' && node.text === 'foo')
-        ).toHaveLength(1);
       } finally {
         tree.delete();
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });

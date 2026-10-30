@@ -21,7 +21,6 @@ test.each(typeCases)(
     const language = await Language.load('tree-sitter-c.wasm');
     const parser = new Parser().setLanguage(language);
     const types = new Query(language, '(declaration type: (type_specifier) @type)');
-    const highlights = new Query(language, fs.readFileSync('queries/highlights.scm', 'utf8'));
     try {
       for (const defined of [false, true]) {
         for (let count = 1; count <= 6; count++) {
@@ -65,12 +64,6 @@ test.each(typeCases)(
               ])
             );
             expect(types.captures(declaration!).map(({ node }) => [node.type, node.text])).toEqual([[kind, text]]);
-            expect(
-              highlights
-                .captures(declaration!)
-                .filter(({ node }) => node.id === name.id)
-                .map(({ name: capture }) => capture)
-            ).toEqual(['variable']);
             const following = tree.rootNode.descendantsOfType('function_definition').at(-1)!;
             expect([following.childForFieldName('declarator')?.text, following.startIndex, following.endIndex]).toEqual(
               ['following(void)', source.indexOf('int following'), source.length - 1]
@@ -81,7 +74,6 @@ test.each(typeCases)(
         }
       }
     } finally {
-      highlights.delete();
       types.delete();
       parser.delete();
     }

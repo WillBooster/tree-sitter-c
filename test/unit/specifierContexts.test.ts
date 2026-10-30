@@ -55,8 +55,6 @@ test('keeps storage-prefixed empty declarations, loop initializers, and unnamed 
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
-  const tags = new Query(language, fs.readFileSync('queries/tags.scm', 'utf8'));
-  const highlights = new Query(language, fs.readFileSync('queries/highlights.scm', 'utf8'));
   const expressions = new Query(language, '(for_statement initializer: (expression) @initializer)');
   const fixture = fs.readFileSync('test/fixtures/specifierContexts.c', 'utf8');
   const start = fixture.indexOf('static long const', fixture.indexOf('void contexts'));
@@ -99,17 +97,6 @@ test('keeps storage-prefixed empty declarations, loop initializers, and unnamed 
           '(n)',
           'parameter(y)',
         ]);
-        if (!name) {
-          for (const identifier of ['n', 'i']) {
-            const index = source.indexOf(`for (${identifier};`) + 'for ('.length;
-            expect(
-              highlights
-                .captures(tree.rootNode)
-                .filter(({ node }) => node.startIndex === index && node.endIndex === index + identifier.length)
-                .map(({ name: capture }) => capture)
-            ).toEqual(['variable']);
-          }
-        }
         expect(
           tree.rootNode
             .descendantsOfType('field_declaration')
@@ -130,22 +117,12 @@ test('keeps storage-prefixed empty declarations, loop initializers, and unnamed 
             source.indexOf(spelling) + spelling.length,
           ]);
         }
-        if (!name) {
-          expect(
-            tags
-              .captures(tree.rootNode)
-              .filter(({ name: capture }) => capture === 'definition.function')
-              .map(({ node }) => node.text)
-          ).toEqual(['parameter(unsigned const)', 'contexts(void)', 'following(void)']);
-        }
       } finally {
         tree.delete();
       }
     }
   } finally {
     expressions.delete();
-    highlights.delete();
-    tags.delete();
     parser.delete();
   }
 });

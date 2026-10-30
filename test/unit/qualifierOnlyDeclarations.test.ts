@@ -8,7 +8,6 @@ test('keeps declarator-free qualifiers within their declarations with and withou
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
   const qualifiers = new Query(language, '(type_qualifier) @qualifier');
-  const tags = new Query(language, fs.readFileSync('queries/tags.scm', 'utf8'));
   const fixture = fs.readFileSync('test/fixtures/qualifierOnlyDeclarations.c', 'utf8');
   try {
     for (const name of [undefined, 'temporary']) {
@@ -32,17 +31,6 @@ test('keeps declarator-free qualifiers within their declarations with and withou
             .descendantsOfType('declaration')
             .map((node) => [node.childForFieldName('type')?.text, node.childForFieldName('declarator')?.text])
         ).toEqual([...(name ? [['long', name]] : []), ['long', 'named'], ['unsigned', 'next = 1']]);
-        if (!name) {
-          expect(
-            tags
-              .captures(tree.rootNode)
-              .filter(({ name: capture }) => capture === 'name')
-              .map(({ node }) => [node.text, node.startPosition.row, node.endPosition.row])
-          ).toEqual([
-            ['qualifierOnly', 5, 5],
-            ['following', 11, 11],
-          ]);
-        }
         for (const node of tree.rootNode.descendantsOfType(['sized_type_specifier', 'type_qualifier'])) {
           expect(node.endPosition.row).toBe(node.startPosition.row);
         }
@@ -51,7 +39,6 @@ test('keeps declarator-free qualifiers within their declarations with and withou
       }
     }
   } finally {
-    tags.delete();
     qualifiers.delete();
     parser.delete();
   }

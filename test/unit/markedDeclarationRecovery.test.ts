@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-
 import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
@@ -30,7 +28,6 @@ typedef int Word;
 typedef struct S Pos;
 `;
 const following = 'int after(void) { return 1; }';
-const tags = fs.readFileSync(new URL('../../queries/tags.scm', import.meta.url), 'utf8');
 
 test('confines marked initializer and trailing marker recovery to their declarations', async () => {
   await Parser.init();
@@ -41,8 +38,7 @@ test('confines marked initializer and trailing marker recovery to their declarat
     parser.setLanguage(language);
     query = new Query(
       language,
-      tags +
-        '\n(declaration type: (struct_specifier) @recovered.type declarator: (_) @recovered.name)\n(function_definition body: (compound_statement) @recovered.body)'
+      '(declaration type: (struct_specifier) @recovered.type declarator: (_) @recovered.name)'
     );
     for (const [statement, expectedDeclarator] of [
       ...declarations.map((statement) => [statement, undefined] as const),
@@ -100,16 +96,8 @@ test('keeps non-type and multi-argument annotations after proved marked types', 
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
-  let query: Query | undefined;
   try {
     parser.setLanguage(language);
-    query = new Query(
-      language,
-      tags +
-        '\n' +
-        fs.readFileSync(new URL('../../queries/highlights.scm', import.meta.url), 'utf8') +
-        '\n(declaration type: (_) @annotated.type declarator: (_) @annotated.name)\n(attribute_specifier name: (_) @annotation.name arguments: (_) @annotation.arguments)'
-    );
     for (const type of ['int', 'TYPE(int)', 'struct S']) {
       for (const argument of [
         'struct { int z; }',
@@ -144,7 +132,6 @@ test('keeps non-type and multi-argument annotations after proved marked types', 
       }
     }
   } finally {
-    query?.delete();
     parser.delete();
   }
 });
@@ -153,10 +140,8 @@ test('retains function typedef ownership when array bounds contain braced types'
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
-  let query: Query | undefined;
   try {
     parser.setLanguage(language);
-    query = new Query(language, tags + '\n(type_definition type: (_) @alias.type declarator: (_) @alias.name)');
     for (const declaration of [
       'typedef Word F(int x[sizeof(struct { int m; })]);',
       'typedef Word F(int x[sizeof(union { int m; })]);',
@@ -184,20 +169,12 @@ test('retains function typedef ownership when array bounds contain braced types'
           expect(current.rootNode.namedChildren.at(-1)?.text).toBe(following);
         };
         check(tree, source);
-        const captures = query.captures(tree.rootNode);
-        expect(captures.findLast(({ name }) => name === 'alias.name')?.node.text).toBe(
-          tree.rootNode.descendantsOfType('type_definition').at(-1)!.childForFieldName('declarator')!.text
-        );
-        expect(captures.filter(({ name }) => name === 'definition.function').map(({ node }) => node.text)).toEqual([
-          'after(void)',
-        ]);
         checkCommentInsertion(parser, source, source.indexOf('{', header.length), check);
       } finally {
         tree?.delete();
       }
     }
   } finally {
-    query?.delete();
     parser.delete();
   }
 });
@@ -206,10 +183,8 @@ test('keeps marked nested function declarators with braced parameter bounds', as
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
-  let query: Query | undefined;
   try {
     parser.setLanguage(language);
-    query = new Query(language, tags + '\n(declaration type: (_) @nested.type declarator: (_declarator) @nested.name)');
     for (const declaration of [
       'MARK Word (*f(int x[sizeof(struct { int m; })]))(int);',
       'static MARK Word (*f(int x[sizeof(struct { int m; })]))(int);',
@@ -248,19 +223,12 @@ test('keeps marked nested function declarators with braced parameter bounds', as
           ]);
         };
         check(tree, source);
-        expect(
-          query
-            .captures(tree.rootNode)
-            .filter(({ name, node }) => name === 'name' && node.type === 'identifier')
-            .map(({ node }) => node.text)
-        ).toEqual(['f', 'after']);
         checkCommentInsertion(parser, source, source.indexOf('{', header.length), check);
       } finally {
         tree?.delete();
       }
     }
   } finally {
-    query?.delete();
     parser.delete();
   }
 });

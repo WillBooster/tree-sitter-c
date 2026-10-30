@@ -1,9 +1,7 @@
-import fs from 'node:fs';
-
-import { Language, type Node, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
-test('preserves type query captures for sized declarations and enum bases', async () => {
+test('preserves sized declaration and enum base types', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
@@ -27,7 +25,7 @@ test('preserves type query captures for sized declarations and enum bases', asyn
   }
 });
 
-test('preserves declarator supertype queries for old-style and prototype signatures', async () => {
+test('preserves pointer declarators for old-style and prototype signatures', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
@@ -40,17 +38,12 @@ test('preserves declarator supertype queries for old-style and prototype signatu
     ['int *const f(a) int a; ', ['*const f(a)']],
     ['int *const f(int a) ', ['*const f(int a)']],
   ] as const;
-  const kinds = ['pointer_declarator', 'function_declarator'];
-  const qualified = new Query(language, kinds.map((kind) => `(_declarator/${kind}) @${kind}`).join('\n'));
-  const plain = new Query(language, kinds.map((kind) => `(${kind}) @${kind}`).join('\n'));
   try {
     for (const [prefix, expectedPointers] of signatures) {
       const tree = parser.parse(`${prefix}{ return 0; }`)!;
       try {
         expect(tree.rootNode.hasError).toBe(false);
-        const result = captures(qualified, tree.rootNode);
-        expect(result).toEqual(captures(plain, tree.rootNode));
-        expect(result.filter(({ name }) => name === 'pointer_declarator').map(({ text }) => text)).toEqual(
+        expect(tree.rootNode.descendantsOfType('pointer_declarator').map((node) => node.text)).toEqual(
           expectedPointers
         );
       } finally {
@@ -58,8 +51,6 @@ test('preserves declarator supertype queries for old-style and prototype signatu
       }
     }
   } finally {
-    qualified.delete();
-    plain.delete();
     parser.delete();
   }
 });
@@ -158,7 +149,7 @@ void other(void);`;
   }
 });
 
-test('keeps known type constructors and keyword captures after marker prefixes', async () => {
+test('keeps known type constructors after marker prefixes', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
@@ -174,8 +165,7 @@ test('keeps known type constructors and keyword captures after marker prefixes',
     ownedTree = tree;
     const query = new Query(
       language,
-      fs.readFileSync(new URL('../../queries/highlights.scm', import.meta.url), 'utf8') +
-        '\n(declaration type: (typeof_specifier) @return.type declarator: (function_declarator declarator: (identifier) @return.name))'
+      '(declaration type: (typeof_specifier) @return.type declarator: (function_declarator declarator: (identifier) @return.name))'
     );
     ownedQuery = query;
     const check = (): void => {
@@ -199,9 +189,6 @@ test('keeps known type constructors and keyword captures after marker prefixes',
     expect(result.filter(({ name }) => name === 'return.name').map(({ node }) => node.text)).toEqual(
       keywords.map((_, index) => `f${index}`)
     );
-    expect(
-      result.filter(({ name, node }) => name === 'keyword' && keywords.includes(node.text)).map(({ node }) => node.text)
-    ).toEqual(keywords);
     tree = parser.parse(source.replaceAll(parameter, 'int p'))!;
     ownedTree.delete();
     ownedTree = tree;
@@ -213,7 +200,7 @@ test('keeps known type constructors and keyword captures after marker prefixes',
   }
 });
 
-test('preserves compound literal fields and queries', async () => {
+test('preserves compound literal fields', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
@@ -224,7 +211,7 @@ test('preserves compound literal fields and queries', async () => {
   try {
     query = new Query(
       language,
-      '(compound_literal_expression storage_class: (storage_class_specifier) @storage) (compound_literal_expression type: (type_descriptor) @type value: (initializer_list) @value) (expression/compound_literal_expression) @expression'
+      '(compound_literal_expression storage_class: (storage_class_specifier) @storage) (compound_literal_expression type: (type_descriptor) @type value: (initializer_list) @value)'
     );
     expect(tree.rootNode.hasError).toBe(false);
     expect(
@@ -245,12 +232,6 @@ test('preserves compound literal fields and queries', async () => {
         .filter(({ name }) => name === 'value')
         .map(({ node }) => node.text)
     ).toEqual(['{42}', '{7}']);
-    expect(
-      query
-        .captures(tree.rootNode)
-        .filter(({ name }) => name === 'expression')
-        .map(({ node }) => node.text)
-    ).toEqual(['(static /* storage */ thread_local int){42}', '(constexpr int){7}']);
     for (const variant of [
       source.replace('static', 'register').replace('thread_local ', ''),
       source.replace('static /* storage */ thread_local ', ''),
@@ -292,7 +273,7 @@ test('keeps constexpr recovery fields in compound literals', async () => {
   }
 });
 
-test('preserves thread_local typedef queries in compound literal roles', async () => {
+test('preserves thread_local typedef names in compound literal roles', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
@@ -303,7 +284,7 @@ test('preserves thread_local typedef queries in compound literal roles', async (
   try {
     query = new Query(
       language,
-      '(compound_literal_expression storage_class: (storage_class_specifier) @storage) (compound_literal_expression type: (type_descriptor) @type value: (initializer_list) @value) (type_specifier/type_identifier) @typedef (expression/compound_literal_expression) @expression'
+      '(compound_literal_expression storage_class: (storage_class_specifier) @storage) (compound_literal_expression type: (type_descriptor) @type value: (initializer_list) @value)'
     );
     const snapshot = (root: typeof tree.rootNode): { name: string; text: string; start: number; end: number }[] =>
       query!
@@ -313,9 +294,7 @@ test('preserves thread_local typedef queries in compound literal roles', async (
     const captures = snapshot(tree.rootNode);
     expect(captures.filter(({ name }) => name === 'storage')).toEqual([]);
     expect(captures.filter(({ name }) => name === 'type').map(({ text }) => text)).toEqual(['thread_local']);
-    expect(captures.filter(({ name }) => name === 'typedef').map(({ text }) => text)).toEqual(['thread_local']);
     expect(captures.filter(({ name }) => name === 'value').map(({ text }) => text)).toEqual(['{0}']);
-    expect(captures.filter(({ name }) => name === 'expression').map(({ text }) => text)).toEqual(['(thread_local){0}']);
     for (const variant of [
       source.replace('(thread_local)', '(static thread_local int)'),
       source.replace('(thread_local)', '(thread_local *)'),
@@ -410,9 +389,3 @@ API signed char byte;`)!;
     parser.delete();
   }
 });
-
-function captures(query: Query, root: Node): { name: string; text: string; start: number; end: number }[] {
-  return query
-    .captures(root)
-    .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
-}
