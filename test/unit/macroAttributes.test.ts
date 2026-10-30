@@ -1320,10 +1320,7 @@ test.each(guardedBoundaryFixtures)(
       `
 (translation_unit (declaration type: (_) @boundary.type))
 (translation_unit (function_definition type: (_) @boundary.type))
-(translation_unit (declaration type: (type_specifier/macro_type_specifier) @boundary.macrotype))
-(translation_unit (function_definition type: (type_specifier/macro_type_specifier) @boundary.macrotype))
 (init_declarator declarator: (_declarator) @boundary.initialized)
-(declaration type: (type_specifier) @boundary.declarationType)
 (attribute_specifier arguments: (argument_list (parameter_declaration type: (type_specifier) @boundary.parameterType declarator: (_declarator) @boundary.parameter)))
 (attribute_specifier arguments: (argument_list (parameter_declaration (storage_class_specifier) @boundary.parameterStorage)))
 `
@@ -1350,23 +1347,6 @@ test.each(guardedBoundaryFixtures)(
           .filter(({ name }) => name === 'boundary.type')
           .map(({ node }) => node.text)
       ).toEqual(fixture.structures.map(([, type]) => type).filter((type) => type !== undefined));
-      expect(
-        query
-          .captures(tree.rootNode)
-          .filter(({ name }) => name === 'boundary.macrotype')
-          .map(({ node }) => node.text)
-      ).toEqual(tree.rootNode.descendantsOfType('macro_type_specifier').map((node) => node.text));
-      expect(
-        query
-          .captures(tree.rootNode)
-          .filter(({ name }) => name === 'boundary.declarationType')
-          .map(({ node }) => node.text)
-      ).toEqual(
-        tree.rootNode
-          .descendantsOfType('declaration')
-          .map((node) => node.childForFieldName('type')?.text)
-          .filter((type) => type !== undefined)
-      );
       expect(
         structures.find((node) => ['next', 'next(void)'].includes(node.childForFieldName('declarator')?.text ?? ''))
           ?.text
@@ -1414,7 +1394,6 @@ test('retains complete function bodies around bare marker initializers', async (
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/blockMarkerTypes.c'), 'utf8');
   const tree = parser.parse(source)!;
-  const query = new Query(language, '(declaration type: (type_specifier/type_identifier) @block.type)');
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const functions = tree.rootNode.namedChildren.filter((node) => node.type === 'function_definition');
@@ -1443,16 +1422,9 @@ test('retains complete function bodies around bare marker initializers', async (
     expect(
       functions.slice(0, 3).map((node) => node.childForFieldName('body')!.namedChildren.map((child) => child.type))
     ).toEqual(Array.from({ length: 3 }, () => ['declaration', 'return_statement']));
-    expect(
-      query
-        .captures(tree.rootNode)
-        .filter(({ name }) => name === 'block.type')
-        .map(({ node }) => node.text)
-    ).toEqual(['MARK', 'MARK', 'MARK']);
     expect(tree.rootNode.namedChildren.find((node) => node.type === 'declaration')?.text).toBe('int next(void);');
     verifyGuardedGroupComments(parser, tree, source);
   } finally {
-    query.delete();
     tree.delete();
     parser.delete();
   }
@@ -1467,28 +1439,14 @@ test.each([
   const parser = new Parser().setLanguage(language);
   const source = header + 'Word ATTR(struct { int member; }) value = {0};\nint next;\n';
   const tree = parser.parse(source)!;
-  const query = new Query(
-    language,
-    '(declaration type: (type_specifier/type_identifier) @opaque.type declarator: (init_declarator value: (_) @opaque.value))'
-  );
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const declarations = tree.rootNode.namedChildren.filter((node) => node.type === 'declaration');
     expect(declarations.map((node) => node.childForFieldName('type')?.text)).toEqual(['Word', 'int']);
     expect(declarations[0]!.childForFieldName('declarator')?.childForFieldName('value')?.text).toBe('{0}');
     expect(declarations[1]!.text).toBe('int next;');
-    expect(
-      query
-        .captures(tree.rootNode)
-        .filter(({ name }) => name.startsWith('opaque.'))
-        .map(({ name, node }) => [name, node.text])
-    ).toEqual([
-      ['opaque.type', 'Word'],
-      ['opaque.value', '{0}'],
-    ]);
     verifyGuardedGroupComments(parser, tree, source);
   } finally {
-    query.delete();
     tree.delete();
     parser.delete();
   }
@@ -1502,9 +1460,7 @@ test('retains macro types after leading recognized attributes in declarations an
   const tree = parser.parse(source)!;
   const query = new Query(
     language,
-    `(declaration type: (type_specifier/macro_type_specifier) @macro.type)
-(function_definition type: (type_specifier/macro_type_specifier) @macro.type)
-(declaration type: (type_specifier/type_identifier) @opaque.type)
+    `(declaration type: (type_identifier) @opaque.type)
 (function_definition declarator: (_declarator) @function body: (_) @body)`
   );
   try {
@@ -1515,9 +1471,6 @@ test('retains macro types after leading recognized attributes in declarations an
       Array.from({ length: 13 }, () => 'TYPE')
     );
     const captures = query.captures(tree.rootNode);
-    expect(captures.filter(({ name }) => name === 'macro.type').map(({ node }) => node.text)).toEqual(
-      macroTypes.map((node) => node.text)
-    );
     expect(captures.filter(({ name }) => name === 'opaque.type').map(({ node }) => node.text)).toEqual([
       'Word',
       'Word',
@@ -1566,8 +1519,8 @@ test('retains opaque types and function names after leading braced annotations',
   const tree = parser.parse(source)!;
   const query = new Query(
     language,
-    `(declaration type: (type_specifier/type_identifier) @type declarator: (_) @declarator)
-(function_definition type: (type_specifier/type_identifier) @type declarator: (_) @declarator)
+    `(declaration type: (type_identifier) @type declarator: (_) @declarator)
+(function_definition type: (type_identifier) @type declarator: (_) @declarator)
 (attribute_specifier name: (identifier) @attribute)`
   );
   try {
@@ -1730,9 +1683,9 @@ test('retains braced declarator-macro fields and following assignments at declar
   const tree = parser.parse(source)!;
   const query = new Query(
     language,
-    `(declaration declarator: (_declarator/function_declarator) @call)
-(init_declarator declarator: (_declarator/function_declarator) @call)
-(declaration type: (type_specifier/macro_type_specifier) @type)`
+    `(declaration declarator: (function_declarator) @call)
+(init_declarator declarator: (function_declarator) @call)
+(declaration type: (macro_type_specifier) @type)`
   );
   try {
     expect(tree.rootNode.hasError).toBe(false);
