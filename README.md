@@ -195,7 +195,7 @@ fuzzed with, at version 15.0.3 or later within 15.x. No other runtime loads the 
 ```toml
 [dependencies]
 tree-sitter = { package = "willbooster-tree-sitter", version = "15.0.3" }
-tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "20" }
+tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "21" }
 ```
 
 ```rust
