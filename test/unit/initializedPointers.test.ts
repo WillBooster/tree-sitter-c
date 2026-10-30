@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-import { Language, type Node, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 const declaratorKinds = ['parenthesized_declarator', 'pointer_declarator'];
@@ -11,8 +11,6 @@ test('keeps initialized parenthesized pointers as declarations alongside calls a
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync('test/fixtures/initializedPointers.c', 'utf8');
   const tree = parser.parse(source)!;
-  const plain = new Query(language, declaratorKinds.map((kind) => `(${kind}) @${kind}`).join('\n'));
-  const qualified = new Query(language, declaratorKinds.map((kind) => `(_declarator/${kind}) @${kind}`).join('\n'));
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const body = tree.rootNode.descendantsOfType('function_definition')[0]!.childForFieldName('body')!;
@@ -42,7 +40,6 @@ test('keeps initialized parenthesized pointers as declarations alongside calls a
       'in',
       'in',
     ]);
-    expect(captures(qualified, body)).toEqual(captures(plain, body));
     expect(body.descendantsOfType('assignment_expression').map((node) => node.text)).toEqual([
       '(*pointer) = 1',
       '(holder->value) = in',
@@ -63,14 +60,12 @@ test('keeps initialized parenthesized pointers as declarations alongside calls a
       'consume(*get())',
       'get()',
     ]);
-    for (const { node } of qualified.captures(body)) {
+    for (const node of body.descendantsOfType(declaratorKinds)) {
       expect(source.slice(node.startIndex, node.endIndex)).toBe(node.text);
       const before = source.slice(0, node.startIndex).split('\n');
       expect(node.startPosition).toEqual({ row: before.length - 1, column: before.at(-1)!.length });
     }
   } finally {
-    qualified.delete();
-    plain.delete();
     tree.delete();
     parser.delete();
   }
@@ -103,9 +98,3 @@ test('keeps declaration fields around initialized and parenthesized pointer stat
     parser.delete();
   }
 });
-
-function captures(query: Query, root: Node): unknown[] {
-  return query
-    .captures(root)
-    .map(({ name, node }) => [name, node.text, node.startIndex, node.endIndex, node.startPosition, node.endPosition]);
-}

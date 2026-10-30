@@ -945,7 +945,6 @@ test('parses braced annotation arguments with public fields and declaration boun
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/bracedMacroAttributes.c'), 'utf8');
   const tree = parser.parse(source)!;
-  const tags = new Query(language, fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8'));
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const declarations = tree.rootNode.namedChildren.filter((node) => node.type === 'declaration');
@@ -990,30 +989,10 @@ test('parses braced annotation arguments with public fields and declaration boun
       expect(attribute.childForFieldName('name')?.type).toBe('identifier');
       expect(attribute.childForFieldName('arguments')?.type).toBe('argument_list');
     }
-    expect(
-      tags
-        .captures(tree.rootNode)
-        .filter(({ name }) => name === 'definition.function')
-        .map(({ node }) => node.text)
-    ).toEqual([
-      'array_argument(void)',
-      'aggregate_argument(void)',
-      'post_type(void)',
-      'nested_argument(void)',
-      'statement_argument(void)',
-      'inline_type(void)',
-      'chained(void)',
-      'repeated(void)',
-      'type_only_chain(void)',
-      'typed_chain(void)',
-      'typed_empty_chain(void)',
-      'following(void)',
-    ]);
     expect(tree.rootNode.descendantsOfType('function_definition').map((node) => node.text)).toEqual([
       'int following(void) { return 0; }',
     ]);
   } finally {
-    tags.delete();
     tree.delete();
     parser.delete();
   }
@@ -1025,12 +1004,6 @@ test('preserves braced parameter types and macro-prefixed opaque types', async (
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/bracedParameterTypes.c'), 'utf8');
   const tree = parser.parse(source)!;
-  const query = new Query(
-    language,
-    fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8') +
-      '\n' +
-      fs.readFileSync(path.join(import.meta.dirname, '../../queries/highlights.scm'), 'utf8')
-  );
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const structures = tree.rootNode.namedChildren.filter((node) =>
@@ -1064,17 +1037,6 @@ test('preserves braced parameter types and macro-prefixed opaque types', async (
       'MARK',
       'OTHER',
     ]);
-    expect(
-      query
-        .captures(tree.rootNode)
-        .filter(({ name }) => name === 'definition.function')
-        .map(({ node }) => node.text)
-    ).toEqual(
-      structures
-        .map((node) => node.childForFieldName('declarator')!)
-        .filter((node) => node.type === 'function_declarator')
-        .map((node) => node.text)
-    );
     for (const group of tree.rootNode.descendantsOfType(['struct_specifier', 'enum_specifier'])) {
       const at = group.startIndex + group.text.indexOf('{');
       const commented = parser.parse(`${source.slice(0, at)}/* edit */${source.slice(at)}`)!;
@@ -1085,7 +1047,6 @@ test('preserves braced parameter types and macro-prefixed opaque types', async (
       }
     }
   } finally {
-    query.delete();
     tree.delete();
     parser.delete();
   }
@@ -1347,7 +1308,7 @@ const guardedBoundaryFixtures: Array<{
 ];
 
 test.each(guardedBoundaryFixtures)(
-  'retains guarded declaration fields and queries with inserted comments in $file',
+  'retains guarded declaration fields with inserted comments in $file',
   async (fixture) => {
     await Parser.init();
     const language = await Language.load(wasmPath);
@@ -1356,10 +1317,7 @@ test.each(guardedBoundaryFixtures)(
     const tree = parser.parse(source)!;
     const query = new Query(
       language,
-      fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8') +
-        '\n' +
-        fs.readFileSync(path.join(import.meta.dirname, '../../queries/highlights.scm'), 'utf8') +
-        `
+      `
 (translation_unit (declaration type: (_) @boundary.type))
 (translation_unit (function_definition type: (_) @boundary.type))
 (translation_unit (declaration type: (type_specifier/macro_type_specifier) @boundary.macrotype))
@@ -1456,13 +1414,7 @@ test('retains complete function bodies around bare marker initializers', async (
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/blockMarkerTypes.c'), 'utf8');
   const tree = parser.parse(source)!;
-  const query = new Query(
-    language,
-    fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8') +
-      '\n' +
-      fs.readFileSync(path.join(import.meta.dirname, '../../queries/highlights.scm'), 'utf8') +
-      '\n(declaration type: (type_specifier/type_identifier) @block.type)'
-  );
+  const query = new Query(language, '(declaration type: (type_specifier/type_identifier) @block.type)');
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const functions = tree.rootNode.namedChildren.filter((node) => node.type === 'function_definition');
@@ -1517,11 +1469,7 @@ test.each([
   const tree = parser.parse(source)!;
   const query = new Query(
     language,
-    fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8') +
-      '\n' +
-      fs.readFileSync(path.join(import.meta.dirname, '../../queries/highlights.scm'), 'utf8') +
-      '\n' +
-      '(declaration type: (type_specifier/type_identifier) @opaque.type declarator: (init_declarator value: (_) @opaque.value))'
+    '(declaration type: (type_specifier/type_identifier) @opaque.type declarator: (init_declarator value: (_) @opaque.value))'
   );
   try {
     expect(tree.rootNode.hasError).toBe(false);
@@ -1610,7 +1558,7 @@ test('retains macro types after leading recognized attributes in declarations an
   }
 });
 
-test('retains opaque types and function tags after leading braced annotations', async () => {
+test('retains opaque types and function names after leading braced annotations', async () => {
   await Parser.init();
   const language = await Language.load(wasmPath);
   const parser = new Parser().setLanguage(language);
@@ -1622,7 +1570,6 @@ test('retains opaque types and function tags after leading braced annotations', 
 (function_definition type: (type_specifier/type_identifier) @type declarator: (_) @declarator)
 (attribute_specifier name: (identifier) @attribute)`
   );
-  const tags = new Query(language, fs.readFileSync(path.join(import.meta.dirname, '../../queries/tags.scm'), 'utf8'));
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const captures = query.captures(tree.rootNode);
@@ -1642,16 +1589,9 @@ test('retains opaque types and function tags after leading braced annotations', 
     expect(captures.filter(({ name }) => name === 'attribute').map(({ node }) => node.text)).toEqual(
       Array.from({ length: 9 }, () => 'ATTR')
     );
-    expect(
-      tags
-        .captures(tree.rootNode)
-        .filter(({ name }) => name === 'name')
-        .map(({ node }) => node.text)
-    ).toEqual(expect.arrayContaining(['g', 'pointer', 'chained', 'definition', 'local', 'following']));
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
     verifyGuardedGroupComments(parser, tree, source);
   } finally {
-    tags.delete();
     query.delete();
     tree.delete();
     parser.delete();

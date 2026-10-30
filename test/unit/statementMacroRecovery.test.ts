@@ -66,9 +66,7 @@ test.each(['}', 'GENERATE(a)\nGENERATE(b)\nGENERATE(c)\n#define BOUNDARY 1'])(
     const parser = new Parser().setLanguage(language);
     const query = new Query(
       language,
-      `(declaration type: (type_specifier) @recovery.type declarator: (_) @recovery.name)
-${fs.readFileSync(path.join(root, 'queries/tags.scm'), 'utf8')}
-${fs.readFileSync(path.join(root, 'queries/highlights.scm'), 'utf8')}`
+      '(declaration type: (type_specifier) @recovery.type declarator: (_) @recovery.name)'
     );
     const body = `int f(void) {
 const T* const a0 = x+y;

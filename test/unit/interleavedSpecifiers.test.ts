@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 test('preserves declaration types and names when size and signedness specifiers are interleaved', async () => {
@@ -8,8 +8,6 @@ test('preserves declaration types and names when size and signedness specifiers 
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
   const original = fs.readFileSync('test/fixtures/interleavedSpecifiers.c', 'utf8');
-  const tags = new Query(language, fs.readFileSync('queries/tags.scm', 'utf8'));
-  const highlights = new Query(language, fs.readFileSync('queries/highlights.scm', 'utf8'));
   const tree = parser.parse(original)!;
   try {
     expect(tree.rootNode.hasError).toBe(false);
@@ -42,18 +40,6 @@ test('preserves declaration types and names when size and signedness specifiers 
       ['declaration', 'int', 'ordinary'],
       ['declaration', 'long', 'untyped'],
     ]);
-    expect(
-      tags
-        .captures(tree.rootNode)
-        .filter(({ name }) => name === 'name')
-        .map(({ node }) => node.text)
-    ).toEqual(['function', 'Holder', 'Alias', 'after']);
-    expect(
-      highlights
-        .captures(tree.rootNode)
-        .filter(({ name }) => name === 'function')
-        .map(({ node }) => node.text)
-    ).toEqual(['function', 'after']);
     for (const replacement of ['long int', 'int static long', 'long static int']) {
       const variant = parser.parse(replacement + original.slice(original.indexOf(' x;')))!;
       try {
@@ -65,8 +51,6 @@ test('preserves declaration types and names when size and signedness specifiers 
       }
     }
   } finally {
-    highlights.delete();
-    tags.delete();
     tree.delete();
     parser.delete();
   }

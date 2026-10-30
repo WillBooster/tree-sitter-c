@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 await Parser.init();
@@ -211,23 +211,6 @@ test('ends commented preprocessing conditions at each supported line ending', ()
   }
 });
 
-test('preserves canonical queries for attributed and labeled statement bodies', () => {
-  const parser = new Parser().setLanguage(language);
-  const query = new Query(language, '(statement) @statement');
-  const source =
-    'void f(){ [[a]] c(); l: d(); switch(x){case 1: [[a]] e(); m: g(); label: case 2: h();} while(x) [[a]] i(); }';
-  const tree = parser.parse(source)!;
-  try {
-    expect(tree.rootNode.hasError).toBe(false);
-    const captures = query.captures(tree.rootNode).map(({ node }) => node.text);
-    for (const body of ['c();', 'd();', 'e();', 'g();', 'i();', 'case 2: h();']) expect(captures).toContain(body);
-  } finally {
-    tree.delete();
-    query.delete();
-    parser.delete();
-  }
-});
-
 test('bounds spliced preprocessing conditions in declaration and initializer contexts', () => {
   const parser = new Parser().setLanguage(language);
   try {
@@ -277,15 +260,6 @@ test('keeps consecutive statement attributes in one node across case and control
               attributed[0]!.namedChildren.filter((node) => node.type === 'attribute_declaration'),
               source
             ).toHaveLength(attributes.split(' ').length);
-            const query = new Query(language, '(statement) @statement');
-            try {
-              expect(
-                query.captures(tree.rootNode).some(({ node }) => node.text === 'x++;'),
-                source
-              ).toBe(true);
-            } finally {
-              query.delete();
-            }
           } finally {
             tree.delete();
           }

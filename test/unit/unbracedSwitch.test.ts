@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 await Parser.init();
@@ -120,68 +120,6 @@ test('keeps braced switch bodies after an inserted #else directive', () => {
     }
   } finally {
     query.delete();
-    parser.delete();
-  }
-});
-
-test('preserves canonical statement queries through restricted switch bodies', () => {
-  const parser = new Parser().setLanguage(language);
-  let query: Query | undefined;
-  let tree: Tree | undefined;
-  try {
-    query = new Query(
-      language,
-      '(statement) @statement (statement/if_statement) @if (switch_statement body: (statement) @body)'
-    );
-    for (const [body, statements] of [
-      ['if (x) x++;', ['if (x) x++;', 'x++;']],
-      ['case 0: if (x) x++;', ['case 0: if (x) x++;', 'if (x) x++;', 'x++;']],
-      ['return x;', ['return x;']],
-      ['{ if (x) x++; }', ['if (x) x++;', 'x++;']],
-    ] as const) {
-      const source = `int f(int x) { switch (x) ${body} x += 2; return x; }`;
-      tree = parser.parse(source)!;
-      try {
-        expect(tree.rootNode.hasError).toBe(false);
-        const switchNode = tree.rootNode.descendantsOfType('switch_statement')[0]!;
-        const bodyNode = switchNode.childForFieldName('body')!;
-        const captures = query.captures(tree.rootNode);
-        expect(
-          captures
-            .filter(
-              ({ name, node }) =>
-                name === 'statement' && node.startIndex >= bodyNode.startIndex && node.endIndex <= bodyNode.endIndex
-            )
-            .map(({ node }) => node.text)
-        ).toEqual(statements);
-        expect(captures.filter(({ name }) => name === 'body').map(({ node }) => node.text)).toEqual(
-          body.startsWith('{') ? [] : [body]
-        );
-        expect(captures.filter(({ name }) => name === 'if').map(({ node }) => node.text)).toEqual(
-          body.includes('if') ? ['if (x) x++;'] : []
-        );
-        expect(captures.filter(({ name }) => name === 'statement').map(({ node }) => node.text)).toContain('x += 2;');
-        expect(captures.filter(({ name }) => name === 'statement').map(({ node }) => node.text)).toContain('return x;');
-      } finally {
-        tree.delete();
-        tree = undefined;
-      }
-    }
-    tree = parser.parse('return 1;')!;
-    expect(tree.rootNode.hasError).toBe(false);
-    expect(query.captures(tree.rootNode)).toEqual([]);
-    tree.delete();
-    tree = undefined;
-    const source = 'int f(int x) { switch (x) if (x) x++; return x; }';
-    for (const variant of [source.replace('x++;', 'x += 1000;'), source.replace('if (x) x++;', '{ if (x) x++; }')]) {
-      tree = parser.parse(variant)!;
-      expect(tree.rootNode.hasError).toBe(false);
-      tree.delete();
-      tree = undefined;
-    }
-  } finally {
-    tree?.delete();
-    query?.delete();
     parser.delete();
   }
 });

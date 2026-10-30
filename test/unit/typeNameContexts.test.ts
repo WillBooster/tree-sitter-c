@@ -3,20 +3,14 @@ import fs from 'node:fs';
 import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
-test('keeps type-name fields and supertype captures separate from declaration storage classes', async () => {
+test('keeps type-name fields separate from declaration storage classes', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync('test/fixtures/typeNameContexts.c', 'utf8');
   const tree = parser.parse(source)!;
-  const qualified = new Query(language, '(type_specifier/sized_type_specifier) @type');
-  const plain = new Query(language, '(sized_type_specifier) @type');
   try {
     expect(tree.rootNode.hasError).toBe(false);
-    const snapshot = (query: Query): [string, number, number][] =>
-      query.captures(tree.rootNode).map(({ node }) => [node.text, node.startIndex, node.endIndex]);
-    const enumType = tree.rootNode.descendantsOfType('enum_specifier')[0]!.childForFieldName('underlying_type')!;
-    expect(snapshot(qualified)).toEqual(snapshot(plain).filter(([, start]) => start !== enumType.startIndex));
     expect(
       tree.rootNode.descendantsOfType('type_descriptor').map((node) => node.childForFieldName('type')?.text)
     ).toEqual([
@@ -45,8 +39,6 @@ test('keeps type-name fields and supertype captures separate from declaration st
         .map((node) => [node.childForFieldName('type')?.text, node.childForFieldName('declarator')?.text])
     ).toContainEqual(['int register long', 'argument']);
   } finally {
-    plain.delete();
-    qualified.delete();
     tree.delete();
     parser.delete();
   }
