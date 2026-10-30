@@ -192,10 +192,9 @@ In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
 fuzzed with, at version 15.0.3 or later within 15.x. No other runtime loads the parser:
 
-```toml
-[dependencies]
-tree-sitter = { package = "willbooster-tree-sitter", version = "15.0.3" }
-tree-sitter-c = { package = "willbooster-tree-sitter-c", version = "21" }
+```sh
+cargo add willbooster-tree-sitter@15.0.3 --rename tree-sitter
+cargo add willbooster-tree-sitter-c --rename tree-sitter-c
 ```
 
 ```rust
