@@ -15,6 +15,13 @@ to its authors and contributors. This is not an official release of that project
 This fork fixes parsing bugs and raises conformance with the ISO C standard
 ([C23 working draft N3220](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf)).
 
+## Support Scope
+
+This fork maintains only full parsing: valid input yields a correct tree, and invalid input yields `ERROR` or `MISSING`
+nodes without crashing, hanging, or taking more than linear time. Incremental parsing works as in upstream tree-sitter
+but is not tested here, and no queries (highlights, locals, injections, tags) are shipped. Node types, field names, and
+the trees that error recovery produces may change; such changes are released as new major versions.
+
 ## Usage
 
 The npm package ships `tree-sitter-c.wasm` for
@@ -57,7 +64,7 @@ const parser = new Parser();
 parser.setLanguage(await Language.load(c));
 ```
 
-The package also ships `grammar.js`, scanner sources under `src/`, the queries in `queries/`,
+The package also ships `grammar.js`, scanner sources under `src/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
 The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, `functionMacro.h`,
 `conditionalMacro.h`, and `gnuRawString.h`.

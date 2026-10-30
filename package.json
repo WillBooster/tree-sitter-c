@@ -17,7 +17,6 @@
   "files": [
     "grammar.js",
     "types/*",
-    "queries/*.scm",
     "src/node-types.json",
     "tree-sitter.json",
     "*.wasm",
