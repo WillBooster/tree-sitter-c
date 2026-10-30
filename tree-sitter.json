@@ -7,8 +7,6 @@
       "scope": "source.c",
       "path": ".",
       "file-types": ["c", "h"],
-      "highlights": "queries/highlights.scm",
-      "tags": "queries/tags.scm",
       "injection-regex": "^(c|h)$",
       "external-files": [
         "src/pragma.h",

@@ -5,7 +5,7 @@
 [![Test](https://github.com/WillBooster/tree-sitter-c/actions/workflows/test.yml/badge.svg)](https://github.com/WillBooster/tree-sitter-c/actions/workflows/test.yml)
 [![Test rust](https://github.com/WillBooster/tree-sitter-c/actions/workflows/test-rust.yml/badge.svg)](https://github.com/WillBooster/tree-sitter-c/actions/workflows/test-rust.yml)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
-[![wbfy](https://img.shields.io/badge/wbfy-20.49.0-1e90ff.svg)](https://github.com/WillBooster/shared/tree/main/packages/wbfy)
+[![wbfy](https://img.shields.io/badge/wbfy-20.51.1-1e90ff.svg)](https://github.com/WillBooster/shared/tree/main/packages/wbfy)
 [![crates.io](https://img.shields.io/crates/v/willbooster-tree-sitter-c.svg)](https://crates.io/crates/willbooster-tree-sitter-c)
 
 C grammar for [tree-sitter](https://github.com/tree-sitter/tree-sitter), forked from
@@ -14,6 +14,13 @@ to its authors and contributors. This is not an official release of that project
 
 This fork fixes parsing bugs and raises conformance with the ISO C standard
 ([C23 working draft N3220](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf)).
+
+## Support Scope
+
+This fork maintains only full parsing: valid input yields a correct tree, and invalid input yields `ERROR` or `MISSING`
+nodes without crashing, hanging, or taking more than linear time. Incremental parsing works as in upstream tree-sitter
+but is not tested here, and no queries (highlights, locals, injections, tags) are shipped. Node types, field names, and
+the trees that error recovery produces may change; such changes are released as new major versions.
 
 ## Usage
 
@@ -57,7 +64,7 @@ const parser = new Parser();
 parser.setLanguage(await Language.load(c));
 ```
 
-The package also ships `grammar.js`, scanner sources under `src/`, the queries in `queries/`,
+The package also ships `grammar.js`, scanner sources under `src/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
 The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, `functionMacro.h`,
 `conditionalMacro.h`, and `gnuRawString.h`.
