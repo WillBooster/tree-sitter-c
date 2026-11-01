@@ -636,19 +636,19 @@ module.exports = Object.assign(
       ...preprocIf('_in_statement', () => sym('_block_item')),
       ...preprocIf('_in_single_case', () => sym('_single_case_body'), 0, true),
       ...preprocIf('_in_field_declaration_list', () => sym('_field_declaration_list_item')),
-      ...preprocIf('_in_enumerator_list', () =>
-        choice(seq(sym('enumerator'), ','), sym('_enumerator_macro'), sym('_enumerator_directives'))
-      ),
+      ...preprocIf('_in_enumerator_list', () => sym('_enumerator_list_item')),
       ...preprocIf(
         '_in_enumerator_list_no_comma',
         () =>
           choice(
-            seq(optional(sym('_enumerator_directives')), sym('enumerator'), optional(sym('_enumerator_directives'))),
-            sym('_enumerator_directives')
+            seq(repeat(sym('_enumerator_list_item')), sym('enumerator'), optional(sym('_enumerator_directives'))),
+            repeat1(sym('_enumerator_list_item'))
           ),
         0,
         false
       ),
+
+      _enumerator_list_item: ($) => choice(seq($.enumerator, ','), $._enumerator_macro, $._enumerator_directives),
 
       _enumerator_directives: ($) => prec.right(repeat1($.preproc_call)),
 
@@ -1490,7 +1490,11 @@ module.exports = Object.assign(
 
       _enumerator_macro: ($) => seq(alias($._enumerator_macro_call, $.call_expression), optional(',')),
 
-      _enumerator_macro_call: ($) => seq(field('function', $.identifier), field('arguments', $.argument_list)),
+      _enumerator_macro_call: ($) =>
+        seq(
+          field('function', $.identifier),
+          field('arguments', alias($._macro_attribute_argument_list, $.argument_list))
+        ),
 
       enumerator: ($) => seq(field('name', $.identifier), optional(seq('=', field('value', $.expression)))),
 

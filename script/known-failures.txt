@@ -397,7 +397,6 @@ examples/git/refs/reftable-backend.c
 examples/git/reftable/record.c
 examples/git/remote-curl.c
 examples/git/remote.c
-examples/git/remote.h
 examples/git/repack-cruft.c
 examples/git/repack-filtered.c
 examples/git/repack-geometry.c
