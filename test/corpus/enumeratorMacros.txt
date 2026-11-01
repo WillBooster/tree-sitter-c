@@ -1,0 +1,290 @@
+==================
+Enum X-macro expansion
+==================
+#define ITEMS(X) X(A) X(B)
+#define ITEM(X) X,
+enum E { ITEMS(ITEM) };
+int after;
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)))))
+  (declaration
+    (primitive_type)
+    (identifier)))
+
+==================
+Enum macros mixed with explicit enumerators
+==================
+#define ITEMS(X, Y) X, Y,
+#define PAIR(X, Y) X, Y
+enum E { ITEMS(A, B) E, PAIR(C, D), F };
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier)
+      (identifier))
+    (preproc_arg))
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier)
+      (identifier))
+    (preproc_arg))
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)
+          (identifier)))
+      (enumerator
+        (identifier))
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)
+          (identifier)))
+      (enumerator
+        (identifier)))))
+
+==================
+Enum macro calls in conditional branches
+==================
+#define ITEMS(X) X(A) X(B)
+#define ITEM(X) X,
+#define PAIR(X, Y) X, Y
+enum E {
+#ifdef ENABLED
+  ITEMS(ITEM)
+#else
+  PAIR(C, D),
+#endif
+  LAST
+};
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier)
+      (identifier))
+    (preproc_arg))
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (preproc_ifdef
+        (identifier)
+        (call_expression
+          (identifier)
+          (argument_list
+            (identifier)))
+        (preproc_else
+          (call_expression
+            (identifier)
+            (argument_list
+              (identifier)
+              (identifier)))))
+      (enumerator
+        (identifier)))))
+
+==================
+Enum macros separated by directives
+==================
+#define ITEMS(X, Y) ITEM(X) ITEM(Y)
+#define ITEM(X) X,
+enum E {
+  ITEMS(A, B)
+#undef ITEM
+#define ITEM(X) X = 2,
+  ITEMS(C, D)
+};
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier)
+      (identifier))
+    (preproc_arg))
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)
+          (identifier)))
+      (preproc_call
+        (preproc_directive)
+        (preproc_arg))
+      (preproc_call
+        (preproc_directive)
+        (preproc_arg))
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)
+          (identifier))))))
+
+==================
+Enum macros mixed with final conditional enumerators
+==================
+#define ITEMS(X) X,
+enum E {
+#ifdef ENABLED
+  ITEMS(A)
+#else
+  B
+#endif
+};
+enum F {
+#if ENABLED
+  A,
+  ITEMS(B)
+  C
+#elif OTHER
+  ITEMS(D)
+  E
+#else
+  ITEMS(F)
+#endif
+};
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier))
+    (preproc_arg))
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (preproc_ifdef
+        (identifier)
+        (call_expression
+          (identifier)
+          (argument_list
+            (identifier)))
+        (preproc_else
+          (enumerator
+            (identifier))))))
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (preproc_if
+        (identifier)
+        (enumerator
+          (identifier))
+        (call_expression
+          (identifier)
+          (argument_list
+            (identifier)))
+        (enumerator
+          (identifier))
+        (preproc_elif
+          (identifier)
+          (call_expression
+            (identifier)
+            (argument_list
+              (identifier)))
+          (enumerator
+            (identifier))
+          (preproc_else
+            (call_expression
+              (identifier)
+              (argument_list
+                (identifier)))))))))
+
+==================
+Enum macros with type arguments
+==================
+#define ITEM(NAME, TYPE) NAME,
+enum E {
+  ITEM(A, unsigned int)
+  ITEM(B, const char *)
+  ITEM(C, int (*)(void))
+};
+
+---
+
+(translation_unit
+  (preproc_function_def
+    (identifier)
+    (preproc_params
+      (identifier)
+      (identifier))
+    (preproc_arg))
+  (enum_specifier
+    (type_identifier)
+    (enumerator_list
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)
+          (type_descriptor
+            (sized_type_specifier
+              (primitive_type)))))
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)
+          (type_descriptor
+            (type_qualifier)
+            (primitive_type)
+            (abstract_pointer_declarator))))
+      (call_expression
+        (identifier)
+        (argument_list
+          (identifier)
+          (type_descriptor
+            (primitive_type)
+            (abstract_function_declarator
+              (abstract_parenthesized_declarator
+                (abstract_pointer_declarator))
+              (parameter_list
+                (parameter_declaration
+                  (primitive_type))))))))))

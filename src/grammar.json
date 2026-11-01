@@ -3152,26 +3152,8 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SEQ",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "enumerator"
-                    },
-                    {
-                      "type": "STRING",
-                      "value": ","
-                    }
-                  ]
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "_enumerator_directives"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_enumerator_list_item"
             }
           },
           {
@@ -3270,26 +3252,8 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SEQ",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "enumerator"
-                    },
-                    {
-                      "type": "STRING",
-                      "value": ","
-                    }
-                  ]
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "_enumerator_directives"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_enumerator_list_item"
             }
           },
           {
@@ -3366,26 +3330,8 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SEQ",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "enumerator"
-                    },
-                    {
-                      "type": "STRING",
-                      "value": ","
-                    }
-                  ]
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "_enumerator_directives"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_enumerator_list_item"
             }
           }
         ]
@@ -3429,26 +3375,8 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SEQ",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "enumerator"
-                    },
-                    {
-                      "type": "STRING",
-                      "value": ","
-                    }
-                  ]
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "_enumerator_directives"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_enumerator_list_item"
             }
           },
           {
@@ -3538,26 +3466,8 @@
           {
             "type": "REPEAT",
             "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SEQ",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "enumerator"
-                    },
-                    {
-                      "type": "STRING",
-                      "value": ","
-                    }
-                  ]
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "_enumerator_directives"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_enumerator_list_item"
             }
           },
           {
@@ -3652,16 +3562,11 @@
                     "type": "SEQ",
                     "members": [
                       {
-                        "type": "CHOICE",
-                        "members": [
-                          {
-                            "type": "SYMBOL",
-                            "name": "_enumerator_directives"
-                          },
-                          {
-                            "type": "BLANK"
-                          }
-                        ]
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_enumerator_list_item"
+                        }
                       },
                       {
                         "type": "SYMBOL",
@@ -3682,8 +3587,11 @@
                     ]
                   },
                   {
-                    "type": "SYMBOL",
-                    "name": "_enumerator_directives"
+                    "type": "REPEAT1",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_enumerator_list_item"
+                    }
                   }
                 ]
               },
@@ -3795,16 +3703,11 @@
                     "type": "SEQ",
                     "members": [
                       {
-                        "type": "CHOICE",
-                        "members": [
-                          {
-                            "type": "SYMBOL",
-                            "name": "_enumerator_directives"
-                          },
-                          {
-                            "type": "BLANK"
-                          }
-                        ]
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_enumerator_list_item"
+                        }
                       },
                       {
                         "type": "SYMBOL",
@@ -3825,8 +3728,11 @@
                     ]
                   },
                   {
-                    "type": "SYMBOL",
-                    "name": "_enumerator_directives"
+                    "type": "REPEAT1",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_enumerator_list_item"
+                    }
                   }
                 ]
               },
@@ -3916,16 +3822,11 @@
                     "type": "SEQ",
                     "members": [
                       {
-                        "type": "CHOICE",
-                        "members": [
-                          {
-                            "type": "SYMBOL",
-                            "name": "_enumerator_directives"
-                          },
-                          {
-                            "type": "BLANK"
-                          }
-                        ]
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_enumerator_list_item"
+                        }
                       },
                       {
                         "type": "SYMBOL",
@@ -3946,8 +3847,11 @@
                     ]
                   },
                   {
-                    "type": "SYMBOL",
-                    "name": "_enumerator_directives"
+                    "type": "REPEAT1",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_enumerator_list_item"
+                    }
                   }
                 ]
               },
@@ -4004,16 +3908,11 @@
                     "type": "SEQ",
                     "members": [
                       {
-                        "type": "CHOICE",
-                        "members": [
-                          {
-                            "type": "SYMBOL",
-                            "name": "_enumerator_directives"
-                          },
-                          {
-                            "type": "BLANK"
-                          }
-                        ]
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_enumerator_list_item"
+                        }
                       },
                       {
                         "type": "SYMBOL",
@@ -4034,8 +3933,11 @@
                     ]
                   },
                   {
-                    "type": "SYMBOL",
-                    "name": "_enumerator_directives"
+                    "type": "REPEAT1",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_enumerator_list_item"
+                    }
                   }
                 ]
               },
@@ -4138,16 +4040,11 @@
                     "type": "SEQ",
                     "members": [
                       {
-                        "type": "CHOICE",
-                        "members": [
-                          {
-                            "type": "SYMBOL",
-                            "name": "_enumerator_directives"
-                          },
-                          {
-                            "type": "BLANK"
-                          }
-                        ]
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_enumerator_list_item"
+                        }
                       },
                       {
                         "type": "SYMBOL",
@@ -4168,8 +4065,11 @@
                     ]
                   },
                   {
-                    "type": "SYMBOL",
-                    "name": "_enumerator_directives"
+                    "type": "REPEAT1",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_enumerator_list_item"
+                    }
                   }
                 ]
               },
@@ -4224,6 +4124,32 @@
           }
         ]
       }
+    },
+    "_enumerator_list_item": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "enumerator"
+            },
+            {
+              "type": "STRING",
+              "value": ","
+            }
+          ]
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_enumerator_macro"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_enumerator_directives"
+        }
+      ]
     },
     "_enumerator_directives": {
       "type": "PREC_RIGHT",
@@ -14144,6 +14070,10 @@
                 ]
               },
               {
+                "type": "SYMBOL",
+                "name": "_enumerator_macro"
+              },
+              {
                 "type": "ALIAS",
                 "content": {
                   "type": "SYMBOL",
@@ -14611,6 +14541,58 @@
         {
           "type": "SYMBOL",
           "name": "expression"
+        }
+      ]
+    },
+    "_enumerator_macro": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_enumerator_macro_call"
+          },
+          "named": true,
+          "value": "call_expression"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "STRING",
+              "value": ","
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        }
+      ]
+    },
+    "_enumerator_macro_call": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "function",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "arguments",
+          "content": {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_macro_attribute_argument_list"
+            },
+            "named": true,
+            "value": "argument_list"
+          }
         }
       ]
     },
