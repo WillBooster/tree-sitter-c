@@ -1,9 +1,10 @@
-// code-gauge-allow-file fileNcss 530 -- Annotation and argument scanners share lexical helpers and keyword tables.
+// code-gauge-allow-file fileNcss 553 -- Annotation and argument scanners share lexical helpers and keyword tables.
 #ifndef TREE_SITTER_C_FUNCTION_MACRO_H_
 #define TREE_SITTER_C_FUNCTION_MACRO_H_
 
 #include "pragma.h"
 #include "keywords.h"
+#include "macroProof.h"
 
 typedef struct {
     bool identifier;
@@ -34,6 +35,7 @@ typedef struct {
     bool allow_object_start;
     TSSymbol braced_start;
     bool allow_braced_start;
+    MacroProofMemo *proof_memo;
 } MacroAttributeSymbols;
 
 typedef enum {
@@ -81,7 +83,6 @@ static inline bool scan_raw_macro_type_tail(TSLexer *lexer) {
         int32_t c = lexer->lookahead;
         if (c == ')' && depth == 1) break;
         if (function_macro_argument_token(lexer, &word, NULL) != MACRO_ARGUMENT_PLAIN) continue;
-        // Like the attribute guard, leave a balanced group's first brace and later arguments to the grammar.
         if (c == '{' && balanced) return false;
         if (balanced) balanced = function_macro_group(c, '(', ')', &depth, &nested, &braces);
         else if (c == '(') depth++;
@@ -122,7 +123,6 @@ static bool scan_function_attribute_guard(TSLexer *lexer, bool prototype, bool r
     bool literal = false;
     bool unterminated_raw = false;
     MacroGroup group = function_macro_group_prefix(lexer, '(', ')', &literal, &unterminated_raw, false);
-    // The grammar closes braced arguments without repeated lookahead through an incomplete body.
     if (group == MACRO_GROUP_BRACED && symbols->allow_braced_start) {
         lexer->result_symbol = symbols->braced_start;
         return true;
@@ -156,57 +156,92 @@ typedef enum {
 
 static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const MacroName *name, const char *const *reserved_words, unsigned reserved_count, bool type_argument);
 
+typedef struct {
+    bool marker, known_type, tag, body, started;
+} MacroTypeState;
+
+typedef enum { MACRO_TYPE_CONTINUE, MACRO_TYPE_ACCEPT, MACRO_TYPE_REJECT } MacroTypeResult;
+
+static MacroTypeResult function_macro_type_transition(MacroTypeState *state, MacroTypePrefix kind);
+static MacroTypeResult function_macro_type_group(TSLexer *lexer, MacroTypeState *state);
+static MacroTypeResult function_macro_type_word(TSLexer *lexer, const MacroAttributeSymbols *symbols,
+    const char *const *reserved_words, unsigned reserved_count, MacroTypeState *state);
+
+static bool function_macro_prove_braced_type(TSLexer *lexer, const MacroAttributeSymbols *symbols,
+    const char *const *reserved_words, unsigned reserved_count, MacroProofMemo *memo);
+
 static bool scan_braced_macro_type_start(TSLexer *lexer, const MacroAttributeSymbols *symbols, const char *const *reserved_words, unsigned reserved_count) {
-    bool marker = false;
-    bool known_type = false;
-    bool tag = false;
-    bool body = false;
-    bool started = false;
+    MacroProofMemo *memo = symbols->proof_memo;
+    if (!macro_proof_begin(memo, reserved_words, reserved_count)) memo = NULL;
+    bool accepted = function_macro_prove_braced_type(lexer, symbols, reserved_words, reserved_count, memo);
+    macro_proof_finish(memo, accepted);
+    return accepted;
+}
+
+static bool function_macro_prove_braced_type(TSLexer *lexer, const MacroAttributeSymbols *symbols,
+    const char *const *reserved_words, unsigned reserved_count, MacroProofMemo *memo) {
+    MacroTypeState state = {0};
     for (;;) {
         while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
-        if (lexer->lookahead == '[') {
-            if (!started) lexer->mark_end(lexer);
-            started = true;
-            if (!function_macro_bracket_attribute(lexer)) return false;
-            continue;
-        }
-        if (lexer->lookahead == '{') {
-            if (!body || !function_macro_modifier_balanced(lexer, '{', '}')) return false;
-            body = tag = false;
-            continue;
-        }
-        char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
-        MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true, .lookahead_only = true, .preserve_end = started};
-        if (!scan_macro_name(lexer, &name)) return false;
-        if (!started) {
-            bool handled;
-            bool accepted = function_macro_first_word(lexer, &name, symbols, &handled);
-            if (handled) return accepted;
-        }
-        started = true;
-        MacroTypePrefix kind = function_macro_type_prefix_item(lexer, &name, reserved_words, reserved_count, !known_type);
-        switch (kind) {
-            case MACRO_TYPE_PREFIX_INVALID:
-                return false;
-            case MACRO_TYPE_PREFIX_TYPE:
-                return marker;
-            case MACRO_TYPE_PREFIX_MODIFIER:
-                continue;
-            case MACRO_TYPE_PREFIX_MARKER:
-                if (known_type && !tag) return false;
-                marker |= !known_type;
-                body = tag;
-                tag = false;
-                break;
-            case MACRO_TYPE_PREFIX_KNOWN_TYPE:
-            case MACRO_TYPE_PREFIX_BALANCED_TYPE:
-            case MACRO_TYPE_PREFIX_TAGGED_TYPE:
-                if (!marker || (known_type && kind == MACRO_TYPE_PREFIX_BALANCED_TYPE)) return false;
-                known_type = true;
-                tag = body = kind == MACRO_TYPE_PREFIX_TAGGED_TYPE;
-                break;
-        }
+        uint8_t key = state.marker | (state.known_type << 1) | (state.tag << 2) | (state.body << 3);
+        unsigned cached = state.started ? macro_proof_step(memo, lexer, key) : 0;
+        if (cached) return cached == 2;
+        MacroTypeResult result = lexer->lookahead == '[' || lexer->lookahead == '{'
+            ? function_macro_type_group(lexer, &state)
+            : function_macro_type_word(lexer, symbols, reserved_words, reserved_count, &state);
+        if (result != MACRO_TYPE_CONTINUE) return result == MACRO_TYPE_ACCEPT;
     }
+}
+
+static MacroTypeResult function_macro_type_group(TSLexer *lexer, MacroTypeState *state) {
+    if (lexer->lookahead == '[') {
+        if (!state->started) lexer->mark_end(lexer);
+        state->started = true;
+        return function_macro_bracket_attribute(lexer) ? MACRO_TYPE_CONTINUE : MACRO_TYPE_REJECT;
+    }
+    if (!state->body || !function_macro_modifier_balanced(lexer, '{', '}')) return MACRO_TYPE_REJECT;
+    state->body = state->tag = false;
+    return MACRO_TYPE_CONTINUE;
+}
+
+static MacroTypeResult function_macro_type_word(TSLexer *lexer, const MacroAttributeSymbols *symbols,
+    const char *const *reserved_words, unsigned reserved_count, MacroTypeState *state) {
+    char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
+    MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true, .lookahead_only = true, .preserve_end = state->started};
+    if (!scan_macro_name(lexer, &name)) return MACRO_TYPE_REJECT;
+    if (!state->started) {
+        bool handled;
+        bool accepted = function_macro_first_word(lexer, &name, symbols, &handled);
+        if (handled) return accepted ? MACRO_TYPE_ACCEPT : MACRO_TYPE_REJECT;
+    }
+    state->started = true;
+    MacroTypePrefix kind = function_macro_type_prefix_item(lexer, &name, reserved_words, reserved_count, !state->known_type);
+    return function_macro_type_transition(state, kind);
+}
+
+static MacroTypeResult function_macro_type_transition(MacroTypeState *state, MacroTypePrefix kind) {
+    switch (kind) {
+        case MACRO_TYPE_PREFIX_INVALID:
+            return MACRO_TYPE_REJECT;
+        case MACRO_TYPE_PREFIX_TYPE:
+            return state->marker ? MACRO_TYPE_ACCEPT : MACRO_TYPE_REJECT;
+        case MACRO_TYPE_PREFIX_MODIFIER:
+            return MACRO_TYPE_CONTINUE;
+        case MACRO_TYPE_PREFIX_MARKER:
+            if (state->known_type && !state->tag) return MACRO_TYPE_REJECT;
+            state->marker |= !state->known_type;
+            state->body = state->tag;
+            state->tag = false;
+            return MACRO_TYPE_CONTINUE;
+        case MACRO_TYPE_PREFIX_KNOWN_TYPE:
+        case MACRO_TYPE_PREFIX_BALANCED_TYPE:
+        case MACRO_TYPE_PREFIX_TAGGED_TYPE:
+            if (!state->marker || (state->known_type && kind == MACRO_TYPE_PREFIX_BALANCED_TYPE)) return MACRO_TYPE_REJECT;
+            state->known_type = true;
+            state->tag = state->body = kind == MACRO_TYPE_PREFIX_TAGGED_TYPE;
+            return MACRO_TYPE_CONTINUE;
+    }
+    return MACRO_TYPE_REJECT;
 }
 
 static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const MacroName *name, const char *const *reserved_words, unsigned reserved_count, bool type_argument) {
@@ -330,7 +365,6 @@ static MacroGroup function_macro_group_prefix(TSLexer *lexer, int32_t open, int3
 static MacroGroup function_macro_group_contents(TSLexer *lexer, int32_t open, int32_t close, bool *literal, bool *unterminated_raw, bool type_argument, bool modifier) {
     unsigned depth = 1;
     unsigned nested = 0;
-    // A definition body's own brace permits its member semicolons.
     unsigned braces = open == '{';
     MacroArgumentWord word = {0};
     while (depth) {
