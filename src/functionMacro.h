@@ -1,3 +1,4 @@
+// code-gauge-allow-file fileNcss 530 -- Annotation and argument scanners share lexical helpers and keyword tables.
 #ifndef TREE_SITTER_C_FUNCTION_MACRO_H_
 #define TREE_SITTER_C_FUNCTION_MACRO_H_
 
@@ -57,8 +58,6 @@ static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote, bool ra
 static bool function_macro_argument_escape(TSLexer *lexer, MacroArgumentWord *word);
 static bool function_macro_argument_slash(TSLexer *lexer, bool allow_division);
 static bool function_macro_tail_spacing(TSLexer *lexer, bool *escaped);
-static bool function_macro_line_comment(TSLexer *lexer);
-static bool function_macro_block_comment(TSLexer *lexer);
 static void function_macro_argument_word(MacroArgumentWord *word, int32_t c);
 
 static bool function_macro_trailing_argument_prefix(TSLexer *lexer);
@@ -515,37 +514,9 @@ static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote, bool ra
 static bool function_macro_argument_slash(TSLexer *lexer, bool allow_division) {
     lexer->advance(lexer, false);
     if (!scan_preproc_splices(lexer)) return allow_division;
-    if (lexer->lookahead == '/') return function_macro_line_comment(lexer);
-    if (lexer->lookahead == '*') return function_macro_block_comment(lexer);
+    if (lexer->lookahead == '/') return scan_preproc_line_comment(lexer);
+    if (lexer->lookahead == '*') return scan_preproc_block_comment(lexer);
     return allow_division;
-}
-
-static bool function_macro_line_comment(TSLexer *lexer) {
-    lexer->advance(lexer, false);
-    while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
-        if (lexer->lookahead == '\\') {
-            do {
-                lexer->advance(lexer, false);
-            } while (lexer->lookahead == '\\');
-            if (scan_preproc_newline(lexer, false)) continue;
-            if (lexer->eof(lexer)) return false;
-        }
-        lexer->advance(lexer, false);
-    }
-    return true;
-}
-
-static bool function_macro_block_comment(TSLexer *lexer) {
-    lexer->advance(lexer, false);
-    bool star = false;
-    while (!lexer->eof(lexer)) {
-        int32_t c = lexer->lookahead;
-        lexer->advance(lexer, false);
-        if (c == '\\' && scan_preproc_newline(lexer, false)) continue;
-        if (star && c == '/') return true;
-        star = c == '*';
-    }
-    return false;
 }
 
 static void function_macro_argument_word(MacroArgumentWord *word, int32_t c) {
