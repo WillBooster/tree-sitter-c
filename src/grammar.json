@@ -21157,7 +21157,18 @@
             "members": [
               {
                 "type": "STRING",
-                "value": "//"
+                "value": "/"
+              },
+              {
+                "type": "REPEAT",
+                "content": {
+                  "type": "PATTERN",
+                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                }
+              },
+              {
+                "type": "STRING",
+                "value": "/"
               },
               {
                 "type": "PATTERN",
