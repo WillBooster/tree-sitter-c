@@ -136,6 +136,48 @@ test.each([
   });
 });
 
+test.each(['ifdef', 'ifndef', 'elifdef', 'elifndef'])(
+  'keeps a named %s directive complete before a null directive',
+  (keyword) => {
+    const opening = keyword.startsWith('elif') ? '#if 0\n' : '';
+    const source = `#define ENABLED 1\n${opening}#${keyword} ENABLED\n#\nint value;\n#endif\n`;
+    checkSource(source, 1, (tree) => {
+      const conditional = tree.rootNode.descendantsOfType(['preproc_ifdef', 'preproc_elifdef'])[0];
+      expect(conditional?.childForFieldName('name')?.text).toBe('ENABLED');
+      expect(tree.rootNode.descendantsOfType('declaration')[0]?.childForFieldName('declarator')?.text).toBe('value');
+    });
+  }
+);
+
+test('keeps a complete macro definition before a null directive', () => {
+  checkSource('#define VALUE 1\n#\nint value = VALUE;\n', 1, (tree) => {
+    expect(tree.rootNode.descendantsOfType('preproc_def')[0]?.childForFieldName('name')?.text).toBe('VALUE');
+    expect(tree.rootNode.descendantsOfType('declaration')[0]?.childForFieldName('declarator')?.text).toBe(
+      'value = VALUE'
+    );
+  });
+});
+
+test.each(['define', 'ifdef', 'ifndef', 'elifdef', 'elifndef', 'include'])(
+  'retains an error when a null directive follows a missing %s operand',
+  (keyword) => {
+    for (const gap of ['', ' /**/', ' /* first\nsecond */']) {
+      const opening = keyword.startsWith('elif') ? '#if 0\n' : '';
+      const closing = keyword.includes('if') ? '#endif\n' : '';
+      const source = `${opening}#${keyword}${gap}\n#\nint value;\n${closing}`;
+      withTree(source, (tree) => {
+        expect(tree.rootNode.hasError, source).toBe(true);
+      });
+    }
+  }
+);
+
+test('does not complete a missing macro name after a pragma extra', () => {
+  withTree('#define _Pragma("once")\n#\nint value;\n', (tree) => {
+    expect(tree.rootNode.hasError).toBe(true);
+  });
+});
+
 test.each([
   '#@\n',
   '##\n',

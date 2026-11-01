@@ -21,10 +21,10 @@ typedef struct {
     bool built, ready;
 } EmptyDirectives;
 
-typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC } DirectiveKind;
+typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC, DIRECTIVE_REQUIRED } DirectiveKind;
 
 typedef struct {
-    bool beginning, pending;
+    bool beginning, pending, operand;
     DirectiveKind kind;
     uint32_t start;
 } DirectiveLine;
@@ -46,7 +46,7 @@ static bool directive_quoted(DirectiveInput *input, int32_t quote);
 static bool directive_raw(DirectiveInput *input);
 typedef struct {
     GnuRawStringPrefix raw;
-    char directive[8];
+    char directive[13];
     unsigned length;
 } DirectiveWord;
 
@@ -176,6 +176,7 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
 
 static void directive_code(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line, int32_t c) {
     bool name = line->pending;
+    if (!name) line->operand = true;
     line->beginning = line->pending = false;
     if (c == '"' || c == '\'') {
         if (directive_quoted(input, c)) directive_line_end(state, input, line);
@@ -195,12 +196,14 @@ static void directive_line_end(EmptyDirectives *state, DirectiveInput *input, Di
     if (line->pending) directive_record(state, line->start, directive_byte(input));
     line->beginning = true;
     line->pending = false;
-    if (line->kind == DIRECTIVE_CONDITION && input->index &&
+    bool required = line->kind == DIRECTIVE_CONDITION || (line->kind == DIRECTIVE_REQUIRED && !line->operand);
+    if (required && input->index &&
         directive_newline(input->characters[input->index - 1].value)) {
         uint32_t byte = input->characters[input->index - 1].byte;
         input->condition_ends[byte / 8] |= 1u << (byte % 8);
     }
     line->kind = DIRECTIVE_ORDINARY;
+    line->operand = false;
 }
 
 static int32_t directive_next(DirectiveInput *input) {
@@ -281,8 +284,14 @@ static DirectiveKind directive_word(DirectiveInput *input, int32_t first, bool r
 static DirectiveKind directive_word_kind(const DirectiveWord *word) {
     if (word->length >= sizeof word->directive) return DIRECTIVE_ORDINARY;
     if (strcmp(word->directive, "if") == 0 || strcmp(word->directive, "elif") == 0) return DIRECTIVE_CONDITION;
-    return strcmp(word->directive, "warning") == 0 || strcmp(word->directive, "error") == 0
-        ? DIRECTIVE_DIAGNOSTIC : DIRECTIVE_ORDINARY;
+    if (strcmp(word->directive, "warning") == 0 || strcmp(word->directive, "error") == 0) return DIRECTIVE_DIAGNOSTIC;
+    static const char *const required[] = {
+        "define", "ifdef", "ifndef", "elifdef", "elifndef", "include", "include_next", "embed", "undef", "line",
+    };
+    for (unsigned i = 0; i < sizeof required / sizeof *required; i++) {
+        if (strcmp(word->directive, required[i]) == 0) return DIRECTIVE_REQUIRED;
+    }
+    return DIRECTIVE_ORDINARY;
 }
 
 static void directive_word_character(DirectiveWord *word, int32_t c) {
