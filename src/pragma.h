@@ -1,3 +1,4 @@
+// code-gauge-allow-file fileNcss 476 -- Preprocessor tokens and pragma operators share names, spacing, and literal readers.
 #ifndef TREE_SITTER_C_PRAGMA_H_
 #define TREE_SITTER_C_PRAGMA_H_
 
@@ -7,6 +8,11 @@
 #include <string.h>
 
 static const char pragma_word[] = "_Pragma";
+
+typedef struct {
+    bool (*skip_empty)(TSLexer *, void *);
+    void *empty_context;
+} PragmaTrivia;
 
 typedef struct {
     char *word;
@@ -37,6 +43,9 @@ static bool scan_macro_name_ucn(TSLexer *lexer);
 
 static bool scan_pragma_argument(TSLexer *lexer);
 static bool scan_pragma_spacing(TSLexer *lexer);
+static bool scan_pragma_spacing_with(TSLexer *lexer, const PragmaTrivia *trivia);
+static bool scan_pragma_empty(TSLexer *lexer, const PragmaTrivia *trivia);
+static bool scan_pragma_suffix_end_with(TSLexer *lexer, bool mark_end, const PragmaTrivia *trivia);
 static bool scan_pragma_suffix(TSLexer *lexer);
 static bool scan_pragma_suffix_end(TSLexer *lexer, bool mark_end);
 static bool pragma_space(int32_t c);
@@ -48,12 +57,16 @@ static bool preproc_word(int32_t c, bool continuation);
 static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped, bool directive_text);
 static bool scan_preproc_raw_quote(TSLexer *lexer);
 
-static bool scan_pragma(TSLexer *lexer) {
+static bool scan_pragma_with(TSLexer *lexer, const PragmaTrivia *trivia) {
     while (pragma_space(lexer->lookahead)) {
         lexer->advance(lexer, true);
     }
     if (!scan_pragma_word(lexer)) return false;
-    return scan_pragma_suffix(lexer);
+    return scan_pragma_suffix_end_with(lexer, true, trivia);
+}
+
+static bool scan_pragma(TSLexer *lexer) {
+    return scan_pragma_with(lexer, NULL);
 }
 
 static bool scan_pragma_suffix(TSLexer *lexer) {
@@ -61,11 +74,15 @@ static bool scan_pragma_suffix(TSLexer *lexer) {
 }
 
 static bool scan_pragma_suffix_end(TSLexer *lexer, bool mark_end) {
-    if (!scan_pragma_spacing(lexer) || lexer->lookahead != '(') return false;
+    return scan_pragma_suffix_end_with(lexer, mark_end, NULL);
+}
+
+static bool scan_pragma_suffix_end_with(TSLexer *lexer, bool mark_end, const PragmaTrivia *trivia) {
+    if (!scan_pragma_spacing_with(lexer, trivia) || lexer->lookahead != '(') return false;
     lexer->advance(lexer, false);
-    if (!scan_pragma_spacing(lexer)) return false;
+    if (!scan_pragma_spacing_with(lexer, trivia)) return false;
     if (!scan_pragma_argument(lexer)) return false;
-    if (!scan_pragma_spacing(lexer) || lexer->lookahead != ')') return false;
+    if (!scan_pragma_spacing_with(lexer, trivia) || lexer->lookahead != ')') return false;
     lexer->advance(lexer, false);
     if (mark_end) lexer->mark_end(lexer);
     return true;
@@ -96,6 +113,17 @@ static bool scan_pragma_argument(TSLexer *lexer) {
     }
     lexer->advance(lexer, false);
     return true;
+}
+
+static bool scan_pragma_spacing_with(TSLexer *lexer, const PragmaTrivia *trivia) {
+    for (;;) {
+        if (!scan_pragma_spacing(lexer)) return false;
+        if (!scan_pragma_empty(lexer, trivia)) return true;
+    }
+}
+
+static bool scan_pragma_empty(TSLexer *lexer, const PragmaTrivia *trivia) {
+    return trivia && trivia->skip_empty && trivia->skip_empty(lexer, trivia->empty_context);
 }
 
 static bool scan_pragma_spacing(TSLexer *lexer) {

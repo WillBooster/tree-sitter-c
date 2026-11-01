@@ -54990,6 +54990,14 @@
   "extras": [
     {
       "type": "SYMBOL",
+      "name": "_directive_context"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "preproc_empty"
+    },
+    {
+      "type": "SYMBOL",
       "name": "pragma_operator"
     },
     {
@@ -56028,6 +56036,14 @@
     {
       "type": "SYMBOL",
       "name": "_braced_macro_type_start"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_directive_context"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "preproc_empty"
     }
   ],
   "inline": [

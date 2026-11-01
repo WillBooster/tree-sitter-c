@@ -5449,6 +5449,11 @@
     "named": true
   },
   {
+    "type": "preproc_empty",
+    "named": true,
+    "extra": true
+  },
+  {
     "type": "primitive_type",
     "named": true
   },

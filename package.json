@@ -27,6 +27,7 @@
     "src/functionMacro.h",
     "src/macroProof.h",
     "src/conditionalMacro.h",
+    "src/emptyDirectives.h",
     "src/gnuRawString.h",
     "src/scanner.c"
   ],
