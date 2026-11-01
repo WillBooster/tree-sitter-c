@@ -87,12 +87,12 @@ test('preserves typedef, opaque, enum, field, cast, and sizeof roles after annot
   const query = new Query(
     language,
     `
-(declaration type: (type_specifier) @type declarator: (_) @name)
-(type_definition type: (type_specifier) @type declarator: (_) @name)
-(field_declaration type: (type_specifier) @type declarator: (_) @name)
-(function_definition type: (type_specifier) @type declarator: (_) @name)
+(declaration type: (_) @type declarator: (_) @name)
+(type_definition type: (_) @type declarator: (_) @name)
+(field_declaration type: (_) @type declarator: (_) @name)
+(function_definition type: (_) @type declarator: (_) @name)
 (enum_specifier underlying_type: (_) @type)
-(type_descriptor type: (type_specifier) @operand.type)
+(type_descriptor type: (_) @operand.type)
 `
   );
   const fixture = fs.readFileSync('test/fixtures/macroSpecifierRecovery.c', 'utf8');
