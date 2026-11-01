@@ -11,7 +11,7 @@ typedef struct {
 
 typedef struct {
     DirectiveCharacter *characters;
-    uint8_t *condition_ends;
+    uint8_t *prefix_barriers;
     uint32_t length, index, end;
 } DirectiveInput;
 
@@ -21,10 +21,11 @@ typedef struct {
     bool built, ready;
 } EmptyDirectives;
 
-typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC, DIRECTIVE_REQUIRED } DirectiveKind;
+typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC, DIRECTIVE_REQUIRED, DIRECTIVE_PRAGMA, DIRECTIVE_HEADER, DIRECTIVE_HEADER_PREDICATE } DirectiveKind;
 
 typedef struct {
-    bool beginning, pending, operand;
+    bool beginning, pending, operand, pragma_pending, pragma_newline;
+    unsigned pragma_depth, header;
     DirectiveKind kind;
     uint32_t start;
 } DirectiveLine;
@@ -34,6 +35,9 @@ static bool directive_append(DirectiveInput *input, uint32_t *capacity, TSLexer 
 static void directive_line_end(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line);
 static void directive_line_character(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line, int32_t c);
 static void directive_code(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line, int32_t c);
+static bool directive_pragma_part(DirectiveLine *line, int32_t c);
+static bool directive_header_ready(DirectiveLine *line, int32_t c);
+static bool directive_header(DirectiveInput *input, int32_t close);
 static void directive_line_comment(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line);
 static uint32_t directive_splice_end(const DirectiveInput *input);
 
@@ -46,13 +50,14 @@ static bool directive_quoted(DirectiveInput *input, int32_t quote);
 static bool directive_raw(DirectiveInput *input);
 typedef struct {
     GnuRawStringPrefix raw;
-    char directive[13];
+    char directive[20];
     unsigned length;
 } DirectiveWord;
 
 static DirectiveKind directive_word(DirectiveInput *input, int32_t first, bool raw);
 static DirectiveKind directive_word_kind(const DirectiveWord *word);
 static void directive_word_character(DirectiveWord *word, int32_t c);
+static void directive_word_role(DirectiveLine *line, DirectiveKind kind, bool name, bool pragma, bool had_operand);
 static bool directive_horizontal(int32_t c);
 static bool directive_newline(int32_t c);
 static uint32_t directive_byte(const DirectiveInput *input);
@@ -103,15 +108,15 @@ static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer) {
     state->bytes = end.bytes;
     state->starts = calloc((size_t)state->bytes / 8 + 1, 1);
     state->ends = calloc((size_t)state->bytes / 8 + 1, 1);
-    input.condition_ends = calloc((size_t)state->bytes / 8 + 1, 1);
-    if (!state->starts || !state->ends || !input.condition_ends) goto failed;
+    input.prefix_barriers = calloc((size_t)state->bytes / 8 + 1, 1);
+    if (!state->starts || !state->ends || !input.prefix_barriers) goto failed;
     empty_directives_find(state, &input);
     directive_prefixes(state, &input);
-    free(input.condition_ends);
+    free(input.prefix_barriers);
     free(input.characters);
     return true;
 failed:
-    free(input.condition_ends);
+    free(input.prefix_barriers);
     free(input.characters);
     free(state->starts);
     free(state->ends);
@@ -124,7 +129,7 @@ static void directive_prefixes(EmptyDirectives *state, const DirectiveInput *inp
     for (uint32_t i = input->length; i > 0; i--) {
         DirectiveCharacter character = input->characters[i - 1];
         bool hash = character.value == '#' && (state->starts[character.byte / 8] & (1u << (character.byte % 8)));
-        bool condition_end = input->condition_ends[character.byte / 8] & (1u << (character.byte % 8));
+        bool condition_end = input->prefix_barriers[character.byte / 8] & (1u << (character.byte % 8));
         prefix = !condition_end && (hash || (prefix && (pragma_space(character.value) || character.value == '\\')));
         if (prefix) state->starts[character.byte / 8] |= 1u << (character.byte % 8);
     }
@@ -166,6 +171,9 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
     }
     if (directive_horizontal(c) || (line->beginning && pragma_space(c))) return;
     if (c == '#' && line->beginning) {
+        line->pragma_pending = line->pragma_newline = false;
+        line->kind = DIRECTIVE_ORDINARY;
+        line->operand = false;
         line->start = input->characters[input->index - 1].byte;
         line->beginning = false;
         line->pending = true;
@@ -176,14 +184,66 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
 
 static void directive_code(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line, int32_t c) {
     bool name = line->pending;
-    if (!name) line->operand = true;
+    bool header = directive_header_ready(line, c);
+    bool pragma = directive_pragma_part(line, c);
+    bool operand = line->operand;
+    if (!name && !pragma) line->operand = true;
     line->beginning = line->pending = false;
-    if (c == '"' || c == '\'') {
+    if (header) {
+        if (directive_header(input, c == '<' ? '>' : '"')) directive_line_end(state, input, line);
+    } else if (c == '"' || c == '\'') {
         if (directive_quoted(input, c)) directive_line_end(state, input, line);
     } else if (preproc_word(c, false) || (c >= '0' && c <= '9')) {
         DirectiveKind kind = directive_word(input, c, line->kind != DIRECTIVE_DIAGNOSTIC);
-        if (name) line->kind = kind;
+        directive_word_role(line, kind, name, pragma, operand);
     }
+}
+
+static void directive_word_role(DirectiveLine *line, DirectiveKind kind, bool name, bool pragma, bool had_operand) {
+    if (name) line->kind = kind;
+    if (kind == DIRECTIVE_HEADER_PREDICATE && line->kind == DIRECTIVE_CONDITION) line->header = 1;
+    else if (!name && !pragma && kind == DIRECTIVE_PRAGMA) {
+        line->operand = had_operand;
+        line->pragma_pending = true;
+    }
+}
+
+static bool directive_header_ready(DirectiveLine *line, int32_t c) {
+    if (line->header == 1) {
+        line->header = c == '(' ? 2 : 0;
+        return false;
+    }
+    bool argument = line->header == 2;
+    line->header = 0;
+    return (argument || (line->kind == DIRECTIVE_HEADER && !line->operand)) && (c == '<' || c == '"');
+}
+
+static bool directive_header(DirectiveInput *input, int32_t close) {
+    while (input->index < input->length) {
+        int32_t c = directive_next(input);
+        if (c == close) return false;
+        if (c == '\n') return true;
+    }
+    return false;
+}
+
+static bool directive_pragma_part(DirectiveLine *line, int32_t c) {
+    if (line->pragma_depth) {
+        if (c == '(') line->pragma_depth++;
+        if (c == ')') line->pragma_depth--;
+        return true;
+    }
+    if (!line->pragma_pending) return false;
+    line->pragma_pending = false;
+    if (c == '(') {
+        line->pragma_depth = 1;
+        line->pragma_newline = false;
+        return true;
+    }
+    if (line->pragma_newline) line->kind = DIRECTIVE_ORDINARY;
+    line->pragma_newline = false;
+    line->operand = true;
+    return false;
 }
 
 static void directive_line_comment(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line) {
@@ -196,14 +256,19 @@ static void directive_line_end(EmptyDirectives *state, DirectiveInput *input, Di
     if (line->pending) directive_record(state, line->start, directive_byte(input));
     line->beginning = true;
     line->pending = false;
-    bool required = line->kind == DIRECTIVE_CONDITION || (line->kind == DIRECTIVE_REQUIRED && !line->operand);
+    bool required = line->kind == DIRECTIVE_CONDITION ||
+        ((line->kind == DIRECTIVE_REQUIRED || line->kind == DIRECTIVE_HEADER) && !line->operand && !line->pragma_pending);
     if (required && input->index &&
         directive_newline(input->characters[input->index - 1].value)) {
         uint32_t byte = input->characters[input->index - 1].byte;
-        input->condition_ends[byte / 8] |= 1u << (byte % 8);
+        input->prefix_barriers[byte / 8] |= 1u << (byte % 8);
     }
-    line->kind = DIRECTIVE_ORDINARY;
-    line->operand = false;
+    line->header = 0;
+    if (line->pragma_pending) line->pragma_newline = true;
+    if (!line->pragma_depth && !line->pragma_pending) {
+        line->kind = DIRECTIVE_ORDINARY;
+        line->operand = false;
+    }
 }
 
 static int32_t directive_next(DirectiveInput *input) {
@@ -284,9 +349,14 @@ static DirectiveKind directive_word(DirectiveInput *input, int32_t first, bool r
 static DirectiveKind directive_word_kind(const DirectiveWord *word) {
     if (word->length >= sizeof word->directive) return DIRECTIVE_ORDINARY;
     if (strcmp(word->directive, "if") == 0 || strcmp(word->directive, "elif") == 0) return DIRECTIVE_CONDITION;
+    if (strcmp(word->directive, pragma_word) == 0) return DIRECTIVE_PRAGMA;
+    if (strcmp(word->directive, "include") == 0 || strcmp(word->directive, "include_next") == 0 ||
+        strcmp(word->directive, "embed") == 0) return DIRECTIVE_HEADER;
+    if (strcmp(word->directive, "__has_include") == 0 || strcmp(word->directive, "__has_include_next") == 0 ||
+        strcmp(word->directive, "__has_embed") == 0) return DIRECTIVE_HEADER_PREDICATE;
     if (strcmp(word->directive, "warning") == 0 || strcmp(word->directive, "error") == 0) return DIRECTIVE_DIAGNOSTIC;
     static const char *const required[] = {
-        "define", "ifdef", "ifndef", "elifdef", "elifndef", "include", "include_next", "embed", "undef", "line",
+        "define", "ifdef", "ifndef", "elifdef", "elifndef", "undef", "line",
     };
     for (unsigned i = 0; i < sizeof required / sizeof *required; i++) {
         if (strcmp(word->directive, required[i]) == 0) return DIRECTIVE_REQUIRED;

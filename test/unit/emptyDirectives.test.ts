@@ -136,6 +136,25 @@ test.each([
   });
 });
 
+test.each(['<missing/*>', '<missing//>', "<don't.h>", '"missing/*"'])(
+  'keeps header-name contents literal in %j before a null directive',
+  (header) => {
+    checkSource(`#if __has_include(${header})\nint first;\n#endif\n#\nint value;\n`, 1, (tree) => {
+      const conditional = tree.rootNode.descendantsOfType('preproc_if')[0];
+      expect(conditional?.childForFieldName('condition')?.text).toBe(`__has_include(${header})`);
+      expect(tree.rootNode.descendantsOfType('declaration').at(-2)?.childForFieldName('declarator')?.text).toBe(
+        'value'
+      );
+    });
+  }
+);
+
+test('retains a preprocessing expression after a pragma extra', () => {
+  checkSource('#if _Pragma("once") 1\n#\nint value;\n#endif\n', 1, (tree) => {
+    expect(tree.rootNode.descendantsOfType('preproc_if')[0]?.childForFieldName('condition')?.text).toBe('1');
+  });
+});
+
 test.each(['ifdef', 'ifndef', 'elifdef', 'elifndef'])(
   'keeps a named %s directive complete before a null directive',
   (keyword) => {
@@ -169,6 +188,34 @@ test.each(['define', 'ifdef', 'ifndef', 'elifdef', 'elifndef', 'include'])(
         expect(tree.rootNode.hasError, source).toBe(true);
       });
     }
+  }
+);
+
+test.each(['ifdef', 'ifndef', 'elifdef', 'elifndef', 'include'])(
+  'does not borrow a %s operand after only pragma extras',
+  (keyword) => {
+    for (const pragma of ['_Pragma("once")', '_Pragma("once") /**/ _Pragma("once")']) {
+      const opening = keyword.startsWith('elif') ? '#if 0\n' : '';
+      const closing = keyword.includes('if') ? '#endif\n' : '';
+      withTree(`${opening}#${keyword} ${pragma}\n#\nint value;\n${closing}`, (tree) => {
+        expect(tree.rootNode.hasError).toBe(true);
+      });
+    }
+  }
+);
+
+test('retains a real macro operand before a pragma extra', () => {
+  checkSource('#define VALUE _Pragma("once") 1\n#\nint value = VALUE;\n', 1, (tree) => {
+    expect(tree.rootNode.descendantsOfType('preproc_def')[0]?.childForFieldName('name')?.text).toBe('VALUE');
+  });
+});
+
+test.each(['', ' _Pragma("once")'])(
+  'retains a bare _Pragma identifier before %j as the conditional operand',
+  (suffix) => {
+    checkSource(`#ifdef _Pragma${suffix}\n#\nint value;\n#endif\n`, 1, (tree) => {
+      expect(tree.rootNode.descendantsOfType('preproc_ifdef')[0]?.childForFieldName('name')?.text).toBe('_Pragma');
+    });
   }
 );
 
