@@ -2848,35 +2848,6 @@
               "name": "_preproc_newline"
             }
           ]
-        },
-        {
-          "type": "SEQ",
-          "members": [
-            {
-              "type": "FIELD",
-              "name": "directive",
-              "content": {
-                "type": "ALIAS",
-                "content": {
-                  "type": "STRING",
-                  "value": "#"
-                },
-                "named": true,
-                "value": "preproc_directive"
-              }
-            },
-            {
-              "type": "REPEAT",
-              "content": {
-                "type": "SYMBOL",
-                "name": "comment"
-              }
-            },
-            {
-              "type": "SYMBOL",
-              "name": "_preproc_newline"
-            }
-          ]
         }
       ]
     },
@@ -3329,11 +3300,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -6090,11 +6058,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -7539,11 +7504,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -10270,11 +10232,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -11689,11 +11648,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -14450,11 +14406,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -15899,11 +15852,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -18660,11 +18610,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -20109,11 +20056,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -22870,11 +22814,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -24319,11 +24260,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -27080,11 +27018,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -28529,11 +28464,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -31413,11 +31345,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -48358,11 +48287,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -51134,11 +51060,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "TOKEN",
-              "content": {
-                "type": "PATTERN",
-                "value": "\\r\\n?|\\n\\r?"
-              }
+              "type": "SYMBOL",
+              "name": "_preproc_newline"
             },
             "named": false,
             "value": "\n"
@@ -55019,6 +54942,14 @@
   "extras": [
     {
       "type": "SYMBOL",
+      "name": "_directive_context"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "preproc_empty"
+    },
+    {
+      "type": "SYMBOL",
       "name": "pragma_operator"
     },
     {
@@ -56057,6 +55988,14 @@
     {
       "type": "SYMBOL",
       "name": "_braced_macro_type_start"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_directive_context"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "preproc_empty"
     }
   ],
   "inline": [

@@ -26,6 +26,7 @@
     "src/keywords.h",
     "src/functionMacro.h",
     "src/conditionalMacro.h",
+    "src/emptyDirectives.h",
     "src/gnuRawString.h",
     "src/scanner.c"
   ],

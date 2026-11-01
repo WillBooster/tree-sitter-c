@@ -3,8 +3,11 @@ import path from 'node:path';
 import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { beforeAll, expect, test } from 'vitest';
 
+const leading = ['', ' \t', '\\\n', '\\\r\n', '/**/', '/* first\nsecond */\\\n'];
 const gaps = ['', ' \t\v\f', '/**/', '/* first\nsecond */', '// comment', '\\\r\n/**/'];
 const contexts = [
+  ['declarator', 'int\n#\nvalue;\n', 1, 'declaration'],
+  ['return expression', 'int f(void) { return\n#\n1; }\n', 1, 'return_statement'],
   ['function', 'void f(void) {\n#\nint result;\n}\n', 1, 'function_definition'],
   ['structure', 'struct Fields {\n#\nint field;\n};\n', 1, 'field_declaration'],
   ['enumeration', 'enum Flags {\n#\nFIRST,\n#\nSECOND\n};\n', 2, 'enumerator'],
@@ -25,6 +28,12 @@ test.each(gaps)('ends an empty directive after %j', (gap) => {
   });
 });
 
+test.each(leading)('recognizes an empty directive after leading trivia %j', (prefix) => {
+  checkSource(`${prefix}#\nint value;\n`, 1, (tree) => {
+    expect(tree.rootNode.descendantsOfType('declaration')[0]?.childForFieldName('declarator')?.text).toBe('value');
+  });
+});
+
 test.each(contexts)('keeps an empty directive inside its %s', (_name, source, count, nodeType) => {
   checkSource(source, count, (tree) => {
     const nodes = tree.rootNode.descendantsOfType(nodeType);
@@ -37,13 +46,80 @@ test.each(contexts)('keeps an empty directive inside its %s', (_name, source, co
       expect(nodes[0]!.childForFieldName('declarator')?.text).toBe('field');
     } else if (nodeType === 'function_definition') {
       expect(nodes[0]!.childForFieldName('body')?.descendantsOfType('declaration')).toHaveLength(1);
+    } else if (nodeType === 'declaration') {
+      expect(nodes[0]!.childForFieldName('declarator')?.text).toBe('value');
+    } else if (nodeType === 'return_statement') {
+      expect(nodes[0]!.descendantsOfType('number_literal')[0]?.text).toBe('1');
     } else {
       expect(nodes[0]!.childForFieldName('condition')?.text).toBe('1');
     }
   });
 });
 
-test.each(['#@\n', '##\n', '#/* unterminated'])('reports an invalid empty-directive candidate %j', (source) => {
+test.each(['#\nMARKER\n', 'MARKER\n#\n'])('keeps conditional marker ownership around %j', (marker) => {
+  const source = `#define ENABLED 1\n#define MARKER __attribute__((unused))\n#ifdef ENABLED\n${marker}#endif\n#\nint value;\n`;
+  withTree(source, (tree) => {
+    expect(tree.rootNode.hasError, source).toBe(false);
+    expect(tree.rootNode.descendantsOfType('declaration').at(-1)?.childForFieldName('declarator')?.text).toBe('value');
+    expect(tree.rootNode.descendantsOfType('macro_specifier').map((node) => node.text)).toContain('MARKER');
+  });
+});
+
+test.each(['\n', '\r', '\r\n', '\n\r'])('keeps adjacent directives across %j line endings', (newline) => {
+  checkSource(`#${newline}# /* λ */${newline}int result;${newline}`, 2, (tree) => {
+    expect(tree.rootNode.descendantsOfType('declaration')[0]?.childForFieldName('declarator')?.text).toBe('result');
+  });
+});
+
+test.each(['#', '# /**/', '# // final comment'])('accepts an empty directive at EOF: %j', (source) => {
+  withTree(source, (tree) => {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('preproc_empty')).toHaveLength(1);
+  });
+});
+
+test.each([
+  'const char *value = "#\\n";\n#\n',
+  'const char *value = R"tag(first\n#\nlast)tag";\n#\n',
+  'const char *value = u8R"tag(first\n#\nlast)tag";\n#\n',
+  'const char *value = R"tag(first\\\n#\nlast)tag";\n#\n',
+  '/* first\u0000 second */\n#\n',
+  '// first\u0000 second\n#\n',
+])('keeps literal and comment contents outside directive recognition: %j', (source) => {
+  checkSource(source, 1, () => {});
+});
+
+test('rebuilds source context for consecutive full parses on one parser', () => {
+  const parser = new Parser().setLanguage(language);
+  try {
+    for (const source of ['   \n#\nint value;\n', 'int;#\nint value;\n', '   \n#\nint value;\n']) {
+      const tree = parser.parse(source)!;
+      try {
+        expect(tree.rootNode.hasError, source).toBe(source.startsWith('int;'));
+        expect(tree.rootNode.descendantsOfType('preproc_empty')).toHaveLength(source.startsWith('int;') ? 0 : 1);
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test('retains every directive in a long declaration', () => {
+  checkSource(`int\n${'# /* gap */\n'.repeat(4096)}value;\n`, 4096, (tree) => {
+    expect(tree.rootNode.descendantsOfType('declaration')[0]?.childForFieldName('declarator')?.text).toBe('value');
+  });
+});
+
+test.each([
+  '#@\n',
+  '##\n',
+  '#/* unterminated',
+  'int before; #\n',
+  'int before;\\\n#\n',
+  'int before;/*first\nsecond*/#\n',
+])('reports an invalid empty-directive candidate %j', (source) => {
   withTree(`${source}\nint following;\n`, (tree) => {
     expect(tree.rootNode.hasError).toBe(true);
   });
@@ -56,11 +132,10 @@ function checkSource(
 ): void {
   withTree(`${source}int following;\n`, (tree) => {
     expect(tree.rootNode.hasError, source).toBe(false);
-    const calls = tree.rootNode.descendantsOfType('preproc_call');
+    const calls = tree.rootNode.descendantsOfType('preproc_empty');
     expect(calls).toHaveLength(count);
     for (const call of calls) {
-      expect(call.childForFieldName('directive')?.text).toBe('#');
-      expect(call.childForFieldName('argument')?.text).toBeUndefined();
+      expect(call.text.startsWith('#')).toBe(true);
     }
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following;');
     check(tree);

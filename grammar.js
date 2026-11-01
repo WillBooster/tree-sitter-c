@@ -454,9 +454,17 @@ module.exports = Object.assign(
       sym('_raw_macro_type_tail'),
       sym('_braced_function_attribute_start'),
       sym('_braced_macro_type_start'),
+      sym('_directive_context'),
+      sym('preproc_empty'),
     ],
 
-    extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
+    extras: ($) => [
+      sym('_directive_context'),
+      sym('preproc_empty'),
+      $.pragma_operator,
+      /\s|\\(?:\r\n?|\n\r?)/,
+      $.comment,
+    ],
 
     inline: ($) => [
       $._bare_marker_initializer_declaration,
@@ -661,8 +669,7 @@ module.exports = Object.assign(
             alias(preprocessorToken('pragma'), $.preproc_directive),
             choice($._preproc_directive_arg, $.preproc_arg)
           ),
-          preprocCall($, $.preproc_directive, $._preproc_directive_arg),
-          seq(field('directive', alias('#', $.preproc_directive)), repeat($.comment), sym('_preproc_newline'))
+          preprocCall($, $.preproc_directive, $._preproc_directive_arg)
         ),
 
       ...preprocIf('_in_header', () => sym('_header_preproc_item')),
@@ -2668,7 +2675,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('if'),
           field('condition', sym('_preproc_expression')),
-          alias(token(/\r\n?|\n\r?/), '\n'),
+          alias(sym('_preproc_newline'), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock())),
           preprocessor('endif')
@@ -2696,7 +2703,7 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
         seq(
           preprocessor('elif'),
           field('condition', sym('_preproc_expression')),
-          alias(token(/\r\n?|\n\r?/), '\n'),
+          alias(sym('_preproc_newline'), '\n'),
           repeatContent ? repeat(content($)) : optional(content($)),
           field('alternative', optional(alternativeBlock()))
         )
