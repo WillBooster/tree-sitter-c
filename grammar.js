@@ -701,7 +701,7 @@ module.exports = Object.assign(
       preproc_arg: () => token(prec(-1, PREPROC_ARGUMENT)),
 
       _preproc_directive_arg: () => token(prec(-2, PREPROC_ARGUMENT)),
-      preproc_directive: () => preprocessorToken(/[a-zA-Z0-9]\w*/),
+      preproc_directive: () => token(seq(PREPROC_PREFIX, /[a-zA-Z0-9]/, repeat(seq(repeat(LINE_SPLICE), /\w/)))),
 
       _preproc_expression: ($) =>
         choice(
@@ -2735,9 +2735,12 @@ function preprocessor(command) {
   return seq(alias(preprocessorToken(command), '#' + command), sym('_preproc_directive_start'));
 }
 
-/** @param {string | RegExp} command */
+/** @param {string} command */
 function preprocessorToken(command) {
-  return token(seq(PREPROC_PREFIX, command));
+  const spelling = Array.from(command, (character, index) =>
+    index === 0 ? character : seq(repeat(LINE_SPLICE), character)
+  );
+  return token(seq(PREPROC_PREFIX, ...spelling));
 }
 
 /**

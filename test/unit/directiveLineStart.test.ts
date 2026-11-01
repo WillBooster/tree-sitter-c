@@ -62,6 +62,41 @@ test('does not let the conditional-marker path accept a midline directive', () =
   );
 });
 
+test.each(['\n', '\r', '\r\n', '\n\r'])('recognizes logical directive keywords containing splices at %j', (newline) => {
+  const splice = `\\${newline}`;
+  const source = `#def${splice}ine VALUE 1${newline}#prag${splice}ma unknown${newline}#i${splice}f VALUE${newline}int first;${newline}#el${splice}if 0${newline}int second;${newline}#el${splice}se${newline}int third;${newline}#end${splice}if${newline}int following;${newline}`;
+  withTree(source, (tree) => {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('preproc_def')[0]?.childForFieldName('name')?.text).toBe('VALUE');
+    expect(tree.rootNode.descendantsOfType('preproc_call')[0]?.childForFieldName('directive')?.text).toBe(
+      `#prag${splice}ma`
+    );
+    expect(tree.rootNode.descendantsOfType('preproc_if')[0]?.childForFieldName('condition')?.text).toBe('VALUE');
+    expect(tree.rootNode.descendantsOfType('preproc_elif')[0]?.childForFieldName('condition')?.text).toBe('0');
+    expect(tree.rootNode.descendantsOfType('preproc_else')).toHaveLength(1);
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following;');
+  });
+  withTree(`int before; #def${splice}ine VALUE 1${newline}int following;${newline}`, (tree) => {
+    expect(tree.rootNode.hasError).toBe(true);
+  });
+});
+
+test.each(['\n', '\r', '\r\n', '\n\r'])('keeps operands after spliced directive names at %j', (newline) => {
+  const splice = `\\${newline}`;
+  const source = `#i${splice}nclude <stddef.h>${newline}#un${splice}def UNUSED${newline}#li${splice}ne 200${newline}#define${splice} VALUE 1${newline}#def${splice}ine MARKER __attribute__((unused))${newline}#if${splice}def ENABLED${newline}MARKER${newline}#end${splice}if${newline}int value;${newline}`;
+  withTree(source, (tree) => {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('preproc_include')[0]?.childForFieldName('path')?.text).toBe('<stddef.h>');
+    expect(tree.rootNode.descendantsOfType('preproc_def').map((node) => node.childForFieldName('name')?.text)).toEqual([
+      'VALUE',
+      'MARKER',
+    ]);
+    const declaration = tree.rootNode.descendantsOfType('declaration').at(-1);
+    expect(declaration?.childForFieldName('declarator')?.text).toBe('value');
+    expect(declaration?.descendantsOfType('macro_specifier').map((node) => node.text)).toEqual(['MARKER']);
+  });
+});
+
 test('rebuilds directive positions for independent full parses', () => {
   const parser = new Parser().setLanguage(language);
   try {
