@@ -140,6 +140,18 @@ test('keeps directive positions after a leading byte-order mark', () => {
   });
 });
 
+test.each([65_531, 65_532])('keeps directives after a long Unicode comment with %i ordinary characters', (count) => {
+  const comment = `/* ${'a'.repeat(count)}𐐀 */`;
+  const source = `${comment}\n#define VALUE 1\n#\nint following;\n`;
+  withTree(source, (tree) => {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('comment')[0]?.text).toBe(comment);
+    expect(tree.rootNode.descendantsOfType('preproc_def')[0]?.childForFieldName('name')?.text).toBe('VALUE');
+    expect(tree.rootNode.descendantsOfType('preproc_empty')).toHaveLength(1);
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following;');
+  });
+});
+
 function withTree(source: string, check: (tree: NonNullable<ReturnType<Parser['parse']>>) => void): void {
   const parser = new Parser().setLanguage(language);
   const tree = parser.parse(source)!;

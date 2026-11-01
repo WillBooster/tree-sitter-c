@@ -8,8 +8,8 @@ beforeAll(async () => {
   language = await Language.load('tree-sitter-c.wasm');
 });
 
-test('validates directives in a large full parse', { timeout: 60_000 }, () => {
-  const comment = `/${'*'.repeat(140_000_000)}/\n`;
+test('validates directives in a large full parse', { timeout: 120_000 }, () => {
+  const comment = `/${'*'.repeat(300_000_000)}/\n`;
   const parser = new Parser().setLanguage(language);
   try {
     for (const prefix of ['', 'int before; ']) {
