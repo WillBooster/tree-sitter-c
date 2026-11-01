@@ -62,7 +62,34 @@ const BINARY_OPERATORS = [
 
 const LINE_SPLICE = /\\(?:\r\n?|\n\r?)/;
 const LINE_COMMENT = seq('//', /(\\+(.|\r?\n)|[^\\\n])*/);
-const BLOCK_COMMENT = seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/');
+const COMMENT_SPLICES = repeat(seq('\\', /[\r\n]/));
+const COMMENT_ESCAPE = seq('\\', /[^\r\n*]/);
+const BLOCK_COMMENT_STARS = seq(
+  '*',
+  repeat(
+    choice(
+      seq(COMMENT_SPLICES, choice('*', String.raw`\*`)),
+      seq(COMMENT_SPLICES, '\\\r', '\n'),
+      seq(COMMENT_SPLICES, '\\\n', '\r')
+    )
+  )
+);
+const BLOCK_COMMENT_NONCLOSING = choice(
+  /[^/*\\]/,
+  COMMENT_ESCAPE,
+  seq(COMMENT_SPLICES, '\\\r', choice(/[^/*\\\n]/, COMMENT_ESCAPE)),
+  seq(COMMENT_SPLICES, '\\\n', choice(/[^/*\\\r]/, COMMENT_ESCAPE))
+);
+const BLOCK_COMMENT = seq(
+  '/',
+  repeat(LINE_SPLICE),
+  '*',
+  /[^*]*/,
+  repeat(seq(BLOCK_COMMENT_STARS, BLOCK_COMMENT_NONCLOSING, /[^*]*/)),
+  BLOCK_COMMENT_STARS,
+  COMMENT_SPLICES,
+  '/'
+);
 const PREPROC_PREFIX = seq('#', repeat(choice(/[ \t\v\f]/, LINE_SPLICE, BLOCK_COMMENT)));
 const PRAGMA_SPACING = repeat(choice(/\s/, /\\(?:\r\n?|\n\r?)/));
 const PREPROC_ARGUMENT = /\S([^/\n]|\/[^*]|\\\r?\n)*/;

@@ -9,6 +9,10 @@ const gaps = [
   ['a multiline comment', '/* first\nsecond */'],
   ['horizontal whitespace', ' \t\v\f'],
   ['a spliced line', '\\\r\n\t/**/'],
+  ['a spliced opening delimiter', '/\\\n**/'],
+  ['a spliced closing delimiter', '/**\\\n/'],
+  ['spliced opening and closing delimiters', '/\\\r\n* first *\\\r\n/'],
+  ['a spliced delimiter after a literal backslash', '/* first*\\\n\\*/'],
 ] as const;
 
 let language: Language;
@@ -80,6 +84,38 @@ test.each(['\n', '\r\n', '// line comment\n', '/* unterminated'])(
     withTree(`#${gap}define VALUE 1\nint result = VALUE;\n`, (tree) => {
       expect(tree.rootNode.hasError).toBe(true);
     });
+  }
+);
+
+test.each(['/* first*\\\n/', '/* first*\\\\\n/ still inside */', '/* first*\\\\\\\n/ still inside */'])(
+  'ends a prefix comment at its first logical closing delimiter %j',
+  (comment) => {
+    withTree(`#${comment}define VALUE 7 /* trailing comment */\nint result = VALUE;\n`, (tree) => {
+      expect(tree.rootNode.hasError).toBe(false);
+      const macros = tree.rootNode.descendantsOfType('preproc_def');
+      expect(macros).toHaveLength(1);
+      expect(macros[0]!.childForFieldName('name')?.text).toBe('VALUE');
+      expect(macros[0]!.childForFieldName('value')?.text.trim()).toBe('7');
+      expect(tree.rootNode.descendantsOfType('declaration').map((node) => node.text)).toEqual(['int result = VALUE;']);
+    });
+  }
+);
+
+test('does not consume following source through a spliced comment terminator', () => {
+  withTree('#/* *\\\n/ int broken;\n/**/define X 1\nint x;\n', (tree) => {
+    expect(tree.rootNode.hasError).toBe(true);
+  });
+});
+
+test.each(['\u0085', '\u00A0', '\u1680', '\u2000', '\u200A', '\u2028', '\u2029', '\u202F', '\u205F', '\u3000'])(
+  'rejects Unicode directive-prefix spacing %j with and without declaration markers',
+  (space) => {
+    for (const body of ['MARKER', 'int nested;']) {
+      const source = `#define MARKER __attribute__((unused))\n#${space}ifdef ENABLED\n${body}\n#endif\nint value;\n`;
+      withTree(source, (tree) => {
+        expect(tree.rootNode.hasError, source).toBe(true);
+      });
+    }
   }
 );
 
