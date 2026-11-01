@@ -456,6 +456,7 @@ module.exports = Object.assign(
       sym('_braced_macro_type_start'),
       sym('_directive_context'),
       sym('preproc_empty'),
+      sym('_preproc_directive_start'),
     ],
 
     extras: ($) => [
@@ -2351,6 +2352,7 @@ function declarationSpecifiers($, braced = false) {
 function preprocCall($, directive, argument) {
   return seq(
     field('directive', directive),
+    sym('_preproc_directive_start'),
     repeat(choice($.comment, $.pragma_operator)),
     optional(seq(field('argument', alias(argument, $.preproc_arg)), repeat(choice($.comment, $.pragma_operator)))),
     sym('_preproc_newline')
@@ -2727,10 +2729,10 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
  *
  * @param {string} command
  *
- * @returns {import('./types/treeSitterDsl').AliasRule}
+ * @returns {import('./types/treeSitterDsl').SeqRule}
  */
 function preprocessor(command) {
-  return alias(preprocessorToken(command), '#' + command);
+  return seq(alias(preprocessorToken(command), '#' + command), sym('_preproc_directive_start'));
 }
 
 /** @param {string | RegExp} command */

@@ -16,7 +16,7 @@ typedef struct {
 } DirectiveInput;
 
 typedef struct {
-    uint8_t *starts, *ends, *line_ends;
+    uint8_t *starts, *ends, *line_ends, *directive_starts, *directive_ends;
     uint32_t bytes;
     bool built, ready;
 } EmptyDirectives;
@@ -75,6 +75,20 @@ static bool empty_directives_initialize(EmptyDirectives *state, TSLexer *lexer) 
     return true;
 }
 
+static bool empty_directives_after_keyword(const EmptyDirectives *state, TSLexer *lexer) {
+    if (!state || !state->directive_ends) return false;
+    TSLexerPosition position;
+    lexer->get_position(lexer, &position);
+    return position.bytes <= state->bytes && (state->directive_ends[position.bytes / 8] & (1u << (position.bytes % 8)));
+}
+
+static bool empty_directives_at_start(const EmptyDirectives *state, TSLexer *lexer) {
+    if (!state || !state->directive_starts) return false;
+    TSLexerPosition position;
+    lexer->get_position(lexer, &position);
+    return position.bytes < state->bytes && (state->directive_starts[position.bytes / 8] & (1u << (position.bytes % 8)));
+}
+
 static bool empty_directives_at_line_end(const EmptyDirectives *state, TSLexer *lexer) {
     if (!state || !state->line_ends) return false;
     TSLexerPosition position;
@@ -102,6 +116,7 @@ static bool empty_directives_consume(TSLexer *lexer, EmptyDirectives *state, boo
     return true;
 }
 
+// code-gauge-allow functionNcss 32 -- The source-fact buffers are allocated and released together so initialization fails atomically.
 static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer) {
     DirectiveInput input = {0};
     uint32_t capacity = 0;
@@ -115,8 +130,10 @@ static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer) {
     state->bytes = end.bytes;
     state->starts = calloc((size_t)state->bytes / 8 + 1, 1);
     state->ends = calloc((size_t)state->bytes / 8 + 1, 1);
+    state->directive_starts = calloc((size_t)state->bytes / 8 + 1, 1);
+    state->directive_ends = calloc((size_t)state->bytes / 8 + 1, 1);
     input.prefix_barriers = calloc((size_t)state->bytes / 8 + 1, 1);
-    if (!state->starts || !state->ends || !input.prefix_barriers) goto failed;
+    if (!state->starts || !state->ends || !state->directive_starts || !state->directive_ends || !input.prefix_barriers) goto failed;
     empty_directives_find(state, &input);
     directive_prefixes(state, &input);
     state->line_ends = input.prefix_barriers;
@@ -127,7 +144,9 @@ failed:
     free(input.characters);
     free(state->starts);
     free(state->ends);
-    state->starts = state->ends = NULL;
+    free(state->directive_starts);
+    free(state->directive_ends);
+    state->starts = state->ends = state->directive_starts = state->directive_ends = NULL;
     return false;
 }
 
@@ -185,6 +204,7 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
         line->kind = DIRECTIVE_ORDINARY;
         line->operand = false;
         line->start = input->characters[input->index - 1].byte;
+        state->directive_starts[line->start / 8] |= 1u << (line->start % 8);
         line->beginning = false;
         line->pending = true;
         return;
@@ -192,6 +212,7 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
     directive_code(state, input, line, c);
 }
 
+// code-gauge-allow functionCognitiveComplexity 16 -- Header names, quoted tokens and words update one logical directive's lexical state.
 static void directive_code(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line, int32_t c) {
     bool name = line->pending;
     bool header = directive_header_ready(line, c);
@@ -201,12 +222,19 @@ static void directive_code(EmptyDirectives *state, DirectiveInput *input, Direct
     line->beginning = line->pending = false;
     if (header) {
         if (directive_header(input, c == '<' ? '>' : '"')) directive_line_end(state, input, line);
-    } else if (c == '"' || c == '\'') {
-        if (directive_quoted(input, c)) directive_line_end(state, input, line);
-    } else if (preproc_word(c, false) || (c >= '0' && c <= '9')) {
-        DirectiveKind kind = directive_word(input, c, line->kind != DIRECTIVE_DIAGNOSTIC);
-        directive_word_role(line, kind, name, pragma, operand, preproc_word(c, false));
+        return;
     }
+    if (c == '"' || c == '\'') {
+        if (directive_quoted(input, c)) directive_line_end(state, input, line);
+        return;
+    }
+    if (!preproc_word(c, false) && !(c >= '0' && c <= '9')) return;
+    DirectiveKind kind = directive_word(input, c, line->kind != DIRECTIVE_DIAGNOSTIC);
+    if (name) {
+        uint32_t end = directive_byte(input);
+        state->directive_ends[end / 8] |= 1u << (end % 8);
+    }
+    directive_word_role(line, kind, name, pragma, operand, preproc_word(c, false));
 }
 
 static void directive_word_role(DirectiveLine *line, DirectiveKind kind, bool name, bool pragma, bool had_operand, bool identifier) {
