@@ -149,9 +149,31 @@ test.each(['<missing/*>', '<missing//>', "<don't.h>", '"missing/*"'])(
   }
 );
 
+test.each(['H', 'HEADER_PREDICATE_ALIAS'])(
+  'keeps header-name contents literal through the object-like alias %s',
+  (name) => {
+    const source = `#define ${name} __has_include\n#if ${name}(<missing/*>)\nint first;\n#endif\n#\nint value;\n`;
+    checkSource(source, 1, (tree) => {
+      expect(tree.rootNode.descendantsOfType('preproc_if')[0]?.childForFieldName('condition')?.text).toBe(
+        `${name}(<missing/*>)`
+      );
+    });
+  }
+);
+
 test('retains a preprocessing expression after a pragma extra', () => {
   checkSource('#if _Pragma("once") 1\n#\nint value;\n#endif\n', 1, (tree) => {
     expect(tree.rootNode.descendantsOfType('preproc_if')[0]?.childForFieldName('condition')?.text).toBe('1');
+  });
+});
+
+test.each([
+  '#ifdef A\n  #\nint value;\n#endif\n',
+  '#define VALUE 1\n  #\nint value = VALUE;\n',
+  'struct Fields {\n#ifdef A\n  #\nint value;\n#endif\n};\n',
+])('keeps incomplete pragma text in a macro replacement list local to that directive: %j', (body) => {
+  checkSource(`#define A 1\n#define OPEN _Pragma(\n${body}`, 1, (tree) => {
+    expect(tree.rootNode.descendantsOfType('preproc_def')[1]?.childForFieldName('value')?.text.trim()).toBe('_Pragma(');
   });
 });
 

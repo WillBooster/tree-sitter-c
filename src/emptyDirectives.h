@@ -21,7 +21,7 @@ typedef struct {
     bool built, ready;
 } EmptyDirectives;
 
-typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC, DIRECTIVE_REQUIRED, DIRECTIVE_PRAGMA, DIRECTIVE_HEADER, DIRECTIVE_HEADER_PREDICATE } DirectiveKind;
+typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC, DIRECTIVE_REQUIRED, DIRECTIVE_PRAGMA, DIRECTIVE_HEADER } DirectiveKind;
 
 typedef struct {
     bool beginning, pending, operand, pragma_pending, pragma_newline;
@@ -50,14 +50,14 @@ static bool directive_quoted(DirectiveInput *input, int32_t quote);
 static bool directive_raw(DirectiveInput *input);
 typedef struct {
     GnuRawStringPrefix raw;
-    char directive[20];
+    char directive[13];
     unsigned length;
 } DirectiveWord;
 
 static DirectiveKind directive_word(DirectiveInput *input, int32_t first, bool raw);
 static DirectiveKind directive_word_kind(const DirectiveWord *word);
 static void directive_word_character(DirectiveWord *word, int32_t c);
-static void directive_word_role(DirectiveLine *line, DirectiveKind kind, bool name, bool pragma, bool had_operand);
+static void directive_word_role(DirectiveLine *line, DirectiveKind kind, bool name, bool pragma, bool had_operand, bool identifier);
 static bool directive_horizontal(int32_t c);
 static bool directive_newline(int32_t c);
 static uint32_t directive_byte(const DirectiveInput *input);
@@ -172,6 +172,7 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
     if (directive_horizontal(c) || (line->beginning && pragma_space(c))) return;
     if (c == '#' && line->beginning) {
         line->pragma_pending = line->pragma_newline = false;
+        line->pragma_depth = 0;
         line->kind = DIRECTIVE_ORDINARY;
         line->operand = false;
         line->start = input->characters[input->index - 1].byte;
@@ -195,17 +196,25 @@ static void directive_code(EmptyDirectives *state, DirectiveInput *input, Direct
         if (directive_quoted(input, c)) directive_line_end(state, input, line);
     } else if (preproc_word(c, false) || (c >= '0' && c <= '9')) {
         DirectiveKind kind = directive_word(input, c, line->kind != DIRECTIVE_DIAGNOSTIC);
-        directive_word_role(line, kind, name, pragma, operand);
+        directive_word_role(line, kind, name, pragma, operand, preproc_word(c, false));
     }
 }
 
-static void directive_word_role(DirectiveLine *line, DirectiveKind kind, bool name, bool pragma, bool had_operand) {
-    if (name) line->kind = kind;
-    if (kind == DIRECTIVE_HEADER_PREDICATE && line->kind == DIRECTIVE_CONDITION) line->header = 1;
-    else if (!name && !pragma && kind == DIRECTIVE_PRAGMA) {
-        line->operand = had_operand;
-        line->pragma_pending = true;
+static void directive_word_role(DirectiveLine *line, DirectiveKind kind, bool name, bool pragma, bool had_operand, bool identifier) {
+    if (name) {
+        line->kind = kind;
+        return;
     }
+    if (pragma) return;
+    if (kind == DIRECTIVE_PRAGMA) {
+        bool required = line->kind == DIRECTIVE_REQUIRED || line->kind == DIRECTIVE_HEADER;
+        if (required && !had_operand) {
+            line->operand = false;
+            line->pragma_pending = true;
+        }
+        return;
+    }
+    if (identifier && line->kind == DIRECTIVE_CONDITION) line->header = 1;
 }
 
 static bool directive_header_ready(DirectiveLine *line, int32_t c) {
@@ -352,8 +361,6 @@ static DirectiveKind directive_word_kind(const DirectiveWord *word) {
     if (strcmp(word->directive, pragma_word) == 0) return DIRECTIVE_PRAGMA;
     if (strcmp(word->directive, "include") == 0 || strcmp(word->directive, "include_next") == 0 ||
         strcmp(word->directive, "embed") == 0) return DIRECTIVE_HEADER;
-    if (strcmp(word->directive, "__has_include") == 0 || strcmp(word->directive, "__has_include_next") == 0 ||
-        strcmp(word->directive, "__has_embed") == 0) return DIRECTIVE_HEADER_PREDICATE;
     if (strcmp(word->directive, "warning") == 0 || strcmp(word->directive, "error") == 0) return DIRECTIVE_DIAGNOSTIC;
     static const char *const required[] = {
         "define", "ifdef", "ifndef", "elifdef", "elifndef", "undef", "line",
