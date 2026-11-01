@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 482 -- Preprocessor tokens and pragma operators share names, spacing, and literal readers.
+// code-gauge-allow-file fileNcss 484 -- Preprocessor tokens and pragma operators share names, spacing, and literal readers.
 #ifndef TREE_SITTER_C_PRAGMA_H_
 #define TREE_SITTER_C_PRAGMA_H_
 
@@ -146,6 +146,7 @@ static bool scan_pragma_spacing(TSLexer *lexer) {
 
 static bool scan_pragma_comment(TSLexer *lexer) {
     lexer->advance(lexer, false);
+    if (!scan_preproc_splices(lexer)) return false;
     if (lexer->lookahead == '/') return scan_preproc_line_comment(lexer);
     if (lexer->lookahead == '*') return scan_preproc_block_comment(lexer);
     return false;
