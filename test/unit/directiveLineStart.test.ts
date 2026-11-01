@@ -114,6 +114,32 @@ test('rebuilds directive positions for independent full parses', () => {
   }
 });
 
+test.each(['λ', '𐐀', 'λ𐐀'])('keeps physical directive positions after Unicode text %j', (name) => {
+  const source = `/* ${name} */\n#define ${name} 1\n#if ${name}\nint value;\n#endif\n#\nint following;\n`;
+  withTree(source, (tree) => {
+    expect(tree.rootNode.hasError).toBe(false);
+    const definition = tree.rootNode.descendantsOfType('preproc_def')[0];
+    expect(definition?.startIndex).toBe(source.indexOf('#define'));
+    expect(definition?.childForFieldName('name')?.text).toBe(name);
+    expect(tree.rootNode.descendantsOfType('preproc_if')[0]?.childForFieldName('condition')?.text).toBe(name);
+    expect(tree.rootNode.descendantsOfType('preproc_empty')).toHaveLength(1);
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following;');
+  });
+  withTree(`/* ${name} */ int before; #define VALUE 1\nint following;\n`, (tree) => {
+    expect(tree.rootNode.hasError).toBe(true);
+  });
+});
+
+test('keeps directive positions after a leading byte-order mark', () => {
+  const source = '\uFEFF#define VALUE 1\n#\nint following;\n';
+  withTree(source, (tree) => {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.descendantsOfType('preproc_def')[0]?.startIndex).toBe(1);
+    expect(tree.rootNode.descendantsOfType('preproc_empty')).toHaveLength(1);
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following;');
+  });
+});
+
 function withTree(source: string, check: (tree: NonNullable<ReturnType<Parser['parse']>>) => void): void {
   const parser = new Parser().setLanguage(language);
   const tree = parser.parse(source)!;
