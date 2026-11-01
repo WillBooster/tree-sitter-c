@@ -329,7 +329,6 @@ examples/git/exec-cmd.c
 examples/git/fetch-pack.c
 examples/git/fmt-merge-msg.c
 examples/git/fsck.c
-examples/git/fsck.h
 examples/git/fsmonitor-settings.c
 examples/git/gettext.h
 examples/git/git-compat-util.h
