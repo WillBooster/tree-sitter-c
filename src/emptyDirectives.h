@@ -16,7 +16,7 @@ typedef struct {
 } DirectiveInput;
 
 typedef struct {
-    uint8_t *starts, *ends;
+    uint8_t *starts, *ends, *line_ends;
     uint32_t bytes;
     bool built, ready;
 } EmptyDirectives;
@@ -30,7 +30,7 @@ typedef struct {
     uint32_t start;
 } DirectiveLine;
 
-static void directive_prefixes(EmptyDirectives *state, const DirectiveInput *input);
+static void directive_prefixes(EmptyDirectives *state, DirectiveInput *input);
 static bool directive_append(DirectiveInput *input, uint32_t *capacity, TSLexer *lexer);
 static void directive_line_end(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line);
 static void directive_line_character(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line, int32_t c);
@@ -75,6 +75,13 @@ static bool empty_directives_initialize(EmptyDirectives *state, TSLexer *lexer) 
     return true;
 }
 
+static bool empty_directives_at_line_end(const EmptyDirectives *state, TSLexer *lexer) {
+    if (!state || !state->line_ends) return false;
+    TSLexerPosition position;
+    lexer->get_position(lexer, &position);
+    return position.bytes < state->bytes && (state->line_ends[position.bytes / 8] & (1u << (position.bytes % 8)));
+}
+
 static bool empty_directives_consume(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix);
 
 static bool empty_directives_skip(TSLexer *lexer, void *payload) {
@@ -112,7 +119,7 @@ static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer) {
     if (!state->starts || !state->ends || !input.prefix_barriers) goto failed;
     empty_directives_find(state, &input);
     directive_prefixes(state, &input);
-    free(input.prefix_barriers);
+    state->line_ends = input.prefix_barriers;
     free(input.characters);
     return true;
 failed:
@@ -124,12 +131,14 @@ failed:
     return false;
 }
 
-static void directive_prefixes(EmptyDirectives *state, const DirectiveInput *input) {
-    bool prefix = false;
+static void directive_prefixes(EmptyDirectives *state, DirectiveInput *input) {
+    bool prefix = false, line_end = false;
     for (uint32_t i = input->length; i > 0; i--) {
         DirectiveCharacter character = input->characters[i - 1];
         bool hash = character.value == '#' && (state->starts[character.byte / 8] & (1u << (character.byte % 8)));
         bool condition_end = input->prefix_barriers[character.byte / 8] & (1u << (character.byte % 8));
+        line_end = condition_end || (line_end && directive_horizontal(character.value));
+        if (line_end) input->prefix_barriers[character.byte / 8] |= 1u << (character.byte % 8);
         prefix = !condition_end && (hash || (prefix && (pragma_space(character.value) || character.value == '\\')));
         if (prefix) state->starts[character.byte / 8] |= 1u << (character.byte % 8);
     }
@@ -271,6 +280,12 @@ static void directive_line_end(EmptyDirectives *state, DirectiveInput *input, Di
         directive_newline(input->characters[input->index - 1].value)) {
         uint32_t byte = input->characters[input->index - 1].byte;
         input->prefix_barriers[byte / 8] |= 1u << (byte % 8);
+        if (input->index > 1) {
+            DirectiveCharacter previous = input->characters[input->index - 2];
+            if (directive_newline(previous.value) && previous.value != input->characters[input->index - 1].value) {
+                input->prefix_barriers[previous.byte / 8] |= 1u << (previous.byte % 8);
+            }
+        }
     }
     line->header = 0;
     if (line->pragma_pending) line->pragma_newline = true;

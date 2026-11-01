@@ -17,6 +17,7 @@ void tree_sitter_c_external_scanner_destroy(void *payload) {
     if (!state) return;
     free(state->starts);
     free(state->ends);
+    free(state->line_ends);
     free(state);
 }
 
@@ -34,6 +35,7 @@ void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffe
 bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     EmptyDirectives *state = payload;
     if (scan_directive_context(state, lexer, valid_symbols)) return true;
+    if (empty_directives_at_line_end(state, lexer)) return false;
     if (valid_symbols[GNU_RAW_STRING_BODY] && !valid_symbols[PREPROC_LPAREN]) {
         lexer->result_symbol = GNU_RAW_STRING_BODY;
         return scan_gnu_raw_string_token(lexer);

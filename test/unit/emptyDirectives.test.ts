@@ -149,6 +149,24 @@ test.each(['<missing/*>', '<missing//>', "<don't.h>", '"missing/*"'])(
   }
 );
 
+test.each(['\n', '\r', '\r\n', '\n\r'])(
+  'preserves a conditional terminator before a following pragma at %j',
+  (newline) => {
+    for (const condition of ['#if 1', '#if 0\n#elif 2']) {
+      for (const tail of ['', ' /* c */', ' int extra;']) {
+        const source = `${condition.replaceAll('\n', newline)}  ${newline}_Pragma("unknown")${tail}${newline}#${newline}int value;${newline}#endif${newline}`;
+        checkSource(source, 1, (tree) => {
+          expect(
+            tree.rootNode
+              .descendantsOfType(['preproc_if', 'preproc_elif'])
+              .map((node) => node.childForFieldName('condition')?.text)
+          ).toEqual(condition === '#if 1' ? ['1'] : ['0', '2']);
+        });
+      }
+    }
+  }
+);
+
 const annotationCases = [
   '#define CHECK(x)\nextern CHECK(1) INSERT int f(void);\n',
   '#define ATTR(...)\nint first INSERT ATTR(1);\n',
