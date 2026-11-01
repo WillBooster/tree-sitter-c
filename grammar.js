@@ -454,9 +454,17 @@ module.exports = Object.assign(
       sym('_raw_macro_type_tail'),
       sym('_braced_function_attribute_start'),
       sym('_braced_macro_type_start'),
+      sym('_directive_context'),
+      sym('preproc_empty'),
     ],
 
-    extras: ($) => [$.pragma_operator, /\s|\\(?:\r\n?|\n\r?)/, $.comment],
+    extras: ($) => [
+      sym('_directive_context'),
+      sym('preproc_empty'),
+      $.pragma_operator,
+      /\s|\\(?:\r\n?|\n\r?)/,
+      $.comment,
+    ],
 
     inline: ($) => [
       $._bare_marker_initializer_declaration,

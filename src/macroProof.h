@@ -1,7 +1,7 @@
 #ifndef TREE_SITTER_C_MACRO_PROOF_H_
 #define TREE_SITTER_C_MACRO_PROOF_H_
 
-#include "tree_sitter/parser.h"
+#include "pragma.h"
 #include <stdlib.h>
 
 typedef struct { void *children[256]; } MacroProofNode;
@@ -13,6 +13,8 @@ typedef struct {
     uint32_t length, capacity;
     const char *const *reserved_words;
     unsigned reserved_count;
+    bool (*skip_empty)(TSLexer *, void *);
+    void *empty_context;
     bool bound;
 } MacroProofMemo;
 
@@ -20,12 +22,15 @@ static MacroProofPage *macro_proof_page(MacroProofMemo *memo, uint32_t byte, boo
 static void macro_proof_append(MacroProofMemo *memo, MacroProofKey key);
 static void macro_proof_free_node(MacroProofNode *node, unsigned level);
 
-static bool macro_proof_begin(MacroProofMemo *memo, const char *const *reserved_words, unsigned reserved_count) {
+static bool macro_proof_begin(MacroProofMemo *memo, const char *const *reserved_words, unsigned reserved_count, const PragmaTrivia *trivia) {
     if (!memo) return false;
-    if (memo->bound && (memo->reserved_words != reserved_words || memo->reserved_count != reserved_count)) return false;
+    if (memo->bound && (memo->reserved_words != reserved_words || memo->reserved_count != reserved_count ||
+        memo->skip_empty != trivia->skip_empty || memo->empty_context != trivia->empty_context)) return false;
     memo->bound = true;
     memo->reserved_words = reserved_words;
     memo->reserved_count = reserved_count;
+    memo->skip_empty = trivia->skip_empty;
+    memo->empty_context = trivia->empty_context;
     memo->length = 0;
     return true;
 }
