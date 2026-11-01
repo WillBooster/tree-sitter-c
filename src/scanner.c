@@ -2,38 +2,49 @@
 #include "gnuRawString.h"
 #include "emptyDirectives.h"
 
+typedef struct {
+    EmptyDirectives directives;
+    MacroProofMemo proof_memo;
+} CScanner;
+
 enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF, GNU_RAW_STRING_BODY, RAW_MACRO_TYPE_TAIL, BRACED_FUNCTION_ATTRIBUTE_START, BRACED_MACRO_TYPE_START, DIRECTIVE_CONTEXT, PREPROC_EMPTY };
 
+static EmptyDirectives *scanner_directives(CScanner *scanner);
+
 static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
-static bool scan_declaration_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
+static bool scan_declaration_tokens(CScanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
 
 void *tree_sitter_c_external_scanner_create(void) {
-    return calloc(1, sizeof(EmptyDirectives));
+    return calloc(1, sizeof(CScanner));
 }
 
 void tree_sitter_c_external_scanner_destroy(void *payload) {
-    EmptyDirectives *state = payload;
+    CScanner *scanner = payload;
+    EmptyDirectives *state = scanner_directives(scanner);
     if (!state) return;
     free(state->starts);
     free(state->ends);
     free(state->line_ends);
-    free(state);
+    macro_proof_destroy(&scanner->proof_memo);
+    free(scanner);
 }
 
 unsigned tree_sitter_c_external_scanner_serialize(void *payload, char *buffer) {
-    const EmptyDirectives *state = payload;
+    const EmptyDirectives *state = scanner_directives(payload);
     buffer[0] = state && state->ready;
     return 1;
 }
 
 void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffer, unsigned length) {
-    EmptyDirectives *state = payload;
+    CScanner *scanner = payload;
+    EmptyDirectives *state = scanner_directives(scanner);
     if (state) state->ready = length && buffer[0];
 }
 
 bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
-    EmptyDirectives *state = payload;
+    CScanner *scanner = payload;
+    EmptyDirectives *state = scanner_directives(scanner);
     if (scan_directive_context(state, lexer, valid_symbols)) return true;
     if (empty_directives_at_line_end(state, lexer)) return false;
     if (valid_symbols[GNU_RAW_STRING_BODY] && !valid_symbols[PREPROC_LPAREN]) {
@@ -54,7 +65,7 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     }
     bool leading = valid_symbols[LEADING_CONDITIONAL_MARKER_IFDEF] || valid_symbols[LEADING_CONDITIONAL_MARKER_IFNDEF];
     bool conditional = leading || valid_symbols[CONDITIONAL_MARKER_IFDEF] || valid_symbols[CONDITIONAL_MARKER_IFNDEF];
-    if (!conditional) return scan_declaration_tokens(state, lexer, valid_symbols);
+    if (!conditional) return scan_declaration_tokens(scanner, lexer, valid_symbols);
     while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
     const ConditionalMacroSymbols symbols = {
         .ifdef = CONDITIONAL_MARKER_IFDEF, .ifndef = CONDITIONAL_MARKER_IFNDEF,
@@ -62,7 +73,7 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
         .skip_empty = empty_directives_skip, .empty_context = state,
     };
     if (lexer->lookahead == '#') return scan_conditional_macro(lexer, &symbols, valid_symbols);
-    return scan_declaration_tokens(state, lexer, valid_symbols);
+    return scan_declaration_tokens(scanner, lexer, valid_symbols);
 }
 
 static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
@@ -82,13 +93,15 @@ static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const
     return false;
 }
 
-static bool scan_declaration_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
+static bool scan_declaration_tokens(CScanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
+    EmptyDirectives *state = scanner_directives(scanner);
     static const TSSymbol attribute_tokens[] = {
         FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, POST_TYPE_FUNCTION_ATTRIBUTE_START,
         TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, BRACED_FUNCTION_ATTRIBUTE_START,
     };
     const MacroAttributeSymbols symbols = {
         .trivia = {empty_directives_skip, state},
+        .proof_memo = scanner ? &scanner->proof_memo : NULL,
         .pragma = PRAGMA_OPERATOR,
         .object_start = TRAILING_OBJECT_DECLARATION_START,
         .allow_pragma = valid_symbols[PRAGMA_OPERATOR],
@@ -154,4 +167,8 @@ static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bo
     }
     lexer->result_symbol = PRAGMA_OPERATOR;
     return valid_symbols[PRAGMA_OPERATOR] && scan_pragma_with(lexer, &(PragmaTrivia){empty_directives_skip, state});
+}
+
+static EmptyDirectives *scanner_directives(CScanner *scanner) {
+    return scanner ? &scanner->directives : NULL;
 }

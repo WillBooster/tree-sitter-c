@@ -1,9 +1,10 @@
-// code-gauge-allow-file fileNcss 582 -- Annotation and argument scanners share lexical helpers and keyword tables.
+// code-gauge-allow-file fileNcss 593 -- Annotation and argument scanners share lexical helpers and keyword tables.
 #ifndef TREE_SITTER_C_FUNCTION_MACRO_H_
 #define TREE_SITTER_C_FUNCTION_MACRO_H_
 
 #include "pragma.h"
 #include "keywords.h"
+#include "macroProof.h"
 
 typedef struct {
     bool identifier;
@@ -29,6 +30,7 @@ typedef struct {
 
 typedef struct {
     PragmaTrivia trivia;
+    MacroProofMemo *proof_memo;
     TSSymbol pragma;
     TSSymbol object_start;
     bool allow_pragma;
@@ -179,18 +181,25 @@ static MacroTypeResult function_macro_type_word(TSLexer *lexer, const MacroAttri
     const char *const *reserved_words, unsigned reserved_count, MacroTypeState *state);
 
 static bool function_macro_prove_braced_type(TSLexer *lexer, const MacroAttributeSymbols *symbols,
-    const char *const *reserved_words, unsigned reserved_count);
+    const char *const *reserved_words, unsigned reserved_count, MacroProofMemo *memo);
 
 static bool scan_braced_macro_type_start(TSLexer *lexer, const MacroAttributeSymbols *symbols, const char *const *reserved_words, unsigned reserved_count) {
-    return function_macro_prove_braced_type(lexer, symbols, reserved_words, reserved_count);
+    MacroProofMemo *memo = symbols->proof_memo;
+    if (!macro_proof_begin(memo, reserved_words, reserved_count, &symbols->trivia)) memo = NULL;
+    bool accepted = function_macro_prove_braced_type(lexer, symbols, reserved_words, reserved_count, memo);
+    macro_proof_finish(memo, accepted);
+    return accepted;
 }
 
 static bool function_macro_prove_braced_type(TSLexer *lexer, const MacroAttributeSymbols *symbols,
-    const char *const *reserved_words, unsigned reserved_count) {
+    const char *const *reserved_words, unsigned reserved_count, MacroProofMemo *memo) {
     const PragmaTrivia *trivia = &symbols->trivia;
     MacroTypeState state = {0};
     for (;;) {
         while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
+        uint8_t key = state.marker | (state.known_type << 1) | (state.tag << 2) | (state.body << 3);
+        unsigned cached = state.started ? macro_proof_step(memo, lexer, key) : 0;
+        if (cached) return cached == 2;
         if (scan_pragma_empty(lexer, trivia)) continue;
         MacroTypeResult result = lexer->lookahead == '[' || lexer->lookahead == '{'
             ? function_macro_type_group(lexer, &state, trivia)

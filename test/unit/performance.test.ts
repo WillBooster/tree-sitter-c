@@ -24,6 +24,7 @@ test('uses a Wasm build built from the current parser', () => {
     'src/identifier.h',
     'src/keywords.h',
     'src/functionMacro.h',
+    'src/macroProof.h',
     'src/conditionalMacro.h',
     'src/emptyDirectives.h',
     'src/gnuRawString.h',
@@ -33,6 +34,24 @@ test('uses a Wasm build built from the current parser', () => {
     'generation inputs or src/ changed after the Wasm build was built; run `bun run build/ci`'
   ).toBe(false);
 });
+
+test.each(['A ', 'A B '])(
+  'keeps block marker-prefix recovery approximately linear for %j',
+  { timeout: 60_000 },
+  (markers) => {
+    const source = (count: number): string => `void f(void) { ${markers.repeat(count)}x; }`;
+    const small = source(1000);
+    const large = source(10_000);
+    parseAverageCpuTime(large, true);
+    let smallFastest = Infinity;
+    let largeFastest = Infinity;
+    for (let run = 0; run < 5; run++) {
+      smallFastest = Math.min(smallFastest, parseAverageCpuTime(small, true));
+      largeFastest = Math.min(largeFastest, parseAverageCpuTime(large, true));
+    }
+    expect(largeFastest / smallFastest).toBeLessThan(18);
+  }
+);
 
 test('keeps nested ordinary calls approximately linear', { timeout: 60_000 }, () => {
   const small = nestedCallSource(200);

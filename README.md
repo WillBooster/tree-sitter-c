@@ -66,13 +66,13 @@ parser.setLanguage(await Language.load(c));
 The package also ships `grammar.js`, scanner sources under `src/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
 The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, `functionMacro.h`,
-`conditionalMacro.h`, `emptyDirectives.h`, and `gnuRawString.h`.
+`conditionalMacro.h`, `emptyDirectives.h`, `macroProof.h`, and `gnuRawString.h`.
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
 Append `_directive_context` and `preproc_empty` in their inherited external-token slots and retain them as extras.
 Port the scanner lifecycle functions together with `EmptyDirectives` from `emptyDirectives.h`; the source-boundary
-facts belong to one full parse and are freed by scanner destruction. Run `scan_directive_context` before the other
-token dispatch. Pass `empty_directives_skip` and its state through `ConditionalMacroSymbols.skip_empty` and
+facts belong to one full parse and are freed by scanner destruction. Run `scan_directive_context` first,
+then reject external scans at `empty_directives_at_line_end` before the other token dispatch. Pass `empty_directives_skip` and its state through `ConditionalMacroSymbols.skip_empty` and
 `empty_context` so declaration lookahead ignores null directives without moving the opening token's range.
 Keep preprocessor argument/newline handling ahead of annotation lookahead.
 Port `preproc_argument_mode` selection together with `scan_preproc_arg` so tokenized pragmas retain raw bodies.
@@ -99,8 +99,14 @@ This separate zero-width guard proves marker words followed by a braced macro-ty
 consumes each marker and validates its type. Keep `MacroName.preserve_end` in `pragma.h` so scanning subsequent words
 does not move the guard's end. Its default is false for ordinary name scans. Derived grammars can supply reserved
 starter words and the same `MacroAttributeSymbols` context to the guard helper; the C scanner supplies an empty table.
-The helper shares pragma and scalar-object dispatch with annotation guards. Copy both `functionMacro.h` and `pragma.h`
+The helper shares pragma and scalar-object dispatch with annotation guards. Copy `functionMacro.h`, `macroProof.h`, and `pragma.h`
 when porting this dispatch. Later pragma lookahead must preserve the zero-width token end.
+
+The C scanner owns a `MacroProofMemo` for each full parse and frees it on scanner destruction.
+Pass it as `MacroAttributeSymbols.proof_memo` to reuse continuation proofs by physical byte position and lexical state.
+The first-word dispatch stays uncached because it depends on the valid external tokens. The memo binds to one reserved-word table and trivia callback/context;
+a different table or trivia context disables reuse. Derived scanners can leave `proof_memo` unset, or own a memo with the same lifetime.
+These source facts need no serialized bytes.
 
 When overriding declarations or function definitions, retain both guarded ordinary-type/declarator alternatives and
 annotation alternatives in ordinary, block, and for-declaration builders. Accept the matching passive guard after calling conventions and before ordinary, builtin,
