@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 475 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
+// code-gauge-allow-file fileNcss 510 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
@@ -6,10 +6,16 @@
 #include <stdlib.h>
 
 typedef struct {
+    uint32_t index, byte, width;
+} DirectivePosition;
+
+typedef struct {
     uint16_t **characters;
+    DirectivePosition *positions;
+    uint32_t position_count, position_capacity, position_index, previous_byte, before_previous_byte;
     uint8_t *prefix_barriers;
     uint32_t length, index, byte, end, page_count;
-    bool utf16;
+    bool utf16, encoding_known;
 } DirectiveInput;
 
 typedef struct {
@@ -30,6 +36,7 @@ typedef struct {
 static void directive_prefixes(EmptyDirectives *state, DirectiveInput *input);
 static bool directive_append(DirectiveInput *input, uint32_t *capacity, TSLexer *lexer);
 static bool directive_reserve(DirectiveInput *input, uint32_t *capacity, unsigned width);
+static bool directive_position(DirectiveInput *input, uint32_t index, uint32_t byte, uint32_t width);
 static void directive_encode(DirectiveInput *input, uint32_t c);
 static uint16_t directive_character(const DirectiveInput *input, uint32_t index);
 static void directive_store(DirectiveInput *input, uint16_t c);
@@ -157,9 +164,10 @@ failed:
     return false;
 }
 
+// code-gauge-allow functionCognitiveComplexity 24 -- The reverse lexical pass applies sparse physical-position corrections while carrying null-prefix and line-end facts.
 static void directive_prefixes(EmptyDirectives *state, DirectiveInput *input) {
     bool prefix = false, line_end = false;
-    uint32_t byte = input->end;
+    uint32_t byte = input->end, position = input->position_count;
     for (uint32_t i = input->length; i > 0;) {
         i--;
         if (i && directive_character(input, i) >= 0xdc00 && directive_character(input, i) <= 0xdfff &&
@@ -167,8 +175,14 @@ static void directive_prefixes(EmptyDirectives *state, DirectiveInput *input) {
         DirectiveInput character = *input;
         character.index = i;
         character.byte = 0;
+        character.position_count = 0;
         int32_t c = directive_physical_next(&character);
-        byte -= character.byte;
+        if (position && input->positions[position - 1].index == i) byte = input->positions[--position].byte;
+        else {
+            if (character.byte > byte) return;
+            byte -= character.byte;
+        }
+        if (byte > state->bytes) return;
         bool hash = c == '#' && (state->starts[byte / 8] & (1u << (byte % 8)));
         bool condition_end = input->prefix_barriers[byte / 8] & (1u << (byte % 8));
         line_end = condition_end || (line_end && directive_horizontal(c));
@@ -179,15 +193,35 @@ static void directive_prefixes(EmptyDirectives *state, DirectiveInput *input) {
 }
 
 static bool directive_append(DirectiveInput *input, uint32_t *capacity, TSLexer *lexer) {
-    uint32_t c = lexer->lookahead;
-    unsigned width = directive_utf8_width(c);
+    uint32_t c = lexer->lookahead, index = input->length;
+    unsigned width = directive_utf8_width(c), utf16_width = c > 0xffff && c <= 0x10ffff ? 4 : 2;
     if (!directive_reserve(input, capacity, c > 0xffff && c <= 0x10ffff ? 2 : 1)) return false;
     directive_encode(input, c);
     TSLexerPosition start, end;
     lexer->get_position(lexer, &start);
     lexer->advance(lexer, false);
     lexer->get_position(lexer, &end);
-    if (end.bytes - start.bytes != width && end.bytes - start.bytes == (c > 0xffff ? 4 : 2)) input->utf16 = true;
+    uint32_t measured = end.bytes - start.bytes;
+    if (!input->encoding_known && c <= 0x10ffff && width != utf16_width && !lexer->is_at_included_range_start(lexer)) {
+        input->utf16 = measured == utf16_width;
+        input->encoding_known = true;
+    }
+    if (c > 0x10ffff || measured != (input->utf16 ? utf16_width : width)) {
+        return directive_position(input, index, start.bytes, measured);
+    }
+    return true;
+}
+
+static bool directive_position(DirectiveInput *input, uint32_t index, uint32_t byte, uint32_t width) {
+    if (input->position_count == input->position_capacity) {
+        uint32_t capacity = input->position_capacity ? input->position_capacity * 2 : 16;
+        if (capacity < input->position_capacity || (size_t)capacity > SIZE_MAX / sizeof(*input->positions)) return false;
+        void *positions = realloc(input->positions, (size_t)capacity * sizeof(*input->positions));
+        if (!positions) return false;
+        input->positions = positions;
+        input->position_capacity = capacity;
+    }
+    input->positions[input->position_count++] = (DirectivePosition){index, byte, width};
     return true;
 }
 
@@ -232,6 +266,7 @@ static void directive_store(DirectiveInput *input, uint16_t c) {
 static void directive_release(DirectiveInput *input) {
     for (uint32_t i = 0; i < input->page_count; i++) free(input->characters[i]);
     free(input->characters);
+    free(input->positions);
 }
 
 static unsigned directive_utf8_width(uint32_t c) {
@@ -263,7 +298,7 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
         line->pragma_depth = 0;
         line->kind = DIRECTIVE_ORDINARY;
         line->operand = false;
-        line->start = input->byte - (input->utf16 ? 2 : 1);
+        line->start = input->previous_byte;
         state->directive_starts[line->start / 8] |= 1u << (line->start % 8);
         line->beginning = false;
         line->pending = true;
@@ -375,13 +410,12 @@ static void directive_line_end(EmptyDirectives *state, DirectiveInput *input, Di
 
 static void directive_barrier(DirectiveInput *input) {
     if (!input->index || !directive_newline(directive_character(input, input->index - 1))) return;
-    uint32_t width = input->utf16 ? 2 : 1;
-    uint32_t byte = input->byte - width;
+    uint32_t byte = input->previous_byte;
     input->prefix_barriers[byte / 8] |= 1u << (byte % 8);
     if (input->index < 2) return;
     int32_t previous = directive_character(input, input->index - 2);
     if (directive_newline(previous) && previous != directive_character(input, input->index - 1)) {
-        byte -= width;
+        byte = input->before_previous_byte;
         input->prefix_barriers[byte / 8] |= 1u << (byte % 8);
     }
 }
@@ -405,17 +439,20 @@ static int32_t directive_next(DirectiveInput *input) {
 }
 
 static int32_t directive_physical_next(DirectiveInput *input) {
-    uint32_t c = directive_character(input, input->index++);
-    if (c == 0xdfff) {
-        input->byte += input->utf16 ? 2 : 1;
-        return -1;
-    }
+    uint32_t index = input->index, c = directive_character(input, input->index++);
+    bool invalid = c == 0xdfff;
     if (c >= 0xd800 && c <= 0xdbff && input->index < input->length &&
         directive_character(input, input->index) >= 0xdc00 && directive_character(input, input->index) <= 0xdfff) {
         c = 0x10000 + ((c - 0xd800) << 10) + (directive_character(input, input->index++) - 0xdc00);
     }
-    input->byte += input->utf16 ? (c > 0xffff ? 4 : 2) : directive_utf8_width(c);
-    return c;
+    input->before_previous_byte = input->previous_byte;
+    input->previous_byte = input->byte;
+    if (input->position_index < input->position_count && input->positions[input->position_index].index == index) {
+        DirectivePosition position = input->positions[input->position_index++];
+        input->previous_byte = position.byte;
+        input->byte = position.byte + position.width;
+    } else input->byte += input->utf16 ? (c > 0xffff ? 4 : 2) : invalid ? 1 : directive_utf8_width(c);
+    return invalid ? 0xfffd : c;
 }
 
 static uint32_t directive_splice_end(const DirectiveInput *input) {
