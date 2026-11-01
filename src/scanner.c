@@ -4,13 +4,15 @@
 enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF, GNU_RAW_STRING_BODY, RAW_MACRO_TYPE_TAIL, BRACED_FUNCTION_ATTRIBUTE_START, BRACED_MACRO_TYPE_START };
 
 static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols);
+static bool scan_declaration_tokens(void *payload, TSLexer *lexer, const bool *valid_symbols);
 
 void *tree_sitter_c_external_scanner_create(void) {
-    return NULL;
+    return calloc(1, sizeof(MacroProofMemo));
 }
 
 void tree_sitter_c_external_scanner_destroy(void *payload) {
-    (void)payload;
+    macro_proof_destroy(payload);
+    free(payload);
 }
 
 unsigned tree_sitter_c_external_scanner_serialize(void *payload, char *buffer) {
@@ -26,7 +28,6 @@ void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffe
 }
 
 bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
-    (void)payload;
     if (valid_symbols[GNU_RAW_STRING_BODY] && !valid_symbols[PREPROC_LPAREN]) {
         lexer->result_symbol = GNU_RAW_STRING_BODY;
         return scan_gnu_raw_string_token(lexer);
@@ -45,14 +46,17 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     }
     bool leading = valid_symbols[LEADING_CONDITIONAL_MARKER_IFDEF] || valid_symbols[LEADING_CONDITIONAL_MARKER_IFNDEF];
     bool conditional = leading || valid_symbols[CONDITIONAL_MARKER_IFDEF] || valid_symbols[CONDITIONAL_MARKER_IFNDEF];
-    if (conditional) {
-        while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
-        const ConditionalMacroSymbols symbols = {
-            .ifdef = CONDITIONAL_MARKER_IFDEF, .ifndef = CONDITIONAL_MARKER_IFNDEF,
-            .leading_ifdef = LEADING_CONDITIONAL_MARKER_IFDEF, .leading_ifndef = LEADING_CONDITIONAL_MARKER_IFNDEF,
-        };
-        if (lexer->lookahead == '#') return scan_conditional_macro(lexer, &symbols, valid_symbols);
-    }
+    if (!conditional) return scan_declaration_tokens(payload, lexer, valid_symbols);
+    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
+    const ConditionalMacroSymbols symbols = {
+        .ifdef = CONDITIONAL_MARKER_IFDEF, .ifndef = CONDITIONAL_MARKER_IFNDEF,
+        .leading_ifdef = LEADING_CONDITIONAL_MARKER_IFDEF, .leading_ifndef = LEADING_CONDITIONAL_MARKER_IFNDEF,
+    };
+    if (lexer->lookahead == '#') return scan_conditional_macro(lexer, &symbols, valid_symbols);
+    return scan_declaration_tokens(payload, lexer, valid_symbols);
+}
+
+static bool scan_declaration_tokens(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     static const TSSymbol attribute_tokens[] = {
         FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, POST_TYPE_FUNCTION_ATTRIBUTE_START,
         TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, BRACED_FUNCTION_ATTRIBUTE_START,
@@ -64,6 +68,7 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
         .allow_object_start = valid_symbols[TRAILING_OBJECT_DECLARATION_START],
         .braced_start = BRACED_FUNCTION_ATTRIBUTE_START,
         .allow_braced_start = valid_symbols[BRACED_FUNCTION_ATTRIBUTE_START],
+        .proof_memo = payload,
     };
     if (valid_symbols[BRACED_MACRO_TYPE_START]) {
         lexer->result_symbol = BRACED_MACRO_TYPE_START;

@@ -25,7 +25,7 @@ the trees that error recovery produces may change; such changes are released as 
 ## Usage
 
 The npm package ships `tree-sitter-c.wasm` for
-[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 15.0.3 or later within 15.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000b`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
+[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 15.0.3 or later within 15.x, or 16.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000b`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
 
 ```js
 import { fileURLToPath } from 'node:url';
@@ -67,7 +67,7 @@ parser.setLanguage(await Language.load(c));
 The package also ships `grammar.js`, scanner sources under `src/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
 The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, `functionMacro.h`,
-`conditionalMacro.h`, and `gnuRawString.h`.
+`conditionalMacro.h`, `macroProof.h`, and `gnuRawString.h`.
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
 Keep preprocessor argument/newline handling ahead of annotation lookahead.
@@ -92,8 +92,14 @@ This separate zero-width guard proves marker words followed by a braced macro-ty
 consumes each marker and validates its type. Keep `MacroName.preserve_end` in `pragma.h` so scanning subsequent words
 does not move the guard's end. Its default is false for ordinary name scans. Derived grammars can supply reserved
 starter words and the same `MacroAttributeSymbols` context to the guard helper; the C scanner supplies an empty table.
-The helper shares pragma and scalar-object dispatch with annotation guards. Copy both `functionMacro.h` and `pragma.h`
+The helper shares pragma and scalar-object dispatch with annotation guards. Copy `functionMacro.h`, `macroProof.h`, and `pragma.h`
 when porting this dispatch. Later pragma lookahead must preserve the zero-width token end.
+
+The C scanner owns a `MacroProofMemo` for each full parse and frees it on scanner destruction.
+Pass it as `MacroAttributeSymbols.proof_memo` to reuse continuation proofs by physical byte position and lexical state.
+The first-word dispatch stays uncached because it depends on the valid external tokens. The memo binds to one reserved-word table;
+a different table disables reuse. Derived scanners can leave `proof_memo` unset, or own a memo with the same lifetime.
+These source facts need no serialized bytes.
 
 When overriding declarations or function definitions, retain both guarded ordinary-type/declarator alternatives and
 annotation alternatives in ordinary, block, and for-declaration builders. Accept the matching passive guard after calling conventions and before ordinary, builtin,
@@ -190,10 +196,10 @@ arrays, parenthesized/function declarators, initializers and multiple declarator
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
-fuzzed with, at version 15.0.3 or later within 15.x. No other runtime loads the parser:
+fuzzed with, at version 15.0.3 or later within 15.x, or 16.x. No other runtime loads the parser:
 
 ```sh
-cargo add willbooster-tree-sitter@15.0.3 --rename tree-sitter
+cargo add willbooster-tree-sitter@16.0.0 --rename tree-sitter
 cargo add willbooster-tree-sitter-c --rename tree-sitter-c
 ```
 
