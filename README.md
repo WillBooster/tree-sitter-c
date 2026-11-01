@@ -70,8 +70,12 @@ The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
 Append `_directive_context` and `preproc_empty` in their inherited external-token slots and retain them as extras.
+Append `_preproc_directive_start` in its inherited slot as a zero-width guard after every directive keyword token,
+including keywords in overridden directive rules. It is not an extra. Retain the phase-two splice handling in
+`preprocessorToken` when overriding keyword spelling.
 Port the scanner lifecycle functions together with `EmptyDirectives` from `emptyDirectives.h`; the source-boundary
 facts belong to one full parse and are freed by scanner destruction. Run `scan_directive_context` first,
+emitting `_preproc_directive_start` only at `empty_directives_after_keyword` before null-directive consumption,
 then reject external scans at `empty_directives_at_line_end` before the other token dispatch. Pass `empty_directives_skip` and its state through `ConditionalMacroSymbols.skip_empty` and
 `empty_context` so declaration lookahead ignores null directives without moving the opening token's range.
 Keep preprocessor argument/newline handling ahead of annotation lookahead.
@@ -79,7 +83,8 @@ Port `preproc_argument_mode` selection together with `scan_preproc_arg` so token
 Append `_gnu_raw_string_body` and `_raw_macro_type_tail` in their inherited enum slots and port their dispatch from `src/scanner.c`.
 A derived grammar overriding `raw_string_literal` can keep its own body scanner, but must retain the inherited enum slots.
 Port `_conditional_marker_ifdef`, `_conditional_marker_ifndef`, `_leading_conditional_marker_ifdef`, and
-`_leading_conditional_marker_ifndef` with `scan_conditional_macro`. The leading pair checks a following type prefix;
+`_leading_conditional_marker_ifndef` with `scan_conditional_macro`. Require `empty_directives_at_start` at the opening
+`#` before this dispatch, including after skipped whitespace. The leading pair checks a following type prefix;
 when both contexts are valid, choose the leading role if its type proof succeeds, otherwise use the valid
 post-type role. Each token consumes only its opening directive keyword; the directive body, closing directive and following prefix are lookahead. Keep this dispatch ahead of
 the function-annotation guards and return immediately after a failed directive scan.
