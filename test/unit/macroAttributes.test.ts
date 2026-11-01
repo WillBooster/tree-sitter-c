@@ -1320,8 +1320,8 @@ test.each(guardedBoundaryFixtures)(
       `
 (translation_unit (declaration type: (_) @boundary.type))
 (translation_unit (function_definition type: (_) @boundary.type))
-(init_declarator declarator: (_declarator) @boundary.initialized)
-(attribute_specifier arguments: (argument_list (parameter_declaration type: (type_specifier) @boundary.parameterType declarator: (_declarator) @boundary.parameter)))
+(init_declarator declarator: (_) @boundary.initialized)
+(attribute_specifier arguments: (argument_list (parameter_declaration type: (_) @boundary.parameterType declarator: (_) @boundary.parameter)))
 (attribute_specifier arguments: (argument_list (parameter_declaration (storage_class_specifier) @boundary.parameterStorage)))
 `
     );
@@ -1612,10 +1612,7 @@ test('retains GNU nested annotation and macro-type function bodies including old
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/nestedMacroFunctions.c'), 'utf8');
   const tree = parser.parse(source)!;
-  const query = new Query(
-    language,
-    '(function_definition type: (type_specifier) @type declarator: (_declarator) @function body: (_) @body)'
-  );
+  const query = new Query(language, '(function_definition type: (_) @type declarator: (_) @function body: (_) @body)');
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const marked = tree.rootNode
