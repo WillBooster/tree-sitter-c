@@ -97,6 +97,25 @@ test.each(['\n', '\r', '\r\n', '\n\r'])('keeps operands after spliced directive 
   });
 });
 
+test.each([
+  ['foo$bar', 'foo', '$bar argument'],
+  ['1.5', '1', '.5 argument'],
+  ['dλ', 'd', 'λ argument'],
+  ['d$', 'd', '$ argument'],
+  ['R"x(a)x"', 'R', '"x(a)x" argument'],
+  ["1'000", '1', "'000 argument"],
+  ['1e+2', '1e', '+2 argument'],
+])('preserves unknown directive token and operand boundaries in skipped groups: %j', (name, keyword, argument) => {
+  const source = `#if 0\n#${name} argument\n#endif\nint following;\n`;
+  withTree(source, (tree) => {
+    expect(tree.rootNode.hasError, source).toBe(false);
+    const call = tree.rootNode.descendantsOfType('preproc_call')[0];
+    expect(call?.childForFieldName('directive')?.text).toBe(`#${keyword}`);
+    expect(call?.childForFieldName('argument')?.text).toBe(argument);
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following;');
+  });
+});
+
 test('rebuilds directive positions for independent full parses', () => {
   const parser = new Parser().setLanguage(language);
   try {

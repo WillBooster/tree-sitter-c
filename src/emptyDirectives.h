@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 468 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
+// code-gauge-allow-file fileNcss 475 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
@@ -59,6 +59,7 @@ typedef struct {
     unsigned length;
 } DirectiveWord;
 
+static uint32_t directive_keyword_end(const DirectiveInput *input);
 static DirectiveKind directive_word(DirectiveInput *input, int32_t first, bool raw);
 static DirectiveKind directive_word_kind(const DirectiveWord *word);
 static void directive_word_character(DirectiveWord *word, int32_t c);
@@ -271,7 +272,7 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
     directive_code(state, input, line, c);
 }
 
-// code-gauge-allow functionCognitiveComplexity 16 -- Header names, quoted tokens and words update one logical directive's lexical state.
+// code-gauge-allow functionCognitiveComplexity 17 -- Header names, quoted tokens and distinct keyword boundaries update one logical directive's lexical state.
 static void directive_code(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line, int32_t c) {
     bool name = line->pending;
     bool header = directive_header_ready(line, c);
@@ -288,9 +289,9 @@ static void directive_code(EmptyDirectives *state, DirectiveInput *input, Direct
         return;
     }
     if (!preproc_word(c, false) && !(c >= '0' && c <= '9')) return;
+    uint32_t end = name ? directive_keyword_end(input) : 0;
     DirectiveKind kind = directive_word(input, c, line->kind != DIRECTIVE_DIAGNOSTIC);
     if (name) {
-        uint32_t end = directive_byte(input);
         state->directive_ends[end / 8] |= 1u << (end % 8);
     }
     directive_word_role(line, kind, name, pragma, operand, preproc_word(c, false));
@@ -453,6 +454,14 @@ static bool directive_quoted(DirectiveInput *input, int32_t quote) {
         if (c < 0) return false;
     }
     return false;
+}
+
+static uint32_t directive_keyword_end(const DirectiveInput *input) {
+    DirectiveInput name = *input;
+    int32_t c;
+    while ((c = directive_peek(&name)) == '_' || (c >= 'a' && c <= 'z') ||
+        (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) directive_next(&name);
+    return directive_byte(&name);
 }
 
 static DirectiveKind directive_word(DirectiveInput *input, int32_t first, bool raw) {

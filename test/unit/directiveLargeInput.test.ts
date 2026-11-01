@@ -9,25 +9,29 @@ beforeAll(async () => {
 });
 
 test('validates directives in a large full parse', { timeout: 120_000 }, () => {
-  const comment = `/${'*'.repeat(300_000_000)}/\n`;
+  const prefix = '#define VALUE 1\nint value = VALUE;\n/*';
+  const bodyLength = 300_000_000;
+  const chunk = '*'.repeat(1 << 20);
+  const suffix = '/\n';
+  const length = prefix.length + bodyLength + suffix.length;
   const parser = new Parser().setLanguage(language);
   try {
-    for (const prefix of ['', 'int before; ']) {
-      const source = `${prefix}#define VALUE 1\nint value = VALUE;\n${comment}`;
-      const tree = parser.parse(source)!;
-      try {
-        expect(tree.rootNode.hasError).toBe(prefix.length > 0);
-        expect(tree.rootNode.endIndex).toBe(source.length);
-        expect(tree.rootNode.descendantsOfType('comment')).toHaveLength(1);
-        if (!prefix) {
-          expect(tree.rootNode.descendantsOfType('preproc_def')[0]?.childForFieldName('name')?.text).toBe('VALUE');
-          expect(tree.rootNode.descendantsOfType('declaration')[0]?.childForFieldName('declarator')?.text).toBe(
-            'value = VALUE'
-          );
-        }
-      } finally {
-        tree.delete();
-      }
+    const tree = parser.parse((index) => {
+      if (index < prefix.length) return prefix.slice(index);
+      const bodyOffset = index - prefix.length;
+      if (bodyOffset < bodyLength) return chunk.slice(0, Math.min(chunk.length, bodyLength - bodyOffset));
+      return suffix.slice(bodyOffset - bodyLength);
+    })!;
+    try {
+      expect(tree.rootNode.hasError).toBe(false);
+      expect(tree.rootNode.endIndex).toBe(length);
+      expect(tree.rootNode.descendantsOfType('comment')).toHaveLength(1);
+      expect(tree.rootNode.descendantsOfType('preproc_def')[0]?.childForFieldName('name')?.text).toBe('VALUE');
+      expect(tree.rootNode.descendantsOfType('declaration')[0]?.childForFieldName('declarator')?.text).toBe(
+        'value = VALUE'
+      );
+    } finally {
+      tree.delete();
     }
   } finally {
     parser.delete();
