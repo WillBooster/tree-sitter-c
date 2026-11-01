@@ -61,7 +61,7 @@ const BINARY_OPERATORS = [
 ];
 
 const LINE_SPLICE = /\\(?:\r\n?|\n\r?)/;
-const LINE_COMMENT = seq('/', repeat(LINE_SPLICE), '/', /(\\+(.|\r?\n)|[^\\\n])*/);
+const LINE_COMMENT = seq('/', repeat(LINE_SPLICE), '/', repeat(choice(/[^\\\r\n]/, '\\', LINE_SPLICE)));
 const COMMENT_SPLICES = repeat(seq('\\', /[\r\n]/));
 const COMMENT_ESCAPE = seq('\\', /[^\r\n*]/);
 const BLOCK_COMMENT_STARS = seq(

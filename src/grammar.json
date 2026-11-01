@@ -54588,8 +54588,24 @@
                 "value": "/"
               },
               {
-                "type": "PATTERN",
-                "value": "(\\\\+(.|\\r?\\n)|[^\\\\\\n])*"
+                "type": "REPEAT",
+                "content": {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "PATTERN",
+                      "value": "[^\\\\\\r\\n]"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "\\"
+                    },
+                    {
+                      "type": "PATTERN",
+                      "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                    }
+                  ]
+                }
               }
             ]
           },
