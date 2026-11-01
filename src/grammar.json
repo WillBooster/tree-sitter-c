@@ -3169,6 +3169,10 @@
                 },
                 {
                   "type": "SYMBOL",
+                  "name": "_enumerator_macro"
+                },
+                {
+                  "type": "SYMBOL",
                   "name": "_enumerator_directives"
                 }
               ]
@@ -3287,6 +3291,10 @@
                 },
                 {
                   "type": "SYMBOL",
+                  "name": "_enumerator_macro"
+                },
+                {
+                  "type": "SYMBOL",
                   "name": "_enumerator_directives"
                 }
               ]
@@ -3383,6 +3391,10 @@
                 },
                 {
                   "type": "SYMBOL",
+                  "name": "_enumerator_macro"
+                },
+                {
+                  "type": "SYMBOL",
                   "name": "_enumerator_directives"
                 }
               ]
@@ -3443,6 +3455,10 @@
                       "value": ","
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_enumerator_macro"
                 },
                 {
                   "type": "SYMBOL",
@@ -3552,6 +3568,10 @@
                       "value": ","
                     }
                   ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_enumerator_macro"
                 },
                 {
                   "type": "SYMBOL",
@@ -14144,6 +14164,10 @@
                 ]
               },
               {
+                "type": "SYMBOL",
+                "name": "_enumerator_macro"
+              },
+              {
                 "type": "ALIAS",
                 "content": {
                   "type": "SYMBOL",
@@ -14611,6 +14635,53 @@
         {
           "type": "SYMBOL",
           "name": "expression"
+        }
+      ]
+    },
+    "_enumerator_macro": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_enumerator_macro_call"
+          },
+          "named": true,
+          "value": "call_expression"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "STRING",
+              "value": ","
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        }
+      ]
+    },
+    "_enumerator_macro_call": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "function",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "arguments",
+          "content": {
+            "type": "SYMBOL",
+            "name": "argument_list"
+          }
         }
       ]
     },
