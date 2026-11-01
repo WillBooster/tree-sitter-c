@@ -628,7 +628,8 @@ module.exports = Object.assign(
       preproc_call: ($) =>
         choice(
           preprocCall($, alias(/#[ \t]*pragma/, $.preproc_directive), choice($._preproc_directive_arg, $.preproc_arg)),
-          preprocCall($, $.preproc_directive, $._preproc_directive_arg)
+          preprocCall($, $.preproc_directive, $._preproc_directive_arg),
+          seq(field('directive', alias('#', $.preproc_directive)), repeat($.comment), sym('_preproc_newline'))
         ),
 
       ...preprocIf('_in_header', () => sym('_header_preproc_item')),
