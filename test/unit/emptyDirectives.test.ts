@@ -149,6 +149,30 @@ test.each(['<missing/*>', '<missing//>', "<don't.h>", '"missing/*"'])(
   }
 );
 
+const annotationCases = [
+  '#define CHECK(x)\nextern CHECK(1) INSERT int f(void);\n',
+  '#define ATTR(...)\nint first INSERT ATTR(1);\n',
+  '#define ATTR(...)\nint *first INSERT ATTR((1));\n',
+  '#define CHECK(x)\nextern CHECK(INSERT 1) int f(void);\n',
+  '#define TYPE(...) __VA_ARGS__\nTYPE(INSERT struct { int member; }) value;\n',
+  '#define A\n#define TYPE(...) __VA_ARGS__\nA INSERT TYPE(struct { int member; }) value;\n',
+  '[[INSERT deprecated]] int value;\n',
+];
+
+test.each(annotationCases)('retains annotation and type lookahead around a null directive: %j', (template) => {
+  const parser = new Parser().setLanguage(language);
+  const ordinary = parser.parse(`${template.replace(' INSERT ', ' ').replace('INSERT', '')}int following;\n`)!;
+  try {
+    expect(ordinary.rootNode.hasError).toBe(false);
+    checkSource(template.replace('INSERT', '\n  # /* null */\n'), 1, (tree) => {
+      expect(tree.rootNode.toString().replaceAll(' (preproc_empty)', '')).toBe(ordinary.rootNode.toString());
+    });
+  } finally {
+    ordinary.delete();
+    parser.delete();
+  }
+});
+
 test.each(['H', 'HEADER_PREDICATE_ALIAS'])(
   'keeps header-name contents literal through the object-like alias %s',
   (name) => {

@@ -87,6 +87,9 @@ The hidden `_function_attribute_start`, `_post_type_function_attribute_start`,
 `_post_type_function_attribute_suffix`, and `_braced_function_attribute_start` guards look ahead before the ordinary
 identifier token. Keep them outside the name field so identifier leaves and ordinary C lexing retain their shape.
 Port `scan_function_attribute_guard`, its `MacroAttributeSymbols` context, and the name-range handling in `pragma.h`.
+Set `MacroAttributeSymbols.trivia` to `{empty_directives_skip, state}` so annotation, argument-group, and declaration-tail proofs skip the same null directives.
+Pass that `PragmaTrivia` context to the raw macro-type tail and balanced-group helpers, and use `scan_pragma_with` for the pragma-operator fallback.
+A derived scanner that omits this context cannot recognize null directives inside those lookahead paths.
 Set `braced_start` to the inherited braced token and `allow_braced_start` from its valid-symbol entry.
 Omitting these fields disables braced handoff in the current argument group and in prototype-tail lookahead.
 Preserve the inherited external-token order before adding tokens specific to the derived grammar.

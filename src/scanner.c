@@ -4,8 +4,8 @@
 
 enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF, GNU_RAW_STRING_BODY, RAW_MACRO_TYPE_TAIL, BRACED_FUNCTION_ATTRIBUTE_START, BRACED_MACRO_TYPE_START, DIRECTIVE_CONTEXT, PREPROC_EMPTY };
 
-static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols);
-static bool scan_declaration_tokens(TSLexer *lexer, const bool *valid_symbols);
+static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
+static bool scan_declaration_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
 
 void *tree_sitter_c_external_scanner_create(void) {
@@ -40,7 +40,7 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     }
     if (valid_symbols[RAW_MACRO_TYPE_TAIL] && !valid_symbols[PREPROC_LPAREN]) {
         lexer->result_symbol = RAW_MACRO_TYPE_TAIL;
-        return scan_raw_macro_type_tail(lexer);
+        return scan_raw_macro_type_tail(lexer, &(PragmaTrivia){empty_directives_skip, state});
     }
     if (valid_symbols[PREPROC_FUNCTION_NAME] && !valid_symbols[PREPROC_LPAREN]) {
         lexer->result_symbol = PREPROC_FUNCTION_NAME;
@@ -48,11 +48,11 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     }
     if (valid_symbols[PREPROC_LPAREN] || valid_symbols[PREPROC_NEWLINE] ||
         valid_symbols[PREPROC_ARG] || valid_symbols[PREPROC_DIRECTIVE_ARG]) {
-        return scan_preproc_tokens(lexer, valid_symbols);
+        return scan_preproc_tokens(state, lexer, valid_symbols);
     }
     bool leading = valid_symbols[LEADING_CONDITIONAL_MARKER_IFDEF] || valid_symbols[LEADING_CONDITIONAL_MARKER_IFNDEF];
     bool conditional = leading || valid_symbols[CONDITIONAL_MARKER_IFDEF] || valid_symbols[CONDITIONAL_MARKER_IFNDEF];
-    if (!conditional) return scan_declaration_tokens(lexer, valid_symbols);
+    if (!conditional) return scan_declaration_tokens(state, lexer, valid_symbols);
     while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
     const ConditionalMacroSymbols symbols = {
         .ifdef = CONDITIONAL_MARKER_IFDEF, .ifndef = CONDITIONAL_MARKER_IFNDEF,
@@ -60,7 +60,7 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
         .skip_empty = empty_directives_skip, .empty_context = state,
     };
     if (lexer->lookahead == '#') return scan_conditional_macro(lexer, &symbols, valid_symbols);
-    return scan_declaration_tokens(lexer, valid_symbols);
+    return scan_declaration_tokens(state, lexer, valid_symbols);
 }
 
 static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
@@ -80,12 +80,13 @@ static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const
     return false;
 }
 
-static bool scan_declaration_tokens(TSLexer *lexer, const bool *valid_symbols) {
+static bool scan_declaration_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
     static const TSSymbol attribute_tokens[] = {
         FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, POST_TYPE_FUNCTION_ATTRIBUTE_START,
         TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, BRACED_FUNCTION_ATTRIBUTE_START,
     };
     const MacroAttributeSymbols symbols = {
+        .trivia = {empty_directives_skip, state},
         .pragma = PRAGMA_OPERATOR,
         .object_start = TRAILING_OBJECT_DECLARATION_START,
         .allow_pragma = valid_symbols[PRAGMA_OPERATOR],
@@ -105,10 +106,12 @@ static bool scan_declaration_tokens(TSLexer *lexer, const bool *valid_symbols) {
             token == FUNCTION_ATTRIBUTE_START || token == POST_TYPE_FUNCTION_ATTRIBUTE_START,
             token != FUNCTION_ATTRIBUTE_START, token == TRAILING_MACRO_ATTRIBUTE_NAME, &symbols);
     }
-    return scan_preproc_tokens(lexer, valid_symbols);
+    return scan_preproc_tokens(state, lexer, valid_symbols);
 }
 
-static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols) {
+// code-gauge-allow functionCognitiveComplexity 28 -- External-token validity selects one preprocessor lexing mode and preserves its token range.
+// code-gauge-allow functionNcss 34 -- External-token validity selects one preprocessor lexing mode and preserves its token range.
+static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
     bool directive_text = !valid_symbols[PREPROC_ARG] && valid_symbols[PREPROC_DIRECTIVE_ARG];
     PreprocArgumentMode argument_mode = preproc_argument_mode(
         valid_symbols[PREPROC_ARG], valid_symbols[PREPROC_DIRECTIVE_ARG], valid_symbols[PREPROC_LPAREN]);
@@ -148,5 +151,5 @@ static bool scan_preproc_tokens(TSLexer *lexer, const bool *valid_symbols) {
         return scan_preproc_arg(lexer, false, argument_mode);
     }
     lexer->result_symbol = PRAGMA_OPERATOR;
-    return valid_symbols[PRAGMA_OPERATOR] && scan_pragma(lexer);
+    return valid_symbols[PRAGMA_OPERATOR] && scan_pragma_with(lexer, &(PragmaTrivia){empty_directives_skip, state});
 }
