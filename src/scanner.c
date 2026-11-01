@@ -70,7 +70,7 @@ static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const
     }
     bool directive_body = valid_symbols[PREPROC_NEWLINE] || valid_symbols[PREPROC_LPAREN] ||
         valid_symbols[PREPROC_ARG] || valid_symbols[PREPROC_DIRECTIVE_ARG] || valid_symbols[GNU_RAW_STRING_BODY];
-    if (valid_symbols[PREPROC_EMPTY] && (!directive_body || lexer->lookahead == '#') && empty_directives_skip(lexer, state)) {
+    if (valid_symbols[PREPROC_EMPTY] && (!directive_body || lexer->lookahead == '#') && empty_directives_consume(lexer, state, true)) {
         lexer->mark_end(lexer);
         lexer->result_symbol = PREPROC_EMPTY;
         return true;

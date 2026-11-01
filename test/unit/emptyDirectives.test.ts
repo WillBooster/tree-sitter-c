@@ -56,14 +56,26 @@ test.each(contexts)('keeps an empty directive inside its %s', (_name, source, co
   });
 });
 
-test.each(['#\nMARKER\n', 'MARKER\n#\n'])('keeps conditional marker ownership around %j', (marker) => {
-  const source = `#define ENABLED 1\n#define MARKER __attribute__((unused))\n#ifdef ENABLED\n${marker}#endif\n#\nint value;\n`;
-  withTree(source, (tree) => {
-    expect(tree.rootNode.hasError, source).toBe(false);
-    expect(tree.rootNode.descendantsOfType('declaration').at(-1)?.childForFieldName('declarator')?.text).toBe('value');
-    expect(tree.rootNode.descendantsOfType('macro_specifier').map((node) => node.text)).toContain('MARKER');
-  });
-});
+test.each(['#\nMARKER\n', 'MARKER\n#\n', 'MARKER\n\n  #\n'])(
+  'keeps conditional marker ownership around %j',
+  (marker) => {
+    const source = `#define ENABLED 1\n#define MARKER __attribute__((unused))\n#ifdef ENABLED\n${marker}#endif\n#\nint value;\n`;
+    withTree(source, (tree) => {
+      expect(tree.rootNode.hasError, source).toBe(false);
+      expect(tree.rootNode.descendantsOfType('declaration').at(-1)?.childForFieldName('declarator')?.text).toBe(
+        'value'
+      );
+      expect(tree.rootNode.descendantsOfType('macro_specifier').map((node) => node.text)).toContain('MARKER');
+      const conditional = tree.rootNode.descendantsOfType('preproc_ifdef')[0]!;
+      const directive = conditional.children.find((node) => node.type === '#ifdef')!;
+      expect([conditional.startIndex, directive.startIndex, directive.text]).toEqual([
+        source.indexOf('#ifdef'),
+        source.indexOf('#ifdef'),
+        '#ifdef',
+      ]);
+    });
+  }
+);
 
 test.each(['\n', '\r', '\r\n', '\n\r'])('keeps adjacent directives across %j line endings', (newline) => {
   checkSource(`#${newline}# /* λ */${newline}int result;${newline}`, 2, (tree) => {
@@ -108,6 +120,18 @@ test('rebuilds source context for consecutive full parses on one parser', () => 
 
 test('retains every directive in a long declaration', () => {
   checkSource(`int\n${'# /* gap */\n'.repeat(4096)}value;\n`, 4096, (tree) => {
+    expect(tree.rootNode.descendantsOfType('declaration')[0]?.childForFieldName('declarator')?.text).toBe('value');
+  });
+});
+
+test.each([
+  "#warning don't",
+  '#warning "unfinished',
+  '#warning R"(unfinished',
+  "#define UNUSED '",
+  "#pragma ignored don't",
+])('recognizes the next directive after unmatched quotes in %j', (directive) => {
+  checkSource(`${directive}\n#\nint value;\n`, 1, (tree) => {
     expect(tree.rootNode.descendantsOfType('declaration')[0]?.childForFieldName('declarator')?.text).toBe('value');
   });
 });

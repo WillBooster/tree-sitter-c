@@ -18,14 +18,13 @@ This fork fixes parsing bugs and raises conformance with the ISO C standard
 ## Support Scope
 
 This fork maintains only full parsing: valid input yields a correct tree, and invalid input yields `ERROR` or `MISSING`
-nodes without crashing, hanging, or taking more than linear time. Incremental parsing works as in upstream tree-sitter
-but is not tested here, and no queries (highlights, locals, injections, tags) are shipped. Node types, field names, and
+nodes without crashing, hanging, or taking more than linear time. No queries (highlights, locals, injections, tags) are shipped. Node types, field names, and
 the trees that error recovery produces may change; such changes are released as new major versions.
 
 ## Usage
 
 The npm package ships `tree-sitter-c.wasm` for
-[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 15.0.3 or later within 15.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000b`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
+[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 15.0.3 or later within 15.x, or 16.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000b`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
 
 ```js
 import { fileURLToPath } from 'node:url';
@@ -67,9 +66,14 @@ parser.setLanguage(await Language.load(c));
 The package also ships `grammar.js`, scanner sources under `src/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
 The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, `functionMacro.h`,
-`conditionalMacro.h`, and `gnuRawString.h`.
+`conditionalMacro.h`, `emptyDirectives.h`, and `gnuRawString.h`.
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
+Append `_directive_context` and `preproc_empty` in their inherited external-token slots and retain them as extras.
+Port the scanner lifecycle functions together with `EmptyDirectives` from `emptyDirectives.h`; the source-boundary
+facts belong to one full parse and are freed by scanner destruction. Run `scan_directive_context` before the other
+token dispatch. Pass `empty_directives_skip` and its state through `ConditionalMacroSymbols.skip_empty` and
+`empty_context` so declaration lookahead ignores null directives without moving the opening token's range.
 Keep preprocessor argument/newline handling ahead of annotation lookahead.
 Port `preproc_argument_mode` selection together with `scan_preproc_arg` so tokenized pragmas retain raw bodies.
 Append `_gnu_raw_string_body` and `_raw_macro_type_tail` in their inherited enum slots and port their dispatch from `src/scanner.c`.
@@ -190,10 +194,10 @@ arrays, parenthesized/function declarators, initializers and multiple declarator
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
-fuzzed with, at version 15.0.3 or later within 15.x. No other runtime loads the parser:
+fuzzed with, at the version recorded in `Cargo.lock`:
 
 ```sh
-cargo add willbooster-tree-sitter@15.0.3 --rename tree-sitter
+cargo add willbooster-tree-sitter@16.0.0 --rename tree-sitter
 cargo add willbooster-tree-sitter-c --rename tree-sitter-c
 ```
 
