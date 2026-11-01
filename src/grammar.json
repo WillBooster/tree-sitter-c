@@ -498,8 +498,58 @@
         {
           "type": "ALIAS",
           "content": {
-            "type": "PATTERN",
-            "value": "#[ \t]*include"
+            "type": "TOKEN",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "STRING",
+                      "value": "#"
+                    },
+                    {
+                      "type": "REPEAT",
+                      "content": {
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "PATTERN",
+                            "value": "[ \\t\\v\\f]"
+                          },
+                          {
+                            "type": "PATTERN",
+                            "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                          },
+                          {
+                            "type": "SEQ",
+                            "members": [
+                              {
+                                "type": "STRING",
+                                "value": "/*"
+                              },
+                              {
+                                "type": "PATTERN",
+                                "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                              },
+                              {
+                                "type": "STRING",
+                                "value": "/"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "STRING",
+                  "value": "include"
+                }
+              ]
+            }
           },
           "named": false,
           "value": "#include"
@@ -756,8 +806,58 @@
         {
           "type": "ALIAS",
           "content": {
-            "type": "PATTERN",
-            "value": "#[ \t]*define"
+            "type": "TOKEN",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "STRING",
+                      "value": "#"
+                    },
+                    {
+                      "type": "REPEAT",
+                      "content": {
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "PATTERN",
+                            "value": "[ \\t\\v\\f]"
+                          },
+                          {
+                            "type": "PATTERN",
+                            "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                          },
+                          {
+                            "type": "SEQ",
+                            "members": [
+                              {
+                                "type": "STRING",
+                                "value": "/*"
+                              },
+                              {
+                                "type": "PATTERN",
+                                "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                              },
+                              {
+                                "type": "STRING",
+                                "value": "/"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "STRING",
+                  "value": "define"
+                }
+              ]
+            }
           },
           "named": false,
           "value": "#define"
@@ -835,8 +935,58 @@
         {
           "type": "ALIAS",
           "content": {
-            "type": "PATTERN",
-            "value": "#[ \t]*define"
+            "type": "TOKEN",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "STRING",
+                      "value": "#"
+                    },
+                    {
+                      "type": "REPEAT",
+                      "content": {
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "PATTERN",
+                            "value": "[ \\t\\v\\f]"
+                          },
+                          {
+                            "type": "PATTERN",
+                            "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                          },
+                          {
+                            "type": "SEQ",
+                            "members": [
+                              {
+                                "type": "STRING",
+                                "value": "/*"
+                              },
+                              {
+                                "type": "PATTERN",
+                                "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                              },
+                              {
+                                "type": "STRING",
+                                "value": "/"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "STRING",
+                  "value": "define"
+                }
+              ]
+            }
           },
           "named": false,
           "value": "#define"
@@ -1002,8 +1152,58 @@
               "content": {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \\t]*pragma"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "pragma"
+                      }
+                    ]
+                  }
                 },
                 "named": true,
                 "value": "preproc_directive"
@@ -1168,8 +1368,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*if"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "if"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#if"
@@ -1248,8 +1498,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -1269,8 +1569,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifdef"
@@ -1278,8 +1628,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifndef"
@@ -1348,8 +1748,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -1366,8 +1816,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*else"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "else"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#else"
@@ -1391,8 +1891,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*elif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "elif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#elif"
@@ -1483,8 +2033,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifdef"
@@ -1492,8 +2092,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifndef"
@@ -1571,8 +2221,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*if"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "if"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#if"
@@ -1636,8 +2336,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -1657,8 +2407,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifdef"
@@ -1666,8 +2466,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifndef"
@@ -1721,8 +2571,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -1739,8 +2639,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*else"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "else"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#else"
@@ -1764,8 +2714,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*elif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "elif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#elif"
@@ -1841,8 +2841,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifdef"
@@ -1850,8 +2900,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifndef"
@@ -1914,8 +3014,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*if"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "if"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#if"
@@ -1994,8 +3144,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -2015,8 +3215,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifdef"
@@ -2024,8 +3274,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifndef"
@@ -2094,8 +3394,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -2112,8 +3462,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*else"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "else"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#else"
@@ -2137,8 +3537,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*elif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "elif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#elif"
@@ -2229,8 +3679,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifdef"
@@ -2238,8 +3738,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifndef"
@@ -2317,8 +3867,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*if"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "if"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#if"
@@ -2397,8 +3997,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -2418,8 +4068,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifdef"
@@ -2427,8 +4127,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifndef"
@@ -2497,8 +4247,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -2515,8 +4315,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*else"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "else"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#else"
@@ -2540,8 +4390,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*elif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "elif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#elif"
@@ -2632,8 +4532,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifdef"
@@ -2641,8 +4591,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifndef"
@@ -2720,8 +4720,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*if"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "if"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#if"
@@ -2800,8 +4850,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -2821,8 +4921,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifdef"
@@ -2830,8 +4980,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifndef"
@@ -2900,8 +5100,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -2918,8 +5168,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*else"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "else"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#else"
@@ -2943,8 +5243,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*elif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "elif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#elif"
@@ -3035,8 +5385,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifdef"
@@ -3044,8 +5444,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifndef"
@@ -3123,8 +5573,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*if"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "if"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#if"
@@ -3203,8 +5703,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -3224,8 +5774,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifdef"
@@ -3233,8 +5833,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifndef"
@@ -3303,8 +5953,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -3321,8 +6021,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*else"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "else"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#else"
@@ -3346,8 +6096,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*elif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "elif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#elif"
@@ -3438,8 +6238,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifdef"
@@ -3447,8 +6297,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifndef"
@@ -3526,8 +6426,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*if"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "if"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#if"
@@ -3647,8 +6597,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -3668,8 +6668,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifdef"
@@ -3677,8 +6727,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifndef"
@@ -3788,8 +6888,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -3806,8 +6956,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*else"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "else"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#else"
@@ -3872,8 +7072,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*elif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "elif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#elif"
@@ -4005,8 +7255,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifdef"
@@ -4014,8 +7314,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifndef"
@@ -4199,8 +7549,58 @@
       }
     },
     "preproc_directive": {
-      "type": "PATTERN",
-      "value": "#[ \\t]*[a-zA-Z0-9]\\w*"
+      "type": "TOKEN",
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "#"
+              },
+              {
+                "type": "REPEAT",
+                "content": {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "PATTERN",
+                      "value": "[ \\t\\v\\f]"
+                    },
+                    {
+                      "type": "PATTERN",
+                      "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                    },
+                    {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "STRING",
+                          "value": "/*"
+                        },
+                        {
+                          "type": "PATTERN",
+                          "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                        },
+                        {
+                          "type": "STRING",
+                          "value": "/"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "PATTERN",
+            "value": "[a-zA-Z0-9]\\w*"
+          }
+        ]
+      }
     },
     "_preproc_expression": {
       "type": "CHOICE",
@@ -19125,8 +22525,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*if"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "if"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#if"
@@ -19210,8 +22660,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -19231,8 +22731,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifdef"
@@ -19240,8 +22790,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*ifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "ifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#ifndef"
@@ -19315,8 +22915,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*endif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "endif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#endif"
@@ -19333,8 +22983,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*else"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "else"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#else"
@@ -19363,8 +23063,58 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "#[ \t]*elif"
+              "type": "TOKEN",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": "#"
+                      },
+                      {
+                        "type": "REPEAT",
+                        "content": {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "PATTERN",
+                              "value": "[ \\t\\v\\f]"
+                            },
+                            {
+                              "type": "PATTERN",
+                              "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "STRING",
+                                  "value": "/*"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                },
+                                {
+                                  "type": "STRING",
+                                  "value": "/"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": "elif"
+                  }
+                ]
+              }
             },
             "named": false,
             "value": "#elif"
@@ -19460,8 +23210,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifdef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifdef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifdef"
@@ -19469,8 +23269,58 @@
               {
                 "type": "ALIAS",
                 "content": {
-                  "type": "PATTERN",
-                  "value": "#[ \t]*elifndef"
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": "#"
+                          },
+                          {
+                            "type": "REPEAT",
+                            "content": {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "PATTERN",
+                                  "value": "[ \\t\\v\\f]"
+                                },
+                                {
+                                  "type": "PATTERN",
+                                  "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "STRING",
+                                      "value": "/*"
+                                    },
+                                    {
+                                      "type": "PATTERN",
+                                      "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                                    },
+                                    {
+                                      "type": "STRING",
+                                      "value": "/"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "elifndef"
+                      }
+                    ]
+                  }
                 },
                 "named": false,
                 "value": "#elifndef"
@@ -20722,8 +24572,58 @@
         {
           "type": "ALIAS",
           "content": {
-            "type": "PATTERN",
-            "value": "#[ \t]*endif"
+            "type": "TOKEN",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "STRING",
+                      "value": "#"
+                    },
+                    {
+                      "type": "REPEAT",
+                      "content": {
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "PATTERN",
+                            "value": "[ \\t\\v\\f]"
+                          },
+                          {
+                            "type": "PATTERN",
+                            "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                          },
+                          {
+                            "type": "SEQ",
+                            "members": [
+                              {
+                                "type": "STRING",
+                                "value": "/*"
+                              },
+                              {
+                                "type": "PATTERN",
+                                "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                              },
+                              {
+                                "type": "STRING",
+                                "value": "/"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "STRING",
+                  "value": "endif"
+                }
+              ]
+            }
           },
           "named": false,
           "value": "#endif"
@@ -20771,8 +24671,58 @@
         {
           "type": "ALIAS",
           "content": {
-            "type": "PATTERN",
-            "value": "#[ \t]*endif"
+            "type": "TOKEN",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "STRING",
+                      "value": "#"
+                    },
+                    {
+                      "type": "REPEAT",
+                      "content": {
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "PATTERN",
+                            "value": "[ \\t\\v\\f]"
+                          },
+                          {
+                            "type": "PATTERN",
+                            "value": "\\\\(?:\\r\\n?|\\n\\r?)"
+                          },
+                          {
+                            "type": "SEQ",
+                            "members": [
+                              {
+                                "type": "STRING",
+                                "value": "/*"
+                              },
+                              {
+                                "type": "PATTERN",
+                                "value": "[^*]*\\*+([^/*][^*]*\\*+)*"
+                              },
+                              {
+                                "type": "STRING",
+                                "value": "/"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "STRING",
+                  "value": "endif"
+                }
+              ]
+            }
           },
           "named": false,
           "value": "#endif"

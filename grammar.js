@@ -62,6 +62,8 @@ const BINARY_OPERATORS = [
 
 const LINE_SPLICE = /\\(?:\r\n?|\n\r?)/;
 const LINE_COMMENT = seq('//', /(\\+(.|\r?\n)|[^\\\n])*/);
+const BLOCK_COMMENT = seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/');
+const PREPROC_PREFIX = seq('#', repeat(choice(/[ \t\v\f]/, LINE_SPLICE, BLOCK_COMMENT)));
 const PRAGMA_SPACING = repeat(choice(/\s/, /\\(?:\r\n?|\n\r?)/));
 const PREPROC_ARGUMENT = /\S([^/\n]|\/[^*]|\\\r?\n)*/;
 const VA_ARG_KEYWORDS = choice('va_arg', '__builtin_va_arg');
@@ -627,7 +629,11 @@ module.exports = Object.assign(
 
       preproc_call: ($) =>
         choice(
-          preprocCall($, alias(/#[ \t]*pragma/, $.preproc_directive), choice($._preproc_directive_arg, $.preproc_arg)),
+          preprocCall(
+            $,
+            alias(preprocessorToken('pragma'), $.preproc_directive),
+            choice($._preproc_directive_arg, $.preproc_arg)
+          ),
           preprocCall($, $.preproc_directive, $._preproc_directive_arg)
         ),
 
@@ -659,7 +665,7 @@ module.exports = Object.assign(
       preproc_arg: () => token(prec(-1, PREPROC_ARGUMENT)),
 
       _preproc_directive_arg: () => token(prec(-2, PREPROC_ARGUMENT)),
-      preproc_directive: () => /#[ \t]*[a-zA-Z0-9]\w*/,
+      preproc_directive: () => preprocessorToken(/[a-zA-Z0-9]\w*/),
 
       _preproc_expression: ($) =>
         choice(
@@ -2281,7 +2287,7 @@ module.exports = Object.assign(
       _preproc_number: () =>
         /(\d|\.\d)([\p{XID_Continue}.]|[eEpP][+-]|'[_a-zA-Z0-9]|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8})*/u,
 
-      comment: () => token(choice(LINE_COMMENT, seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/'))),
+      comment: () => token(choice(LINE_COMMENT, BLOCK_COMMENT)),
     },
   }),
   { PREC, preprocIf, preprocessor, commaSep, commaSep1, declarationSpecifiers }
@@ -2682,14 +2688,19 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
 }
 
 /**
- * Creates a preprocessor regex rule
+ * Creates a preprocessing directive token.
  *
  * @param {string} command
  *
  * @returns {import('./types/treeSitterDsl').AliasRule}
  */
 function preprocessor(command) {
-  return alias(new RegExp('#[ \t]*' + command), '#' + command);
+  return alias(preprocessorToken(command), '#' + command);
+}
+
+/** @param {string | RegExp} command */
+function preprocessorToken(command) {
+  return token(seq(PREPROC_PREFIX, command));
 }
 
 /**

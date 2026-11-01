@@ -167,8 +167,10 @@ static bool conditional_macro_marker_line(TSLexer *lexer, const ConditionalMacro
 static bool conditional_macro_directive(TSLexer *lexer, MacroName *name) {
     if (lexer->lookahead != '#') return false;
     lexer->advance(lexer, false);
-    while (lexer->lookahead == ' ' || lexer->lookahead == '\t') lexer->advance(lexer, false);
-    return conditional_macro_word(lexer, name, false);
+    bool separated = false;
+    bool escaped = false;
+    return conditional_macro_spacing(lexer, &separated, &escaped) && !escaped &&
+        conditional_macro_word(lexer, name, false);
 }
 
 static bool conditional_macro_next_line(TSLexer *lexer, bool *escaped) {
