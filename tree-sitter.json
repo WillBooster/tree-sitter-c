@@ -13,6 +13,7 @@
         "src/identifier.h",
         "src/keywords.h",
         "src/functionMacro.h",
+        "src/macroProof.h",
         "src/conditionalMacro.h",
         "src/gnuRawString.h"
       ]
