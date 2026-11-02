@@ -40,3 +40,78 @@ void f(void) { unsigned static; int next; }
       (sized_type_specifier)
       (storage_class_specifier)
       (declaration type: (primitive_type) declarator: (identifier)))))
+
+================================================================================
+GNU attributes precede and follow type-name specifiers
+================================================================================
+
+int a = sizeof(int __attribute__((aligned(16))));
+int b = (int __attribute__((unused)))1;
+int c = _Alignof(const int __attribute__((aligned(8))) volatile);
+int d = sizeof(__attribute__((aligned(8))) int);
+int e = sizeof(const __attribute__((aligned(8))) int *);
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    type: (primitive_type)
+    declarator: (init_declarator
+      declarator: (identifier)
+      value: (sizeof_expression
+        type: (type_descriptor
+          type: (primitive_type)
+          (attribute_specifier
+            (argument_list
+              (call_expression
+                function: (identifier)
+                arguments: (argument_list (number_literal)))))))))
+  (declaration
+    type: (primitive_type)
+    declarator: (init_declarator
+      declarator: (identifier)
+      value: (cast_expression
+        type: (type_descriptor
+          type: (primitive_type)
+          (attribute_specifier (argument_list (identifier))))
+        value: (number_literal))))
+  (declaration
+    type: (primitive_type)
+    declarator: (init_declarator
+      declarator: (identifier)
+      value: (alignof_expression
+        type: (type_descriptor
+          (type_qualifier)
+          type: (primitive_type)
+          (attribute_specifier
+            (argument_list
+              (call_expression
+                function: (identifier)
+                arguments: (argument_list (number_literal)))))
+          (type_qualifier)))))
+  (declaration
+    type: (primitive_type)
+    declarator: (init_declarator
+      declarator: (identifier)
+      value: (sizeof_expression
+        type: (type_descriptor
+          (attribute_specifier
+            (argument_list
+              (call_expression
+                function: (identifier)
+                arguments: (argument_list (number_literal)))))
+          type: (primitive_type)))))
+  (declaration
+    type: (primitive_type)
+    declarator: (init_declarator
+      declarator: (identifier)
+      value: (sizeof_expression
+        type: (type_descriptor
+          (type_qualifier)
+          (attribute_specifier
+            (argument_list
+              (call_expression
+                function: (identifier)
+                arguments: (argument_list (number_literal)))))
+          type: (primitive_type)
+          declarator: (abstract_pointer_declarator))))))
