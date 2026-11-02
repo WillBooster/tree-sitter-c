@@ -7,13 +7,14 @@ typedef struct {
     MacroProofMemo proof_memo;
 } CScanner;
 
-enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF, GNU_RAW_STRING_BODY, RAW_MACRO_TYPE_TAIL, BRACED_FUNCTION_ATTRIBUTE_START, BRACED_MACRO_TYPE_START, DIRECTIVE_CONTEXT, PREPROC_EMPTY };
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF, GNU_RAW_STRING_BODY, RAW_MACRO_TYPE_TAIL, BRACED_FUNCTION_ATTRIBUTE_START, BRACED_MACRO_TYPE_START, DIRECTIVE_CONTEXT, PREPROC_EMPTY, PREPROC_DIRECTIVE_START };
 
 static EmptyDirectives *scanner_directives(CScanner *scanner);
 
 static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_declaration_tokens(CScanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
+static bool scan_conditional_directive(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
 
 void *tree_sitter_c_external_scanner_create(void) {
     return calloc(1, sizeof(CScanner));
@@ -26,6 +27,8 @@ void tree_sitter_c_external_scanner_destroy(void *payload) {
     free(state->starts);
     free(state->ends);
     free(state->line_ends);
+    free(state->directive_starts);
+    free(state->directive_ends);
     macro_proof_destroy(&scanner->proof_memo);
     free(scanner);
 }
@@ -67,19 +70,29 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     bool conditional = leading || valid_symbols[CONDITIONAL_MARKER_IFDEF] || valid_symbols[CONDITIONAL_MARKER_IFNDEF];
     if (!conditional) return scan_declaration_tokens(scanner, lexer, valid_symbols);
     while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
+    if (lexer->lookahead == '#') return scan_conditional_directive(state, lexer, valid_symbols);
+    return scan_declaration_tokens(scanner, lexer, valid_symbols);
+}
+
+static bool scan_conditional_directive(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
+    if (!empty_directives_at_start(state, lexer)) return false;
     const ConditionalMacroSymbols symbols = {
         .ifdef = CONDITIONAL_MARKER_IFDEF, .ifndef = CONDITIONAL_MARKER_IFNDEF,
         .leading_ifdef = LEADING_CONDITIONAL_MARKER_IFDEF, .leading_ifndef = LEADING_CONDITIONAL_MARKER_IFNDEF,
         .skip_empty = empty_directives_skip, .empty_context = state,
     };
-    if (lexer->lookahead == '#') return scan_conditional_macro(lexer, &symbols, valid_symbols);
-    return scan_declaration_tokens(scanner, lexer, valid_symbols);
+    return scan_conditional_macro(lexer, &symbols, valid_symbols);
 }
 
 static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
     if (state && !state->ready && valid_symbols[DIRECTIVE_CONTEXT]) {
         lexer->result_symbol = DIRECTIVE_CONTEXT;
         return empty_directives_initialize(state, lexer);
+    }
+    if (valid_symbols[PREPROC_DIRECTIVE_START] && empty_directives_after_keyword(state, lexer)) {
+        lexer->result_symbol = PREPROC_DIRECTIVE_START;
+        lexer->mark_end(lexer);
+        return true;
     }
     bool directive_body = valid_symbols[PREPROC_NEWLINE] || valid_symbols[PREPROC_LPAREN] ||
         valid_symbols[PREPROC_ARG] || valid_symbols[PREPROC_DIRECTIVE_ARG] || valid_symbols[GNU_RAW_STRING_BODY];
