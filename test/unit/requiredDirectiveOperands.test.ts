@@ -81,6 +81,8 @@ test.each([
   '#line _Pragma("once")',
   '#ifdef _Pragma("once")\n#endif',
   '#ifndef _Pragma("once")\n#endif',
+  '#define _Pragma("once")',
+  '#define _Pragma ( u8"once" )',
 ])('rejects a _Pragma operator in place of the operand of %j', (directive) => {
   withTree(`${directive}\nint following;\n`, (tree) => expect(tree.rootNode.hasError).toBe(true));
 });

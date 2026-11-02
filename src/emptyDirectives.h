@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 547 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
+// code-gauge-allow-file fileNcss 560 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
@@ -25,10 +25,10 @@ typedef struct {
     bool built, ready;
 } EmptyDirectives;
 
-typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC, DIRECTIVE_REQUIRED, DIRECTIVE_DEFINE, DIRECTIVE_UNDEF, DIRECTIVE_LINE, DIRECTIVE_PRAGMA, DIRECTIVE_HEADER } DirectiveKind;
+typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC, DIRECTIVE_REQUIRED, DIRECTIVE_UNDEF, DIRECTIVE_LINE, DIRECTIVE_PRAGMA, DIRECTIVE_HEADER } DirectiveKind;
 
 typedef struct {
-    bool beginning, pending, operand, pragma_pending, pragma_newline, pragma_word;
+    bool beginning, pending, operand, pragma_pending, pragma_newline, pragma_name;
     unsigned pragma_depth, header;
     DirectiveKind kind;
     uint32_t start, required_end;
@@ -60,6 +60,8 @@ static void empty_directives_find(EmptyDirectives *state, DirectiveInput *input)
 static int32_t directive_next(DirectiveInput *input);
 static int32_t directive_physical_next(DirectiveInput *input);
 static int32_t directive_peek(const DirectiveInput *input);
+static void directive_pragma_name(DirectiveLine *line, const DirectiveInput *input);
+static bool directive_pragma_operator(const DirectiveInput *input);
 static bool directive_comment(DirectiveInput *input, bool *line);
 static bool directive_quoted(DirectiveInput *input, int32_t quote);
 static bool directive_raw(DirectiveInput *input);
@@ -312,7 +314,7 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
     directive_code(state, input, line, c);
 }
 
-// code-gauge-allow functionCognitiveComplexity 17 -- Header names, quoted tokens and distinct keyword boundaries update one logical directive's lexical state.
+// code-gauge-allow functionCognitiveComplexity 19 -- Header names, quoted tokens and distinct keyword boundaries update one logical directive's lexical state.
 static void directive_code(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line, int32_t c) {
     bool name = line->pending;
     bool header = directive_header_ready(line, c);
@@ -332,6 +334,7 @@ static void directive_code(EmptyDirectives *state, DirectiveInput *input, Direct
     uint32_t end = name ? directive_keyword_end(input) : 0;
     DirectiveWord word = directive_word(input, c, line->kind != DIRECTIVE_DIAGNOSTIC);
     DirectiveKind kind = name ? directive_keyword(state, input, line, &word, end) : directive_word_kind(&word);
+    if (!name && !pragma && kind == DIRECTIVE_PRAGMA) directive_pragma_name(line, input);
     directive_word_role(line, kind, name, pragma, operand, preproc_word(c, false));
 }
 
@@ -342,7 +345,6 @@ static void directive_word_role(DirectiveLine *line, DirectiveKind kind, bool na
     }
     if (pragma) return;
     if (kind == DIRECTIVE_PRAGMA) {
-        line->pragma_word = true;
         bool required = directive_requires_operand(line->kind) && line->kind != DIRECTIVE_UNDEF;
         if (required && !had_operand) {
             line->operand = false;
@@ -414,12 +416,10 @@ static void directive_line_end(EmptyDirectives *state, DirectiveInput *input, Di
 }
 
 static void directive_complete_required(EmptyDirectives *state, DirectiveLine *line) {
-    bool pragma_word = line->pragma_word;
-    line->pragma_word = false;
+    bool pragma_name = line->pragma_name;
+    line->pragma_name = false;
     if (!line->required_end) return;
-    // `_Pragma` is the macro name of `#define _Pragma(x)` and `#undef _Pragma`; elsewhere a following `(` makes it an operator.
-    bool named = line->kind == DIRECTIVE_DEFINE || line->kind == DIRECTIVE_UNDEF;
-    if (line->operand || line->pragma_pending || (named && pragma_word)) {
+    if (line->operand || line->pragma_pending || pragma_name) {
         uint32_t end = line->required_end;
         state->directive_ends[end / 8] |= 1u << (end % 8);
     }
@@ -427,8 +427,7 @@ static void directive_complete_required(EmptyDirectives *state, DirectiveLine *l
 }
 
 static bool directive_requires_operand(DirectiveKind kind) {
-    return kind == DIRECTIVE_REQUIRED || kind == DIRECTIVE_DEFINE || kind == DIRECTIVE_UNDEF || kind == DIRECTIVE_LINE ||
-        kind == DIRECTIVE_HEADER;
+    return kind == DIRECTIVE_REQUIRED || kind == DIRECTIVE_UNDEF || kind == DIRECTIVE_LINE || kind == DIRECTIVE_HEADER;
 }
 
 static void directive_barrier(DirectiveInput *input) {
@@ -491,6 +490,21 @@ static uint32_t directive_splice_end(const DirectiveInput *input) {
 static int32_t directive_peek(const DirectiveInput *input) {
     DirectiveInput copy = *input;
     return directive_next(&copy);
+}
+
+// `_Pragma` is the macro name of `#define _Pragma(x)` or `#ifdef _Pragma`, but an operator before a string literal.
+static void directive_pragma_name(DirectiveLine *line, const DirectiveInput *input) {
+    if (line->kind == DIRECTIVE_UNDEF || (line->kind == DIRECTIVE_REQUIRED && !directive_pragma_operator(input))) line->pragma_name = true;
+}
+
+static bool directive_pragma_operator(const DirectiveInput *input) {
+    DirectiveInput copy = *input;
+    int32_t c;
+    while ((c = directive_next(&copy)) == ' ' || c == '\t') {}
+    if (c != '(') return false;
+    while ((c = directive_next(&copy)) == ' ' || c == '\t') {}
+    for (unsigned i = 0; i < 2 && (c == 'L' || c == 'u' || c == 'U' || c == '8' || c == 'R'); i++) c = directive_next(&copy);
+    return c == '"';
 }
 
 static bool directive_comment(DirectiveInput *input, bool *line) {
@@ -560,11 +574,10 @@ static DirectiveKind directive_word_kind(const DirectiveWord *word) {
     if (strcmp(word->directive, "include") == 0 || strcmp(word->directive, "include_next") == 0 ||
         strcmp(word->directive, "embed") == 0) return DIRECTIVE_HEADER;
     if (strcmp(word->directive, "warning") == 0 || strcmp(word->directive, "error") == 0) return DIRECTIVE_DIAGNOSTIC;
-    if (strcmp(word->directive, "define") == 0) return DIRECTIVE_DEFINE;
     if (strcmp(word->directive, "undef") == 0) return DIRECTIVE_UNDEF;
     if (strcmp(word->directive, "line") == 0) return DIRECTIVE_LINE;
     static const char *const required[] = {
-        "ifdef", "ifndef", "elifdef", "elifndef",
+        "define", "ifdef", "ifndef", "elifdef", "elifndef",
     };
     for (unsigned i = 0; i < sizeof required / sizeof *required; i++) {
         if (strcmp(word->directive, required[i]) == 0) return DIRECTIVE_REQUIRED;
