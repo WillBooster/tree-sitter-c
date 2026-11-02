@@ -35,6 +35,25 @@ test('uses a Wasm build built from the current parser', () => {
   ).toBe(false);
 });
 
+test.each(['', 'int before;'])(
+  'keeps directive line-position checks approximately linear after %j',
+  { timeout: 60_000 },
+  (prefix) => {
+    const source = (count: number): string => `${prefix}${'/**/ '.repeat(count)}#define VALUE 1\nint following;\n`;
+    const expectedError = prefix.length > 0;
+    const small = source(1000);
+    const large = source(10_000);
+    parseAverageCpuTime(large, expectedError);
+    let smallFastest = Infinity;
+    let largeFastest = Infinity;
+    for (let run = 0; run < 5; run++) {
+      smallFastest = Math.min(smallFastest, parseAverageCpuTime(small, expectedError));
+      largeFastest = Math.min(largeFastest, parseAverageCpuTime(large, expectedError));
+    }
+    expect(largeFastest / smallFastest).toBeLessThan(18);
+  }
+);
+
 test.each(['A ', 'A B '])(
   'keeps block marker-prefix recovery approximately linear for %j',
   { timeout: 60_000 },
