@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 539 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
+// code-gauge-allow-file fileNcss 542 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
@@ -28,7 +28,7 @@ typedef struct {
 typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC, DIRECTIVE_REQUIRED, DIRECTIVE_UNDEF, DIRECTIVE_PRAGMA, DIRECTIVE_HEADER } DirectiveKind;
 
 typedef struct {
-    bool beginning, pending, operand, pragma_pending, pragma_newline;
+    bool beginning, pending, operand, pragma_pending, pragma_newline, pragma_word;
     unsigned pragma_depth, header;
     DirectiveKind kind;
     uint32_t start, required_end;
@@ -342,6 +342,7 @@ static void directive_word_role(DirectiveLine *line, DirectiveKind kind, bool na
     }
     if (pragma) return;
     if (kind == DIRECTIVE_PRAGMA) {
+        line->pragma_word = true;
         bool required = directive_requires_operand(line->kind) && line->kind != DIRECTIVE_UNDEF;
         if (required && !had_operand) {
             line->operand = false;
@@ -413,8 +414,11 @@ static void directive_line_end(EmptyDirectives *state, DirectiveInput *input, Di
 }
 
 static void directive_complete_required(EmptyDirectives *state, DirectiveLine *line) {
+    bool pragma_word = line->pragma_word;
+    line->pragma_word = false;
     if (!line->required_end) return;
-    if (line->operand || line->pragma_pending) {
+    // `_Pragma` may itself be the operand, as in `#define _Pragma(x)`.
+    if (line->operand || pragma_word) {
         uint32_t end = line->required_end;
         state->directive_ends[end / 8] |= 1u << (end % 8);
     }
