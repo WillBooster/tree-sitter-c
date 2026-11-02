@@ -64,7 +64,7 @@ test.each([
   });
 });
 
-test.each(['#define _Pragma', '#define _Pragma(x)', '#define _Pragma (x)', '#ifdef _Pragma\n#endif'])(
+test.each(['#define _Pragma', '#define _Pragma(x)', '#define _Pragma (x)', '#undef _Pragma', '#ifdef _Pragma\n#endif'])(
   'accepts _Pragma as the operand of %j',
   (directive) => {
     withTree(`${directive}\nint following;\n`, (tree) => {
@@ -73,6 +73,22 @@ test.each(['#define _Pragma', '#define _Pragma(x)', '#define _Pragma (x)', '#ifd
     });
   }
 );
+
+test.each([
+  '#include _Pragma("once")',
+  '#include_next _Pragma("once")',
+  '#embed _Pragma("once")',
+  '#line _Pragma("once")',
+])('rejects a _Pragma operator in place of the operand of %j', (directive) => {
+  withTree(`${directive}\nint following;\n`, (tree) => expect(tree.rootNode.hasError).toBe(true));
+});
+
+test('accepts an operand after a _Pragma operator', () => {
+  withTree('#line _Pragma("once") 5\nint following;\n', (tree) => {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following;');
+  });
+});
 
 test('requires operands again after leaving a conditional group', () => {
   withTree('#if 0\n#undef\n#line\n#endif\n#undef\nint following;\n', (tree) => {

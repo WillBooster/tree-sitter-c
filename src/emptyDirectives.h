@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 542 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
+// code-gauge-allow-file fileNcss 545 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
@@ -25,7 +25,7 @@ typedef struct {
     bool built, ready;
 } EmptyDirectives;
 
-typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC, DIRECTIVE_REQUIRED, DIRECTIVE_UNDEF, DIRECTIVE_PRAGMA, DIRECTIVE_HEADER } DirectiveKind;
+typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC, DIRECTIVE_REQUIRED, DIRECTIVE_UNDEF, DIRECTIVE_LINE, DIRECTIVE_PRAGMA, DIRECTIVE_HEADER } DirectiveKind;
 
 typedef struct {
     bool beginning, pending, operand, pragma_pending, pragma_newline, pragma_word;
@@ -417,8 +417,9 @@ static void directive_complete_required(EmptyDirectives *state, DirectiveLine *l
     bool pragma_word = line->pragma_word;
     line->pragma_word = false;
     if (!line->required_end) return;
-    // `_Pragma` may itself be the operand, as in `#define _Pragma(x)`.
-    if (line->operand || pragma_word) {
+    // `_Pragma` is the operand of a directive taking a macro name, as in `#define _Pragma(x)`, and an operator elsewhere.
+    bool named = line->kind == DIRECTIVE_REQUIRED || line->kind == DIRECTIVE_UNDEF;
+    if (line->operand || line->pragma_pending || (named && pragma_word)) {
         uint32_t end = line->required_end;
         state->directive_ends[end / 8] |= 1u << (end % 8);
     }
@@ -426,7 +427,7 @@ static void directive_complete_required(EmptyDirectives *state, DirectiveLine *l
 }
 
 static bool directive_requires_operand(DirectiveKind kind) {
-    return kind == DIRECTIVE_REQUIRED || kind == DIRECTIVE_UNDEF || kind == DIRECTIVE_HEADER;
+    return kind == DIRECTIVE_REQUIRED || kind == DIRECTIVE_UNDEF || kind == DIRECTIVE_LINE || kind == DIRECTIVE_HEADER;
 }
 
 static void directive_barrier(DirectiveInput *input) {
@@ -559,8 +560,9 @@ static DirectiveKind directive_word_kind(const DirectiveWord *word) {
         strcmp(word->directive, "embed") == 0) return DIRECTIVE_HEADER;
     if (strcmp(word->directive, "warning") == 0 || strcmp(word->directive, "error") == 0) return DIRECTIVE_DIAGNOSTIC;
     if (strcmp(word->directive, "undef") == 0) return DIRECTIVE_UNDEF;
+    if (strcmp(word->directive, "line") == 0) return DIRECTIVE_LINE;
     static const char *const required[] = {
-        "define", "ifdef", "ifndef", "elifdef", "elifndef", "line",
+        "define", "ifdef", "ifndef", "elifdef", "elifndef",
     };
     for (unsigned i = 0; i < sizeof required / sizeof *required; i++) {
         if (strcmp(word->directive, required[i]) == 0) return DIRECTIVE_REQUIRED;
