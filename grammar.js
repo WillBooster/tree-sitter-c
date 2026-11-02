@@ -1915,9 +1915,9 @@ module.exports = Object.assign(
 
       type_descriptor: ($) =>
         seq(
-          repeat($.type_qualifier),
+          repeat(choice($.type_qualifier, $.attribute_specifier)),
           field('type', alias($._type_name_specifier, $.type_specifier)),
-          repeat($.type_qualifier),
+          repeat(choice($.type_qualifier, $.attribute_specifier)),
           field('declarator', optional($._abstract_declarator))
         ),
 
