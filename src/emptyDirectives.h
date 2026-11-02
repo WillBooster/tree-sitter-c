@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 560 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
+// code-gauge-allow-file fileNcss 575 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
@@ -62,6 +62,7 @@ static int32_t directive_physical_next(DirectiveInput *input);
 static int32_t directive_peek(const DirectiveInput *input);
 static void directive_pragma_name(DirectiveLine *line, const DirectiveInput *input);
 static bool directive_pragma_operator(const DirectiveInput *input);
+static int32_t directive_pragma_token(DirectiveInput *input);
 static bool directive_comment(DirectiveInput *input, bool *line);
 static bool directive_quoted(DirectiveInput *input, int32_t quote);
 static bool directive_raw(DirectiveInput *input);
@@ -497,14 +498,28 @@ static void directive_pragma_name(DirectiveLine *line, const DirectiveInput *inp
     if (line->kind == DIRECTIVE_UNDEF || (line->kind == DIRECTIVE_REQUIRED && !directive_pragma_operator(input))) line->pragma_name = true;
 }
 
+// Mirrors the argument prefix accepted by `scan_pragma_argument` and the spacing a directive line can hold.
 static bool directive_pragma_operator(const DirectiveInput *input) {
     DirectiveInput copy = *input;
-    int32_t c;
-    while ((c = directive_next(&copy)) == ' ' || c == '\t') {}
-    if (c != '(') return false;
-    while ((c = directive_next(&copy)) == ' ' || c == '\t') {}
-    for (unsigned i = 0; i < 2 && (c == 'L' || c == 'u' || c == 'U' || c == '8' || c == 'R'); i++) c = directive_next(&copy);
+    if (directive_pragma_token(&copy) != '(') return false;
+    int32_t c = directive_pragma_token(&copy);
+    if (c == 'L' || c == 'U') c = directive_next(&copy);
+    else if (c == 'u') {
+        c = directive_next(&copy);
+        if (c == '8') c = directive_next(&copy);
+    }
+    if (c == 'R') c = directive_next(&copy);
     return c == '"';
+}
+
+static int32_t directive_pragma_token(DirectiveInput *input) {
+    for (;;) {
+        int32_t c = directive_next(input);
+        if (c == '/' && directive_peek(input) == '*') {
+            bool line = false;
+            directive_comment(input, &line);
+        } else if (!directive_horizontal(c)) return c;
+    }
 }
 
 static bool directive_comment(DirectiveInput *input, bool *line) {

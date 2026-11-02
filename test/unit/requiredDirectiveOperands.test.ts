@@ -64,15 +64,19 @@ test.each([
   });
 });
 
-test.each(['#define _Pragma', '#define _Pragma(x)', '#define _Pragma (x)', '#undef _Pragma', '#ifdef _Pragma\n#endif'])(
-  'accepts _Pragma as the operand of %j',
-  (directive) => {
-    withTree(`${directive}\nint following;\n`, (tree) => {
-      expect(tree.rootNode.hasError).toBe(false);
-      expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following;');
-    });
-  }
-);
+test.each([
+  '#define _Pragma',
+  '#define _Pragma(x)',
+  '#define _Pragma(/* comment */x)',
+  '#define _Pragma (x)',
+  '#undef _Pragma',
+  '#ifdef _Pragma\n#endif',
+])('accepts _Pragma as the operand of %j', (directive) => {
+  withTree(`${directive}\nint following;\n`, (tree) => {
+    expect(tree.rootNode.hasError).toBe(false);
+    expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following;');
+  });
+});
 
 test.each([
   '#include _Pragma("once")',
@@ -83,6 +87,10 @@ test.each([
   '#ifndef _Pragma("once")\n#endif',
   '#define _Pragma("once")',
   '#define _Pragma ( u8"once" )',
+  '#define _Pragma/* comment */(/* comment */"once")',
+  '#define _Pragma\v(\fu8R"(once)")',
+  '#define _Pragma\\\n("once")',
+  '#ifdef _Pragma/* comment */("once")\n#endif',
 ])('rejects a _Pragma operator in place of the operand of %j', (directive) => {
   withTree(`${directive}\nint following;\n`, (tree) => expect(tree.rootNode.hasError).toBe(true));
 });
