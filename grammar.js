@@ -806,6 +806,8 @@ module.exports = Object.assign(
           repeat(choice($._non_macro_declaration_modifiers, $._conditional_macro_specifier))
         ),
 
+      _declaration_declarators: ($) => declarationDeclarators($),
+
       declaration: ($) =>
         choice(
           declarationRule(
@@ -2442,11 +2444,11 @@ function functionDefinitionRule($, specifiers, oldStyle) {
 }
 
 /**
- * @param {import('./types/treeSitterDsl').GrammarSymbols<'storage_class_specifier' | 'ms_call_modifier' | '_declaration_declarator' | '_declarator' | 'gnu_asm_expression' | 'init_declarator' | 'type_qualifier' | 'identifier'>} $
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'storage_class_specifier' | 'ms_call_modifier' | '_declaration_declarators' | '_declaration_declarator' | '_declarator' | 'gnu_asm_expression' | 'init_declarator' | 'type_qualifier' | 'identifier'>} $
  * @param {import('./types/treeSitterDsl').Rule} specifiers
  * @param {import('./types/treeSitterDsl').Rule} modifiers
  * @param {boolean} allowInferredType
- * @param {import('./types/treeSitterDsl').Rule} declarator
+ * @param {import('./types/treeSitterDsl').Rule} [declarator]
  * @param {{guard?: import('./types/treeSitterDsl').Rule, bareMarkerInitializer?: boolean}} options
  */
 function declarationRule(
@@ -2454,26 +2456,14 @@ function declarationRule(
   specifiers,
   modifiers,
   allowInferredType = true,
-  declarator = $._declaration_declarator,
-  {
-    guard = choice(sym('_post_type_function_attribute_start'), sym('_braced_function_attribute_start')),
-    bareMarkerInitializer = false,
-  } = {}
+  declarator,
+  { guard, bareMarkerInitializer = false } = {}
 ) {
-  const initialized = choice(
-    bareMarkerInitializer
-      ? seq(optional(guard), $.init_declarator)
-      : choice($.init_declarator, seq(guard, alias(sym('_guarded_init_declarator'), $.init_declarator))),
-    seq(sym('_braced_function_attribute_start'), alias(sym('_braced_macro_init_declarator'), $.init_declarator))
-  );
-  const item = choice(
-    seq(optional($.ms_call_modifier), optional(guard), declarator, optional($.gnu_asm_expression)),
-    seq(sym('_braced_function_attribute_start'), alias(sym('_braced_macro_declarator'), $._declarator)),
-    initialized
-  );
-  const items = bareMarkerInitializer
-    ? seq(field('declarator', initialized), repeat(seq(',', field('declarator', item))))
-    : commaSep1(field('declarator', item));
+  // The default declarator list is one shared rule so that each declaration form reuses its parse states.
+  const items =
+    declarator === undefined && guard === undefined && !bareMarkerInitializer
+      ? $._declaration_declarators
+      : declarationDeclarators($, declarator, guard, bareMarkerInitializer);
   return choice(
     seq(
       prec.dynamic(
@@ -2495,6 +2485,34 @@ function declarationRule(
       ? [seq(repeat1($.type_qualifier), commaSep1(field('declarator', choice($.identifier, $.init_declarator))), ';')]
       : [])
   );
+}
+
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'ms_call_modifier' | '_declaration_declarator' | '_declarator' | 'gnu_asm_expression' | 'init_declarator'>} $
+ * @param {import('./types/treeSitterDsl').Rule} [declarator]
+ * @param {import('./types/treeSitterDsl').Rule} [guard]
+ * @param {boolean} [bareMarkerInitializer]
+ */
+function declarationDeclarators(
+  $,
+  declarator = $._declaration_declarator,
+  guard = choice(sym('_post_type_function_attribute_start'), sym('_braced_function_attribute_start')),
+  bareMarkerInitializer = false
+) {
+  const initialized = choice(
+    bareMarkerInitializer
+      ? seq(optional(guard), $.init_declarator)
+      : choice($.init_declarator, seq(guard, alias(sym('_guarded_init_declarator'), $.init_declarator))),
+    seq(sym('_braced_function_attribute_start'), alias(sym('_braced_macro_init_declarator'), $.init_declarator))
+  );
+  const item = choice(
+    seq(optional($.ms_call_modifier), optional(guard), declarator, optional($.gnu_asm_expression)),
+    seq(sym('_braced_function_attribute_start'), alias(sym('_braced_macro_declarator'), $._declarator)),
+    initialized
+  );
+  return bareMarkerInitializer
+    ? seq(field('declarator', initialized), repeat(seq(',', field('declarator', item))))
+    : commaSep1(field('declarator', item));
 }
 
 /**
