@@ -4649,6 +4649,10 @@
       "required": false,
       "types": [
         {
+          "type": "attribute_specifier",
+          "named": true
+        },
+        {
           "type": "type_qualifier",
           "named": true
         }

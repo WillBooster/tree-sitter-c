@@ -224,9 +224,7 @@ static bool conditional_macro_word(TSLexer *lexer, MacroName *name, bool escaped
     for (;;) {
         MacroNameCharacter character = scan_macro_name_character(lexer, has_name, name);
         if (character == MACRO_NAME_END) return has_name;
-        if (character == MACRO_NAME_SPLICE) {
-            return has_name && lexer->lookahead != '\\' && !preproc_word(lexer->lookahead, true);
-        }
+        if (character == MACRO_NAME_SPLICE) continue;
         if (character != MACRO_NAME_CHARACTER) return false;
         has_name = true;
     }
