@@ -2603,14 +2603,17 @@ function* keywordStrings(node) {
 }
 
 /**
- * Makes a trailing parameter annotation, whose name must be spelled like a macro since any other name after a
- * declarator is more likely misread, as in `const void *__sized_by(n) s1`. It outranks a leading marker (-2) that reads
- * `int *A B` the other way (`char **argv UNUSED`), since macro definitions are unknown.
+ * Ranks a trailing parameter annotation against a leading marker (-2) that reads `int *A B` the other way: an
+ * annotation named like a macro (`char **argv UNUSED`) outranks it, and any other name ranks below it
+ * (`int *CC pointer`), since macro definitions are unknown.
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'identifier' | '_macro_case_identifier'>} $
  * @param {(name: import('./types/treeSitterDsl').Rule) => import('./types/treeSitterDsl').Rule} annotation
  */
 function trailingAnnotationRule($, annotation) {
-  return prec.dynamic(-1, annotation(alias($._macro_case_identifier, $.identifier)));
+  return choice(
+    prec.dynamic(-1, annotation(alias($._macro_case_identifier, $.identifier))),
+    prec.dynamic(-3, annotation(reserved('marker', $.identifier)))
+  );
 }
 
 /**
