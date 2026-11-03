@@ -652,7 +652,8 @@ void * do_stuff(int arg1)
           (parameter_declaration
             type: (primitive_type)
             declarator: (identifier)))
-        (identifier)
+        (macro_specifier
+          name: (identifier))
         (call_expression
           function: (identifier)
           arguments: (argument_list

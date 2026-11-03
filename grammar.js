@@ -1241,7 +1241,13 @@ module.exports = Object.assign(
             field('declarator', $._declarator),
             field('parameters', $.parameter_list),
             optional($.gnu_asm_expression),
-            repeat(choice($.attribute_specifier, $.identifier, alias($.preproc_call_expression, $.call_expression)))
+            repeat(
+              choice(
+                $.attribute_specifier,
+                alias($._function_macro_specifier, $.macro_specifier),
+                alias($.preproc_call_expression, $.call_expression)
+              )
+            )
           )
         ),
 
@@ -1552,8 +1558,13 @@ module.exports = Object.assign(
       parameter_declaration: ($) =>
         seq(
           $._declaration_specifiers,
-          optional(field('declarator', choice($._declarator, $._abstract_declarator))),
-          repeat($.attribute_specifier)
+          choice(
+            seq(
+              field('declarator', $._declarator),
+              repeat(choice($.attribute_specifier, alias($._trailing_macro_specifier, $.macro_specifier)))
+            ),
+            seq(optional(field('declarator', $._abstract_declarator)), repeat($.attribute_specifier))
+          )
         ),
 
       attributed_statement: ($) =>
@@ -2234,6 +2245,8 @@ module.exports = Object.assign(
       false: () => 'false',
       null: () => choice('NULL', 'nullptr'),
 
+      // Declared before `identifier` so that rule order, not precedence, settles names both match in full.
+      _macro_case_identifier: () => /[A-Z_][A-Z0-9_]*/,
       identifier: () =>
         /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/u,
       _type_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('type_identifier')),
@@ -2266,6 +2279,17 @@ module.exports = Object.assign(
         ),
 
       macro_specifier: ($) => prec.dynamic(-2, field('name', reserved('marker', $.identifier))),
+
+      _function_macro_specifier: ($) => field('name', reserved('marker', $.identifier)),
+
+      // A parameter `int *A B` reads as a leading marker `A` or a trailing marker `B`. Without macro definitions, a
+      // trailing name spelled like a macro (`char **argv UNUSED`) outranks a leading marker (-2), and any other name
+      // ranks below it (`int *CC pointer`).
+      _trailing_macro_specifier: ($) =>
+        choice(
+          prec.dynamic(-1, field('name', alias($._macro_case_identifier, $.identifier))),
+          prec.dynamic(-3, field('name', reserved('marker', $.identifier)))
+        ),
 
       _conditional_macro_specifier: () => alias(sym('_marker_preproc_ifdef'), sym('preproc_ifdef')),
       _leading_conditional_macro_specifier: () => alias(sym('_leading_marker_preproc_ifdef'), sym('preproc_ifdef')),

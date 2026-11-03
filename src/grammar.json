@@ -44584,8 +44584,13 @@
                   "name": "attribute_specifier"
                 },
                 {
-                  "type": "SYMBOL",
-                  "name": "identifier"
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_function_macro_specifier"
+                  },
+                  "named": true,
+                  "value": "macro_specifier"
                 },
                 {
                   "type": "ALIAS",
@@ -48097,33 +48102,68 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "FIELD",
-              "name": "declarator",
-              "content": {
-                "type": "CHOICE",
-                "members": [
-                  {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "FIELD",
+                  "name": "declarator",
+                  "content": {
                     "type": "SYMBOL",
                     "name": "_declarator"
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "_abstract_declarator"
                   }
-                ]
-              }
+                },
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "attribute_specifier"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_trailing_macro_specifier"
+                        },
+                        "named": true,
+                        "value": "macro_specifier"
+                      }
+                    ]
+                  }
+                }
+              ]
             },
             {
-              "type": "BLANK"
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "FIELD",
+                      "name": "declarator",
+                      "content": {
+                        "type": "SYMBOL",
+                        "name": "_abstract_declarator"
+                      }
+                    },
+                    {
+                      "type": "BLANK"
+                    }
+                  ]
+                },
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "attribute_specifier"
+                  }
+                }
+              ]
             }
           ]
-        },
-        {
-          "type": "REPEAT",
-          "content": {
-            "type": "SYMBOL",
-            "name": "attribute_specifier"
-          }
         }
       ]
     },
@@ -58232,6 +58272,10 @@
         }
       ]
     },
+    "_macro_case_identifier": {
+      "type": "PATTERN",
+      "value": "[A-Z_][A-Z0-9_]*"
+    },
     "identifier": {
       "type": "PATTERN",
       "value": "(\\p{XID_Start}|\\$|_|\\\\u[0-9A-Fa-f]{4}|\\\\U[0-9A-Fa-f]{8})(\\p{XID_Continue}|\\$|\\\\u[0-9A-Fa-f]{4}|\\\\U[0-9A-Fa-f]{8})*",
@@ -58443,6 +58487,56 @@
           "context_name": "marker"
         }
       }
+    },
+    "_function_macro_specifier": {
+      "type": "FIELD",
+      "name": "name",
+      "content": {
+        "type": "RESERVED",
+        "content": {
+          "type": "SYMBOL",
+          "name": "identifier"
+        },
+        "context_name": "marker"
+      }
+    },
+    "_trailing_macro_specifier": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "PREC_DYNAMIC",
+          "value": -1,
+          "content": {
+            "type": "FIELD",
+            "name": "name",
+            "content": {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_macro_case_identifier"
+              },
+              "named": true,
+              "value": "identifier"
+            }
+          }
+        },
+        {
+          "type": "PREC_DYNAMIC",
+          "value": -3,
+          "content": {
+            "type": "FIELD",
+            "name": "name",
+            "content": {
+              "type": "RESERVED",
+              "content": {
+                "type": "SYMBOL",
+                "name": "identifier"
+              },
+              "context_name": "marker"
+            }
+          }
+        }
+      ]
     },
     "_conditional_macro_specifier": {
       "type": "ALIAS",
