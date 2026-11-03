@@ -1202,7 +1202,7 @@ module.exports = Object.assign(
         _macro_declaration_declarator: ($) => declarationDeclaratorRule($, $.function_declarator),
 
         // A parameter keeps its trailing annotations however deeply its function declarator sits under pointers, as in
-        // `int *callback(int) UNUSED`.
+        // `int *callback(int) ATTR(1)`.
         _parameter_declarator: ($) =>
           choice(
             $.attributed_declarator,
