@@ -58379,7 +58379,7 @@
     },
     "_macro_case_identifier": {
       "type": "PATTERN",
-      "value": "[A-Z_][A-Z0-9_]*"
+      "value": "[A-Z_][A-Z0-9_]*|__(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZbcdefghijklmnopqrstuvwxyz0123456789_][A-Za-z0-9_]*|a(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqruvwxyz0123456789_][A-Za-z0-9_]*|t(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrsuvwxyz0123456789_][A-Za-z0-9_]*|t(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqstuvwxyz0123456789_][A-Za-z0-9_]*|r(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghjklmnopqrstuvwxyz0123456789_][A-Za-z0-9_]*|i(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZacdefghijklmnopqrstuvwxyz0123456789_][A-Za-z0-9_]*|b(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstvwxyz0123456789_][A-Za-z0-9_]*|u(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrsuvwxyz0123456789_][A-Za-z0-9_]*|t(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdfghijklmnopqrstuvwxyz0123456789_][A-Za-z0-9_]*|e(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789][A-Za-z0-9_]*|_(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789][A-Za-z0-9_]*|_(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_][A-Za-z0-9_]*))?))?)?)?)?)?)?)?|s(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklnopqrstuvwxyz0123456789_][A-Za-z0-9_]*|m(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789][A-Za-z0-9_]*|_(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789][A-Za-z0-9_]*|_(?:[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_][A-Za-z0-9_]*))?))?)?)?"
     },
     "identifier": {
       "type": "PATTERN",

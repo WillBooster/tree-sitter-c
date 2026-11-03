@@ -2268,8 +2268,11 @@ module.exports = Object.assign(
       false: () => 'false',
       null: () => choice('NULL', 'nullptr'),
 
-      // Declared before `identifier` so that rule order, not precedence, settles names both match in full.
-      _macro_case_identifier: () => /[A-Z_][A-Z0-9_]*/,
+      // Names spelled like macros, or reserved for the implementation (C11 7.1.3) and so never a parameter's own name.
+      // Declared before `identifier` so that rule order, not precedence, settles names both match in full. It never
+      // spells a keyword that may follow a parameter declarator, which must still lex through `identifier`.
+      _macro_case_identifier: () =>
+        new RegExp(`[A-Z_][A-Z0-9_]*|__${identifierExcept(['attribute__', 'attribute', 'asm__', 'asm'])}`),
       identifier: () =>
         /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/u,
       _type_identifier: ($) => alias(choice($.identifier, VA_ARG_KEYWORDS), sym('type_identifier')),
@@ -2383,6 +2386,31 @@ module.exports = Object.assign(
   }),
   { PREC, preprocIf, preprocessor, commaSep, commaSep1, declarationSpecifiers }
 );
+
+/**
+ * Returns a regular expression source that matches every `[A-Za-z0-9_]*` string except the given words.
+ * @param {string[]} words
+ * @returns {string}
+ */
+function identifierExcept(words) {
+  /** @type {Map<string, string[]>} */
+  const byFirst = new Map();
+  let excludesEmpty = false;
+  for (const word of words) {
+    if (word === '') {
+      excludesEmpty = true;
+      continue;
+    }
+    const first = word.charAt(0);
+    byFirst.set(first, [...(byFirst.get(first) ?? []), word.slice(1)]);
+  }
+  const others = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_'
+    .split('')
+    .filter((c) => !byFirst.has(c));
+  const alternatives = [`[${others.join('')}][A-Za-z0-9_]*`];
+  for (const [first, rests] of byFirst) alternatives.push(`${first}${identifierExcept(rests)}`);
+  return `(?:${alternatives.join('|')})${excludesEmpty ? '' : '?'}`;
+}
 
 /**
  * Build declaration specifiers, optionally retaining real types after a braced group guard.
