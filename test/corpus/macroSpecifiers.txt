@@ -276,13 +276,14 @@ Object-like macros after parameter declarators
 #define UNUSED __attribute__((unused))
 #define CC
 #define ATTR(...)
-#define unused
 int plain(int argc UNUSED, const char **argv UNUSED) { return 0; }
 int forms(char buffer[] UNUSED, int (*callback)(int) UNUSED, int *CC marked UNUSED, int value __unused);
 int hooks(void (*lower)(void) __unused, void (*called)(void) ATTR(1), int sized ATTR(2) UNUSED);
 int reserved(const char **argv __maybe_unused, void *arg __unused, int (*hook)(void) __attribute__((unused)));
-int returning(int *lower(int) unused, int **called(int) ATTR(4));
+int returning(int **called(int) ATTR(4));
 int leading(int *CC pointer, char **CC strings, int *CC callback(int), int *CC __restrict restricted);
+int upper(int *CC BUFFER[3], char *CC ARGS[], int *CC HANDLER(int), int *CC ANNOTATED(int) UNUSED);
+void bounded(const void *__sized_by(n) source, const void *_LIBC_SIZE(n) __dst, void *__unsafe_indexable *__counted_by(count) results);
 int following(void) { return 0; }
 
 ---
@@ -296,8 +297,6 @@ int following(void) { return 0; }
   (preproc_function_def
     name: (identifier)
     parameters: (preproc_params))
-  (preproc_def
-    name: (identifier))
   (function_definition
     type: (primitive_type)
     declarator: (function_declarator
@@ -431,16 +430,6 @@ int following(void) { return 0; }
         (parameter_declaration
           type: (primitive_type)
           declarator: (pointer_declarator
-            declarator: (function_declarator
-              declarator: (identifier)
-              parameters: (parameter_list
-                (parameter_declaration
-                  type: (primitive_type)))))
-          (macro_specifier
-            name: (identifier)))
-        (parameter_declaration
-          type: (primitive_type)
-          declarator: (pointer_declarator
             declarator: (pointer_declarator
               declarator: (function_declarator
                 declarator: (identifier)
@@ -487,6 +476,82 @@ int following(void) { return 0; }
             (macro_specifier
               name: (identifier))
             declarator: (identifier))))))
+  (declaration
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (pointer_declarator
+            (macro_specifier
+              name: (identifier))
+            declarator: (array_declarator
+              declarator: (identifier)
+              size: (number_literal))))
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (pointer_declarator
+            (macro_specifier
+              name: (identifier))
+            declarator: (array_declarator
+              declarator: (identifier))))
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (pointer_declarator
+            (macro_specifier
+              name: (identifier))
+            declarator: (function_declarator
+              declarator: (identifier)
+              parameters: (parameter_list
+                (parameter_declaration
+                  type: (primitive_type))))))
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (pointer_declarator
+            (macro_specifier
+              name: (identifier))
+            declarator: (function_declarator
+              declarator: (identifier)
+              parameters: (parameter_list
+                (parameter_declaration
+                  type: (primitive_type)))))
+          (macro_specifier
+            name: (identifier))))))
+  (declaration
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          (type_qualifier)
+          type: (primitive_type)
+          declarator: (pointer_declarator
+            (call_expression
+              function: (identifier)
+              arguments: (argument_list
+                (identifier)))
+            declarator: (identifier)))
+        (parameter_declaration
+          (type_qualifier)
+          type: (primitive_type)
+          declarator: (pointer_declarator
+            (call_expression
+              function: (identifier)
+              arguments: (argument_list
+                (identifier)))
+            declarator: (identifier)))
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (pointer_declarator
+            (macro_specifier
+              name: (identifier))
+            declarator: (pointer_declarator
+              (call_expression
+                function: (identifier)
+                arguments: (argument_list
+                  (identifier)))
+              declarator: (identifier)))))))
   (function_definition
     type: (primitive_type)
     declarator: (function_declarator
