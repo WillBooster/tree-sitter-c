@@ -275,8 +275,10 @@ Object-like macros after parameter declarators
 
 #define UNUSED __attribute__((unused))
 #define CC
+#define ATTR(...)
 int plain(int argc UNUSED, const char **argv UNUSED) { return 0; }
 int forms(char buffer[] UNUSED, int (*callback)(int) UNUSED, int *CC marked UNUSED, int value __unused);
+int hooks(void (*lower)(void) __unused, void (*called)(void) ATTR(1), int sized ATTR(2) UNUSED);
 int leading(int *CC pointer, char **CC strings);
 int following(void) { return 0; }
 
@@ -288,6 +290,9 @@ int following(void) { return 0; }
     value: (preproc_arg))
   (preproc_def
     name: (identifier))
+  (preproc_function_def
+    name: (identifier)
+    parameters: (preproc_params))
   (function_definition
     type: (primitive_type)
     declarator: (function_declarator
@@ -342,6 +347,44 @@ int following(void) { return 0; }
         (parameter_declaration
           type: (primitive_type)
           declarator: (identifier)
+          (macro_specifier
+            name: (identifier))))))
+  (declaration
+    type: (primitive_type)
+    declarator: (function_declarator
+      declarator: (identifier)
+      parameters: (parameter_list
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (function_declarator
+            declarator: (parenthesized_declarator
+              declarator: (pointer_declarator
+                declarator: (identifier)))
+            parameters: (parameter_list
+              (parameter_declaration
+                type: (primitive_type))))
+          (macro_specifier
+            name: (identifier)))
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (function_declarator
+            declarator: (parenthesized_declarator
+              declarator: (pointer_declarator
+                declarator: (identifier)))
+            parameters: (parameter_list
+              (parameter_declaration
+                type: (primitive_type))))
+          (call_expression
+            function: (identifier)
+            arguments: (argument_list
+              (number_literal))))
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (identifier)
+          (call_expression
+            function: (identifier)
+            arguments: (argument_list
+              (number_literal)))
           (macro_specifier
             name: (identifier))))))
   (declaration

@@ -399,6 +399,7 @@ module.exports = Object.assign(
       [$.type_specifier, $._old_style_parameter_list],
       [$.parameter_list, $._old_style_parameter_list],
       [$.function_declarator, $._function_declaration_declarator],
+      [$.function_declarator, $._parameter_function_declarator],
       [$.pointer_declarator],
       [$.pointer_declarator, $._initialized_declarator],
       [$._initialized_pointer_declarator],
@@ -1118,6 +1119,9 @@ module.exports = Object.assign(
 
       _macro_declaration_declarator: ($) => declarationDeclaratorRule($, $.function_declarator),
 
+      _parameter_declarator: ($) =>
+        declarationDeclaratorRule($, alias($._parameter_function_declarator, $.function_declarator)),
+
       _braced_macro_declarator: ($) => alias(sym('_braced_macro_function_declarator'), $.function_declarator),
       _braced_macro_function_declarator: ($) =>
         seq(
@@ -1254,6 +1258,19 @@ module.exports = Object.assign(
       _function_declaration_declarator: ($) =>
         prec.right(
           1,
+          seq(
+            field('declarator', $._declarator),
+            field('parameters', $.parameter_list),
+            optional($.gnu_asm_expression),
+            repeat($.attribute_specifier)
+          )
+        ),
+
+      // Outranks the shift into a `function_declarator` (precedence 1) that an identifier after `(*callback)(int)` would
+      // otherwise take, so a trailing marker belongs to the parameter whatever its spelling.
+      _parameter_function_declarator: ($) =>
+        prec.right(
+          2,
           seq(
             field('declarator', $._declarator),
             field('parameters', $.parameter_list),
@@ -1560,8 +1577,14 @@ module.exports = Object.assign(
           $._declaration_specifiers,
           choice(
             seq(
-              field('declarator', $._declarator),
-              repeat(choice($.attribute_specifier, alias($._trailing_macro_specifier, $.macro_specifier)))
+              field('declarator', $._parameter_declarator),
+              repeat(
+                choice(
+                  $.attribute_specifier,
+                  alias($._trailing_macro_specifier, $.macro_specifier),
+                  alias($._trailing_macro_call_expression, $.call_expression)
+                )
+              )
             ),
             seq(optional(field('declarator', $._abstract_declarator)), repeat($.attribute_specifier))
           )
@@ -2289,6 +2312,12 @@ module.exports = Object.assign(
         choice(
           prec.dynamic(-1, field('name', alias($._macro_case_identifier, $.identifier))),
           prec.dynamic(-3, field('name', reserved('marker', $.identifier)))
+        ),
+
+      _trailing_macro_call_expression: ($) =>
+        seq(
+          field('function', choice(alias($._macro_case_identifier, $.identifier), $.identifier)),
+          field('arguments', alias($.preproc_argument_list, $.argument_list))
         ),
 
       _conditional_macro_specifier: () => alias(sym('_marker_preproc_ifdef'), sym('preproc_ifdef')),
