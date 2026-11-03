@@ -1222,19 +1222,10 @@ module.exports = Object.assign(
         // as `FOO` in `int *CC FOO[3]`. It is not valid right after `*`, where it would take the operand of an
         // expression reading such as `foo(width * HEIGHT)`.
         _parameter_pointer_declarator: ($) => {
-          const modifier = choice(
-            $.type_qualifier,
-            $.attribute_specifier,
-            prec(-1, $.ms_call_modifier),
-            $._conditional_macro_specifier
-          );
+          const modifier = pointerDeclaratorModifier($);
           return prec.right(
             seq(
-              optional($.ms_based_modifier),
-              optional(prec.dynamic(2, $.ms_call_modifier)),
-              '*',
-              repeat($.attribute_declaration),
-              repeat($.ms_pointer_modifier),
+              ...pointerDeclaratorHead($),
               repeat(modifier),
               choice(
                 field('declarator', $._parameter_declarator),
@@ -2718,22 +2709,40 @@ function parenthesizedDeclaratorRule($, declarator) {
 function pointerDeclaratorRule($, declarator) {
   return prec.right(
     seq(
-      optional($.ms_based_modifier),
-      optional(prec.dynamic(2, $.ms_call_modifier)),
-      '*',
-      repeat($.attribute_declaration),
-      repeat($.ms_pointer_modifier),
-      repeat(
-        choice(
-          $.type_qualifier,
-          $.attribute_specifier,
-          prec(-1, $.ms_call_modifier),
-          $.macro_specifier,
-          $._conditional_macro_specifier
-        )
-      ),
+      ...pointerDeclaratorHead($),
+      repeat(pointerDeclaratorModifier($, $.macro_specifier)),
       field('declarator', declarator)
     )
+  );
+}
+
+/**
+ * The tokens of a pointer declarator up to its `*` and the modifiers that only follow it.
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'ms_based_modifier' | 'ms_call_modifier' | 'attribute_declaration' | 'ms_pointer_modifier'>} $
+ */
+function pointerDeclaratorHead($) {
+  return [
+    optional($.ms_based_modifier),
+    optional(prec.dynamic(2, $.ms_call_modifier)),
+    '*',
+    repeat($.attribute_declaration),
+    repeat($.ms_pointer_modifier),
+  ];
+}
+
+/**
+ * A pointer declarator's modifier between its `*` and its declarator: a qualifier, attribute, calling convention or
+ * conditional marker, or one of `markers`.
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'type_qualifier' | 'attribute_specifier' | 'ms_call_modifier' | '_conditional_macro_specifier'>} $
+ * @param {...import('./types/treeSitterDsl').Rule} markers
+ */
+function pointerDeclaratorModifier($, ...markers) {
+  return choice(
+    $.type_qualifier,
+    $.attribute_specifier,
+    prec(-1, $.ms_call_modifier),
+    ...markers,
+    $._conditional_macro_specifier
   );
 }
 
