@@ -462,6 +462,16 @@ module.exports = Object.assign(
         [$.parameter_list, $._old_style_parameter_list],
         [$.function_declarator, $._function_declaration_declarator],
         [$.function_declarator, $._parameter_function_declarator],
+        [$._parameter_macro_argument_list],
+        [$._later_macro_call_expression, $.macro_specifier],
+        [$._later_macro_call_expression, $._macro_case_macro_specifier],
+        [$._macro_case_attributed_declarator],
+        [$._macro_case_parameter_declarator, $._macro_case_attributed_declarator],
+        [$._declarator, $._later_macro_call_expression, $.macro_specifier],
+        [$._macro_case_macro_specifier, $._macro_case_unattributed_declarator],
+        [$._later_macro_call_expression, $._macro_case_macro_specifier, $._macro_case_unattributed_declarator],
+        [$._parameter_pointer_declarator, $.pointer_declarator],
+        [$._declarator, $._leading_macro_call_expression, $.macro_specifier],
         [$._parameter_pointer_declarator, $.pointer_declarator, $.abstract_pointer_declarator],
         [$._parameter_declarator, $.macro_specifier],
         [$.pointer_declarator],
@@ -1134,6 +1144,14 @@ module.exports = Object.assign(
           seq($._declaration_specifiers, field('declarator', $._declarator), repeat($.attribute_specifier)),
 
         _macro_attribute_argument_list: ($) => macroAttributeArgumentList(macroAttributeArgument($)),
+        // A list with a type ranks two below one without, once however many types it has, so a function declarator
+        // reading of the same parentheses outranks a trailing annotation only with a type: `int *CC FOO(int)` declares a
+        // function, while `char *buf __counted_by(len)` is annotated.
+        _parameter_macro_argument_list: ($) =>
+          choice(
+            macroAttributeArgumentList(macroAttributeArgument($, false)),
+            prec.dynamic(-2, macroAttributeArgumentList(macroAttributeArgument($, $.type_descriptor)))
+          ),
         _braced_macro_attribute_argument_list: ($) =>
           macroAttributeArgumentList(
             choice(macroAttributeArgument($), alias(sym('_macro_attribute_parameter'), $.parameter_declaration))
@@ -1192,8 +1210,8 @@ module.exports = Object.assign(
 
         _macro_declaration_declarator: ($) => declarationDeclaratorRule($, $.function_declarator),
 
-        // A parameter keeps its trailing annotations however deeply its function declarator sits under pointers, as in
-        // `int *callback(int) unused`.
+        // A function declarator under pointers, as in `int *callback(int) ATTR(1)`, leaves the annotations after it to
+        // the parameter, unless its name and parentheses read as a leading call marker (see `_parameter_pointer_declarator`).
         _parameter_declarator: ($) =>
           choice(
             $.attributed_declarator,
@@ -1205,7 +1223,87 @@ module.exports = Object.assign(
             alias(VA_ARG_KEYWORDS, $.identifier)
           ),
 
-        _parameter_pointer_declarator: ($) => pointerDeclaratorRule($, $._parameter_declarator),
+        // After a first leading marker, a macro-cased name lexes as `_macro_case_identifier`, since the marker may also
+        // be the declarator and the name a trailing annotation, so later markers and the pointee may be named by it too,
+        // as `FOO` in `int *CC FOO[3]`. It is not valid right after `*`, where it would take the operand of an
+        // expression reading such as `foo(width * HEIGHT)`.
+        _parameter_pointer_declarator: ($) => {
+          const modifier = pointerDeclaratorModifier($);
+          return prec.right(
+            seq(
+              ...pointerDeclaratorHead($),
+              repeat(modifier),
+              choice(
+                field('declarator', $._parameter_declarator),
+                seq(
+                  choice($.macro_specifier, alias($._leading_macro_call_expression, $.call_expression)),
+                  repeat(
+                    choice(
+                      modifier,
+                      $.macro_specifier,
+                      alias($._macro_case_macro_specifier, $.macro_specifier),
+                      alias($._later_macro_call_expression, $.call_expression)
+                    )
+                  ),
+                  field('declarator', choice($._parameter_declarator, $._macro_case_parameter_declarator))
+                )
+              )
+            )
+          );
+        },
+
+        // A first leading marker with arguments, as in `const void *__sized_by(n) buffer`, outranks the reading of its
+        // name and arguments as a function declarator whose following name is a trailing annotation (-1), whatever the
+        // arguments are; system headers write this marker, while a function-typed parameter returning a pointer and
+        // annotated after its parameter list is rare.
+        _leading_macro_call_expression: ($) => leadingMacroCallRule($, 2, $.identifier),
+
+        // A later one, as `FOO(int)` in `int *CC FOO(int) UNUSED`, ranks below that reading.
+        _later_macro_call_expression: ($) =>
+          leadingMacroCallRule($, -2, choice($.identifier, alias($._macro_case_identifier, $.identifier))),
+
+        _macro_case_macro_specifier: ($) =>
+          prec.dynamic(-2, field('name', alias($._macro_case_identifier, $.identifier))),
+
+        // The declarator forms that start with a name, split as `_declarator` is.
+        _macro_case_parameter_declarator: ($) =>
+          choice(
+            alias($._macro_case_attributed_declarator, $.attributed_declarator),
+            $._macro_case_unattributed_declarator
+          ),
+
+        _macro_case_unattributed_declarator: ($) =>
+          choice(
+            alias($._macro_case_identifier, $.identifier),
+            alias($._macro_case_array_declarator, $.array_declarator),
+            alias($._macro_case_function_declarator, $.function_declarator)
+          ),
+
+        _macro_case_attributed_declarator: ($) =>
+          seq($._macro_case_unattributed_declarator, repeat1($.attribute_declaration)),
+
+        _macro_case_array_declarator: ($) =>
+          prec(
+            1,
+            seq(
+              field('declarator', $._macro_case_parameter_declarator),
+              '[',
+              repeat(choice($.type_qualifier, 'static')),
+              field('size', optional(choice($.expression, '*'))),
+              ']'
+            )
+          ),
+
+        _macro_case_function_declarator: ($) =>
+          prec.right(
+            2,
+            seq(
+              field('declarator', $._macro_case_parameter_declarator),
+              field('parameters', $.parameter_list),
+              optional($.gnu_asm_expression),
+              repeat($.attribute_specifier)
+            )
+          ),
 
         _braced_macro_declarator: ($) => alias(sym('_braced_macro_function_declarator'), $.function_declarator),
         _braced_macro_function_declarator: ($) =>
@@ -2398,7 +2496,7 @@ module.exports = Object.assign(
 
         _trailing_macro_call_expression: ($) =>
           trailingAnnotationRule($, (name) =>
-            seq(field('function', name), field('arguments', alias($.preproc_argument_list, $.argument_list)))
+            seq(field('function', name), field('arguments', alias($._parameter_macro_argument_list, $.argument_list)))
           ),
 
         _conditional_macro_specifier: () => alias(sym('_marker_preproc_ifdef'), sym('preproc_ifdef')),
@@ -2506,8 +2604,8 @@ function* keywordStrings(node) {
 
 /**
  * Ranks a trailing parameter annotation against a leading marker (-2) that reads `int *A B` the other way: an
- * annotation named like a macro (`char **argv UNUSED`, `int *CC cb(int) ATTR(1)`) outranks it, and any other name ranks
- * below it (`int *CC pointer`, `int *CC callback(int)`), since macro definitions are unknown.
+ * annotation named like a macro (`char **argv UNUSED`) outranks it, and any other name ranks below it
+ * (`int *CC pointer`), since macro definitions are unknown.
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'identifier' | '_macro_case_identifier'>} $
  * @param {(name: import('./types/treeSitterDsl').Rule) => import('./types/treeSitterDsl').Rule} annotation
  */
@@ -2515,6 +2613,19 @@ function trailingAnnotationRule($, annotation) {
   return choice(
     prec.dynamic(-1, annotation(alias($._macro_case_identifier, $.identifier))),
     prec.dynamic(-3, annotation(reserved('marker', $.identifier)))
+  );
+}
+
+/**
+ * A leading marker with arguments in a parameter's pointer declarator.
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'_parameter_macro_argument_list' | 'argument_list'>} $
+ * @param {number} precedence
+ * @param {import('./types/treeSitterDsl').Rule} name
+ */
+function leadingMacroCallRule($, precedence, name) {
+  return prec.dynamic(
+    precedence,
+    seq(field('function', name), field('arguments', alias($._parameter_macro_argument_list, $.argument_list)))
   );
 }
 
@@ -2607,22 +2718,40 @@ function parenthesizedDeclaratorRule($, declarator) {
 function pointerDeclaratorRule($, declarator) {
   return prec.right(
     seq(
-      optional($.ms_based_modifier),
-      optional(prec.dynamic(2, $.ms_call_modifier)),
-      '*',
-      repeat($.attribute_declaration),
-      repeat($.ms_pointer_modifier),
-      repeat(
-        choice(
-          $.type_qualifier,
-          $.attribute_specifier,
-          prec(-1, $.ms_call_modifier),
-          $.macro_specifier,
-          $._conditional_macro_specifier
-        )
-      ),
+      ...pointerDeclaratorHead($),
+      repeat(pointerDeclaratorModifier($, $.macro_specifier)),
       field('declarator', declarator)
     )
+  );
+}
+
+/**
+ * The tokens of a pointer declarator up to its `*` and the modifiers that only follow it.
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'ms_based_modifier' | 'ms_call_modifier' | 'attribute_declaration' | 'ms_pointer_modifier'>} $
+ */
+function pointerDeclaratorHead($) {
+  return [
+    optional($.ms_based_modifier),
+    optional(prec.dynamic(2, $.ms_call_modifier)),
+    '*',
+    repeat($.attribute_declaration),
+    repeat($.ms_pointer_modifier),
+  ];
+}
+
+/**
+ * A pointer declarator's modifier between its `*` and its declarator: a qualifier, attribute, calling convention or
+ * conditional marker, or one of `markers`.
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'type_qualifier' | 'attribute_specifier' | 'ms_call_modifier' | '_conditional_macro_specifier'>} $
+ * @param {...import('./types/treeSitterDsl').Rule} markers
+ */
+function pointerDeclaratorModifier($, ...markers) {
+  return choice(
+    $.type_qualifier,
+    $.attribute_specifier,
+    prec(-1, $.ms_call_modifier),
+    ...markers,
+    $._conditional_macro_specifier
   );
 }
 
@@ -2818,11 +2947,14 @@ function macroAttributeArgumentList(argument) {
   return seq('(', optional(argument), repeat(seq(',', optional(argument))), ')');
 }
 
-/** @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'parameter_declaration' | 'type_descriptor' | '_preproc_number' | 'number_literal' | 'compound_statement' | 'initializer_pair' | 'initializer_list'>} $ */
-function macroAttributeArgument($) {
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'parameter_declaration' | 'type_descriptor' | '_preproc_number' | 'number_literal' | 'compound_statement' | 'initializer_pair' | 'initializer_list'>} $
+ * @param {import('./types/treeSitterDsl').Rule | false} [type] The type argument form, or `false` for none.
+ */
+function macroAttributeArgument($, type = prec.dynamic(-1, $.type_descriptor)) {
   return choice(
     $.expression,
-    prec.dynamic(-1, $.type_descriptor),
+    ...(type ? [type] : []),
     alias($._preproc_number, $.number_literal),
     $.compound_statement,
     $.initializer_pair,
