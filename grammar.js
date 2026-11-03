@@ -400,6 +400,8 @@ module.exports = Object.assign(
       [$.parameter_list, $._old_style_parameter_list],
       [$.function_declarator, $._function_declaration_declarator],
       [$.function_declarator, $._parameter_function_declarator],
+      [$._parameter_pointer_declarator, $.pointer_declarator, $.abstract_pointer_declarator],
+      [$._parameter_declarator, $.macro_specifier],
       [$.pointer_declarator],
       [$.pointer_declarator, $._initialized_declarator],
       [$._initialized_pointer_declarator],
@@ -1119,8 +1121,20 @@ module.exports = Object.assign(
 
       _macro_declaration_declarator: ($) => declarationDeclaratorRule($, $.function_declarator),
 
+      // A parameter keeps its trailing annotations however deeply its function declarator sits under pointers, as in
+      // `int *callback(int) unused`.
       _parameter_declarator: ($) =>
-        declarationDeclaratorRule($, alias($._parameter_function_declarator, $.function_declarator)),
+        choice(
+          $.attributed_declarator,
+          alias($._parameter_pointer_declarator, $.pointer_declarator),
+          alias($._parameter_function_declarator, $.function_declarator),
+          $.array_declarator,
+          $.parenthesized_declarator,
+          $.identifier,
+          alias(VA_ARG_KEYWORDS, $.identifier)
+        ),
+
+      _parameter_pointer_declarator: ($) => pointerDeclaratorRule($, $._parameter_declarator),
 
       _braced_macro_declarator: ($) => alias(sym('_braced_macro_function_declarator'), $.function_declarator),
       _braced_macro_function_declarator: ($) =>
