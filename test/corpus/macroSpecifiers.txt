@@ -281,7 +281,7 @@ int forms(char buffer[] UNUSED, int (*callback)(int) UNUSED, int *CC marked UNUS
 int hooks(void (*lower)(void) __unused, void (*called)(void) ATTR(1), int sized ATTR(2) UNUSED);
 int reserved(const char **argv __maybe_unused, void *arg __unused, int (*hook)(void) __attribute__((unused)));
 int returning(int **called(int) ATTR(4));
-int bounds(char *buf __counted_by(len), int len, void *data GUARDED_BY(lock), char **names ATTR());
+int bounds(char *buf __counted_by(len), int len, void *data GUARDED_BY(lock), char **names ATTR(), int types ATTR(int, long));
 int leading(int *CC pointer, char **CC strings, int *CC callback(int), int *CC __restrict restricted);
 int upper(int *CC BUFFER[3], char *CC ARGS[], int *CC HANDLER(int), int *CC ANNOTATED(int) UNUSED);
 void bounded(const void *__sized_by(n) source, const void *_LIBC_SIZE(n) __dst, void *__unsafe_indexable *__counted_by(count) results);
@@ -472,7 +472,17 @@ int following(void) { return 0; }
               declarator: (identifier)))
           (call_expression
             function: (identifier)
-            arguments: (argument_list))))))
+            arguments: (argument_list)))
+        (parameter_declaration
+          type: (primitive_type)
+          declarator: (identifier)
+          (call_expression
+            function: (identifier)
+            arguments: (argument_list
+              (type_descriptor
+                type: (primitive_type))
+              (type_descriptor
+                type: (sized_type_specifier))))))))
   (declaration
     type: (primitive_type)
     declarator: (function_declarator

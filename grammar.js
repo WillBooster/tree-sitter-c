@@ -462,6 +462,7 @@ module.exports = Object.assign(
         [$.parameter_list, $._old_style_parameter_list],
         [$.function_declarator, $._function_declaration_declarator],
         [$.function_declarator, $._parameter_function_declarator],
+        [$._parameter_macro_argument_list],
         [$._later_macro_call_expression, $.macro_specifier],
         [$._later_macro_call_expression, $._macro_case_macro_specifier],
         [$._macro_case_attributed_declarator],
@@ -1143,9 +1144,14 @@ module.exports = Object.assign(
           seq($._declaration_specifiers, field('declarator', $._declarator), repeat($.attribute_specifier)),
 
         _macro_attribute_argument_list: ($) => macroAttributeArgumentList(macroAttributeArgument($)),
-        // A type argument ranks two below an expression, which a function declarator reading of the same parentheses ties
-        // with otherwise: `int *CC FOO(int)` declares a function, while `char *buf __counted_by(len)` is annotated.
-        _parameter_macro_argument_list: ($) => macroAttributeArgumentList(macroAttributeArgument($, -2)),
+        // A list with a type ranks two below one without, once however many types it has, so a function declarator
+        // reading of the same parentheses outranks a trailing annotation only with a type: `int *CC FOO(int)` declares a
+        // function, while `char *buf __counted_by(len)` is annotated.
+        _parameter_macro_argument_list: ($) =>
+          choice(
+            macroAttributeArgumentList(macroAttributeArgument($, false)),
+            prec.dynamic(-2, macroAttributeArgumentList(macroAttributeArgument($, $.type_descriptor)))
+          ),
         _braced_macro_attribute_argument_list: ($) =>
           macroAttributeArgumentList(
             choice(macroAttributeArgument($), alias(sym('_macro_attribute_parameter'), $.parameter_declaration))
@@ -1204,8 +1210,8 @@ module.exports = Object.assign(
 
         _macro_declaration_declarator: ($) => declarationDeclaratorRule($, $.function_declarator),
 
-        // A parameter keeps its trailing annotations however deeply its function declarator sits under pointers, as in
-        // `int *callback(int) ATTR(1)`.
+        // A function declarator under pointers, as in `int *callback(int) ATTR(1)`, leaves the annotations after it to
+        // the parameter, unless its name and parentheses read as a leading call marker (see `_parameter_pointer_declarator`).
         _parameter_declarator: ($) =>
           choice(
             $.attributed_declarator,
@@ -2940,12 +2946,12 @@ function macroAttributeArgumentList(argument) {
 
 /**
  * @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'parameter_declaration' | 'type_descriptor' | '_preproc_number' | 'number_literal' | 'compound_statement' | 'initializer_pair' | 'initializer_list'>} $
- * @param {number} [typePrecedence]
+ * @param {import('./types/treeSitterDsl').Rule | false} [type] The type argument form, or `false` for none.
  */
-function macroAttributeArgument($, typePrecedence = -1) {
+function macroAttributeArgument($, type = prec.dynamic(-1, $.type_descriptor)) {
   return choice(
     $.expression,
-    prec.dynamic(typePrecedence, $.type_descriptor),
+    ...(type ? [type] : []),
     alias($._preproc_number, $.number_literal),
     $.compound_statement,
     $.initializer_pair,
