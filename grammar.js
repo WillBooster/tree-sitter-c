@@ -1143,6 +1143,9 @@ module.exports = Object.assign(
           seq($._declaration_specifiers, field('declarator', $._declarator), repeat($.attribute_specifier)),
 
         _macro_attribute_argument_list: ($) => macroAttributeArgumentList(macroAttributeArgument($)),
+        // A type argument ranks two below an expression, which a function declarator reading of the same parentheses ties
+        // with otherwise: `int *CC FOO(int)` declares a function, while `char *buf __counted_by(len)` is annotated.
+        _parameter_macro_argument_list: ($) => macroAttributeArgumentList(macroAttributeArgument($, -2)),
         _braced_macro_attribute_argument_list: ($) =>
           macroAttributeArgumentList(
             choice(macroAttributeArgument($), alias(sym('_macro_attribute_parameter'), $.parameter_declaration))
@@ -1294,19 +1297,14 @@ module.exports = Object.assign(
             )
           ),
 
-        // Outranks reading the marker before it as the declarator and the function declarator as a call annotation, which
-        // ties otherwise, so `int *CC FOO(x)` keeps `FOO` as the declarator.
         _macro_case_function_declarator: ($) =>
-          prec.dynamic(
+          prec.right(
             2,
-            prec.right(
-              2,
-              seq(
-                field('declarator', $._macro_case_parameter_declarator),
-                field('parameters', $.parameter_list),
-                optional($.gnu_asm_expression),
-                repeat($.attribute_specifier)
-              )
+            seq(
+              field('declarator', $._macro_case_parameter_declarator),
+              field('parameters', $.parameter_list),
+              optional($.gnu_asm_expression),
+              repeat($.attribute_specifier)
             )
           ),
 
@@ -2501,7 +2499,7 @@ module.exports = Object.assign(
 
         _trailing_macro_call_expression: ($) =>
           trailingAnnotationRule($, (name) =>
-            seq(field('function', name), field('arguments', alias($._macro_attribute_argument_list, $.argument_list)))
+            seq(field('function', name), field('arguments', alias($._parameter_macro_argument_list, $.argument_list)))
           ),
 
         _conditional_macro_specifier: () => alias(sym('_marker_preproc_ifdef'), sym('preproc_ifdef')),
@@ -2620,14 +2618,14 @@ function trailingAnnotationRule($, annotation) {
 
 /**
  * A leading marker with arguments in a parameter's pointer declarator.
- * @param {import('./types/treeSitterDsl').GrammarSymbols<'_macro_attribute_argument_list' | 'argument_list'>} $
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'_parameter_macro_argument_list' | 'argument_list'>} $
  * @param {number} precedence
  * @param {import('./types/treeSitterDsl').Rule} name
  */
 function leadingMacroCallRule($, precedence, name) {
   return prec.dynamic(
     precedence,
-    seq(field('function', name), field('arguments', alias($._macro_attribute_argument_list, $.argument_list)))
+    seq(field('function', name), field('arguments', alias($._parameter_macro_argument_list, $.argument_list)))
   );
 }
 
@@ -2931,11 +2929,14 @@ function macroAttributeArgumentList(argument) {
   return seq('(', optional(argument), repeat(seq(',', optional(argument))), ')');
 }
 
-/** @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'parameter_declaration' | 'type_descriptor' | '_preproc_number' | 'number_literal' | 'compound_statement' | 'initializer_pair' | 'initializer_list'>} $ */
-function macroAttributeArgument($) {
+/**
+ * @param {import('./types/treeSitterDsl').GrammarSymbols<'expression' | 'parameter_declaration' | 'type_descriptor' | '_preproc_number' | 'number_literal' | 'compound_statement' | 'initializer_pair' | 'initializer_list'>} $
+ * @param {number} [typePrecedence]
+ */
+function macroAttributeArgument($, typePrecedence = -1) {
   return choice(
     $.expression,
-    prec.dynamic(-1, $.type_descriptor),
+    prec.dynamic(typePrecedence, $.type_descriptor),
     alias($._preproc_number, $.number_literal),
     $.compound_statement,
     $.initializer_pair,
