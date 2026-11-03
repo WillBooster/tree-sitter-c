@@ -2101,7 +2101,7 @@
           "named": true
         },
         {
-          "type": "identifier",
+          "type": "macro_specifier",
           "named": true
         }
       ]
@@ -2910,6 +2910,10 @@
         },
         {
           "type": "attribute_specifier",
+          "named": true
+        },
+        {
+          "type": "call_expression",
           "named": true
         },
         {
