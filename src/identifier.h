@@ -197,4 +197,7 @@ static const TSCharacterRange preproc_identifier_continue[] = {
   {0x31350, 0x323af}, {0xe0100, 0xe01ef},
 };
 
+static const uint64_t preproc_identifier_start_ascii[] = {0x0000001000000000ull, 0x07fffffe97fffffeull};
+static const uint64_t preproc_identifier_continue_ascii[] = {0x03ff001000000000ull, 0x07fffffe97fffffeull};
+
 #endif

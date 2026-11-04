@@ -135,6 +135,16 @@ int main(void) {
     }
     printf("%s};\\n\\n", column ? "\\n" : "");
   }
+  // Bit c of the ASCII masks tells whether character c is in the table, which spares ASCII the binary search.
+  for (int table = 0; table < 2; table++) {
+    uint64_t mask[2] = {0, 0};
+    for (int32_t lookahead = 0; lookahead < 128; lookahead++) {
+      if (table ? ${predicates[1]} : ${predicates[0]}) mask[lookahead / 64] |= (uint64_t)1 << (lookahead % 64);
+    }
+    printf("static const uint64_t preproc_identifier_%s_ascii[] = {0x%016llxull, 0x%016llxull};\\n",
+      table ? "continue" : "start", (unsigned long long)mask[0], (unsigned long long)mask[1]);
+  }
+  printf("\\n");
 }
 `
   );

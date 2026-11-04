@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 484 -- Preprocessor tokens and pragma operators share names, spacing, and literal readers.
+// code-gauge-allow-file fileNcss 489 -- Preprocessor tokens and pragma operators share names, spacing, and literal readers.
 #ifndef TREE_SITTER_C_PRAGMA_H_
 #define TREE_SITTER_C_PRAGMA_H_
 
@@ -57,6 +57,7 @@ static bool scan_preproc_newline(TSLexer *lexer, bool skip);
 static bool scan_preproc_splices(TSLexer *lexer);
 static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number);
 static bool preproc_word(int32_t c, bool continuation);
+static bool preproc_identifier_character(int32_t c, bool continuation);
 static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped, bool directive_text);
 static bool scan_preproc_raw_quote(TSLexer *lexer);
 
@@ -401,6 +402,14 @@ static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number) {
 static bool preproc_word(int32_t c, bool continuation) {
     if (c == '\\') return false;
     if (continuation && c >= 0x80 && !pragma_space(c)) return true;
+    return preproc_identifier_character(c, continuation);
+}
+
+static bool preproc_identifier_character(int32_t c, bool continuation) {
+    if (c >= 0 && c < 0x80) {
+        const uint64_t *ascii = continuation ? preproc_identifier_continue_ascii : preproc_identifier_start_ascii;
+        return (ascii[c / 64] >> (c % 64)) & 1;
+    }
     return continuation
         ? set_contains(preproc_identifier_continue, sizeof(preproc_identifier_continue) / sizeof(TSCharacterRange), c)
         : set_contains(preproc_identifier_start, sizeof(preproc_identifier_start) / sizeof(TSCharacterRange), c);
@@ -481,10 +490,7 @@ static MacroNameCharacter scan_macro_name_character(TSLexer *lexer, bool continu
         name->ascii = false;
         return scan_macro_name_ucn(lexer) ? MACRO_NAME_CHARACTER : MACRO_NAME_INVALID;
     }
-    bool accepted = continuation
-        ? set_contains(preproc_identifier_continue, sizeof(preproc_identifier_continue) / sizeof(TSCharacterRange), c)
-        : set_contains(preproc_identifier_start, sizeof(preproc_identifier_start) / sizeof(TSCharacterRange), c);
-    if (!accepted) return MACRO_NAME_END;
+    if (!preproc_identifier_character(c, continuation)) return MACRO_NAME_END;
     if (name->ascii) {
         if (c < 128 && name->length < name->capacity) name->word[name->length++] = (char)c;
         else name->ascii = false;
