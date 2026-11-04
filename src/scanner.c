@@ -11,6 +11,8 @@ enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, 
 
 static EmptyDirectives *scanner_directives(CScanner *scanner);
 
+static bool only_extras_valid(const EmptyDirectives *state, const bool *valid_symbols);
+static bool scan_extras(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_declaration_tokens(CScanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
@@ -45,9 +47,11 @@ void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffe
     if (state) state->ready = length && buffer[0];
 }
 
+// code-gauge-allow functionCognitiveComplexity 16 -- External-token validity dispatches each lexing mode to its scanner.
 bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     CScanner *scanner = payload;
     EmptyDirectives *state = scanner_directives(scanner);
+    if (only_extras_valid(state, valid_symbols)) return scan_extras(state, lexer, valid_symbols);
     if (scan_directive_context(state, lexer, valid_symbols)) return true;
     if (empty_directives_at_line_end(state, lexer)) return false;
     if (valid_symbols[GNU_RAW_STRING_BODY] && !valid_symbols[PREPROC_LPAREN]) {
@@ -72,6 +76,38 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
     if (lexer->lookahead == '#') return scan_conditional_directive(state, lexer, valid_symbols);
     return scan_declaration_tokens(scanner, lexer, valid_symbols);
+}
+
+static bool only_extras_valid(const EmptyDirectives *state, const bool *valid_symbols) {
+    if (!state || !state->ready) return false;
+    for (unsigned i = PREPROC_ARG; i < DIRECTIVE_CONTEXT; i++) {
+        if (valid_symbols[i]) return false;
+    }
+    return !valid_symbols[PREPROC_DIRECTIVE_START];
+}
+
+// Decides as the general path does in states where only extras are valid, but queries the position only once the first
+// non-space character shows that a null directive or `_Pragma` may follow, since any position query makes the runtime
+// allocate the token on the heap. A null directive's prefix holds only spaces and splices, and line ends are recorded
+// only at spaces and newlines. The skipped spaces moved the lexer, so the start position is read back through the mark.
+static bool scan_extras(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
+    TSLexerCheckpoint start;
+    lexer->get_checkpoint(lexer, &start);
+    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
+    int32_t c = lexer->lookahead;
+    if (c != '#' && c != '\\' && c != '_') return false;
+    TSLexerPosition position;
+    lexer->mark_end_at(lexer, &start);
+    lexer->get_mark_end(lexer, &position);
+    if (valid_symbols[PREPROC_EMPTY] && empty_directives_start_at(state, position.bytes)) {
+        empty_directives_consume_started(lexer, state, true);
+        lexer->mark_end(lexer);
+        lexer->result_symbol = PREPROC_EMPTY;
+        return true;
+    }
+    if (!valid_symbols[PRAGMA_OPERATOR] || empty_directives_line_end_at(state, position.bytes)) return false;
+    lexer->result_symbol = PRAGMA_OPERATOR;
+    return scan_pragma_with(lexer, &(PragmaTrivia){empty_directives_skip, state});
 }
 
 static bool scan_conditional_directive(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {

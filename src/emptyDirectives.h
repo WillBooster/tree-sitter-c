@@ -59,6 +59,9 @@ static void directive_line_comment(EmptyDirectives *state, DirectiveInput *input
 static uint32_t directive_splice_end(const DirectiveInput *input);
 
 static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer);
+static bool empty_directives_line_end_at(const EmptyDirectives *state, uint32_t byte);
+static bool empty_directives_start_at(const EmptyDirectives *state, uint32_t byte);
+static void empty_directives_consume_started(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix);
 static void empty_directives_find(EmptyDirectives *state, DirectiveInput *input);
 static int32_t directive_next(DirectiveInput *input);
 static int32_t directive_physical_next(DirectiveInput *input);
@@ -120,10 +123,14 @@ static bool empty_directives_at_start(const EmptyDirectives *state, TSLexer *lex
 }
 
 static bool empty_directives_at_line_end(const EmptyDirectives *state, TSLexer *lexer) {
-    if (!state || !state->line_ends) return false;
+    if (!state || !state->line_ends || !(directive_horizontal(lexer->lookahead) || directive_newline(lexer->lookahead))) return false;
     TSLexerPosition position;
     lexer->get_position(lexer, &position);
-    return position.bytes < state->bytes && (state->line_ends[position.bytes / 8] & (1u << (position.bytes % 8)));
+    return empty_directives_line_end_at(state, position.bytes);
+}
+
+static bool empty_directives_line_end_at(const EmptyDirectives *state, uint32_t byte) {
+    return state->line_ends && byte < state->bytes && (state->line_ends[byte / 8] & (1u << (byte % 8)));
 }
 
 static bool empty_directives_consume(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix);
@@ -132,18 +139,32 @@ static bool empty_directives_skip(TSLexer *lexer, void *payload) {
     return empty_directives_consume(lexer, payload, false);
 }
 
+// A null directive, including its prefix, starts only at `#`, `\\` or a space, so other characters need no position query,
+// which would make the runtime allocate the token on the heap.
 static bool empty_directives_consume(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix) {
-    if (!state || !state->starts) return false;
+    int32_t c = lexer->lookahead;
+    if (!state || !(c == '#' || c == '\\' || pragma_space(c))) return false;
     TSLexerPosition position;
     lexer->get_position(lexer, &position);
-    if (position.bytes >= state->bytes || !(state->starts[position.bytes / 8] & (1u << (position.bytes % 8)))) return false;
+    if (!empty_directives_start_at(state, position.bytes)) return false;
+    empty_directives_consume_started(lexer, state, skip_prefix);
+    return true;
+}
+
+static bool empty_directives_start_at(const EmptyDirectives *state, uint32_t byte) {
+    return state->starts && byte < state->bytes && (state->starts[byte / 8] & (1u << (byte % 8)));
+}
+
+// Consumes the rest of a null directive whose start was confirmed at a position the lexer has not left except over
+// prefix characters.
+static void empty_directives_consume_started(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix) {
+    TSLexerPosition position;
     while (lexer->lookahead != '#' && !lexer->eof(lexer)) lexer->advance(lexer, skip_prefix);
     do {
         lexer->advance(lexer, false);
         lexer->get_position(lexer, &position);
     } while (!lexer->eof(lexer) && position.bytes < state->bytes &&
         !(state->ends[position.bytes / 8] & (1u << (position.bytes % 8))));
-    return true;
 }
 
 // code-gauge-allow functionNcss 33 -- The source-fact buffers are allocated and released together so initialization fails atomically.
