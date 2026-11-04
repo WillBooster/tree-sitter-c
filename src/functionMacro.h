@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 567 -- Annotation and argument scanners share lexical helpers and keyword tables.
+// code-gauge-allow-file fileNcss 575 -- Annotation and argument scanners share lexical helpers and keyword tables.
 #ifndef TREE_SITTER_C_FUNCTION_MACRO_H_
 #define TREE_SITTER_C_FUNCTION_MACRO_H_
 
@@ -165,13 +165,15 @@ typedef enum {
     MACRO_TYPE_PREFIX_KNOWN_TYPE, MACRO_TYPE_PREFIX_BALANCED_TYPE, MACRO_TYPE_PREFIX_TAGGED_TYPE,
 } MacroTypePrefix;
 
-static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const MacroName *name, const char *const *reserved_words, unsigned reserved_count, bool type_argument, const PragmaTrivia *trivia);
-
 typedef struct {
     bool marker, known_type, tag, body, started;
 } MacroTypeState;
 
 typedef enum { MACRO_TYPE_CONTINUE, MACRO_TYPE_ACCEPT, MACRO_TYPE_REJECT } MacroTypeResult;
+
+static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const MacroName *name, const char *const *reserved_words, unsigned reserved_count, const MacroTypeState *state, const PragmaTrivia *trivia);
+static MacroTypePrefix function_macro_known_type_item(TSLexer *lexer, const MacroName *name, const PragmaTrivia *trivia);
+static MacroTypePrefix function_macro_macro_type_item(TSLexer *lexer, const MacroTypeState *state, const PragmaTrivia *trivia);
 
 static MacroTypeResult function_macro_type_transition(MacroTypeState *state, MacroTypePrefix kind);
 static MacroTypeResult function_macro_type_group(TSLexer *lexer, MacroTypeState *state, const PragmaTrivia *trivia);
@@ -228,7 +230,7 @@ static MacroTypeResult function_macro_type_word(TSLexer *lexer, const MacroAttri
         if (handled) return accepted ? MACRO_TYPE_ACCEPT : MACRO_TYPE_REJECT;
     }
     state->started = true;
-    MacroTypePrefix kind = function_macro_type_prefix_item(lexer, &name, reserved_words, reserved_count, !state->known_type, &symbols->trivia);
+    MacroTypePrefix kind = function_macro_type_prefix_item(lexer, &name, reserved_words, reserved_count, state, &symbols->trivia);
     return function_macro_type_transition(state, kind);
 }
 
@@ -257,8 +259,8 @@ static MacroTypeResult function_macro_type_transition(MacroTypeState *state, Mac
     return MACRO_TYPE_REJECT;
 }
 
-// code-gauge-allow functionCognitiveComplexity 28 -- Keyword, modifier, and group alternatives classify one consumed type-prefix word.
-static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const MacroName *name, const char *const *reserved_words, unsigned reserved_count, bool type_argument, const PragmaTrivia *trivia) {
+// code-gauge-allow functionCognitiveComplexity 20 -- Keyword, modifier, and group alternatives classify one consumed type-prefix word.
+static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const MacroName *name, const char *const *reserved_words, unsigned reserved_count, const MacroTypeState *state, const PragmaTrivia *trivia) {
     if (name->ascii && strcmp(name->word, pragma_word) == 0) {
         return scan_pragma_suffix_end_with(lexer, false, trivia) && scan_pragma_spacing_with(lexer, trivia)
             ? MACRO_TYPE_PREFIX_MODIFIER : MACRO_TYPE_PREFIX_INVALID;
@@ -268,22 +270,31 @@ static MacroTypePrefix function_macro_type_prefix_item(TSLexer *lexer, const Mac
         return lexer->lookahead == '(' && function_macro_modifier_balanced(lexer, '(', ')', trivia) && scan_pragma_spacing_with(lexer, trivia)
             ? MACRO_TYPE_PREFIX_MODIFIER : MACRO_TYPE_PREFIX_INVALID;
     }
+    // Before a marker, function_macro_type_transition rejects every type, so its parentheses need not be scanned.
     if (name->ascii && function_macro_word_in(name->word, function_macro_type_keywords,
         sizeof(function_macro_type_keywords) / sizeof(function_macro_type_keywords[0]))) {
-        if (lexer->lookahead == '(' && (!function_macro_modifier_balanced(lexer, '(', ')', trivia) || !scan_pragma_spacing_with(lexer, trivia))) return MACRO_TYPE_PREFIX_INVALID;
-        if (strcmp(name->word, "struct") == 0 || strcmp(name->word, "union") == 0 || strcmp(name->word, "enum") == 0) return MACRO_TYPE_PREFIX_TAGGED_TYPE;
-        return MACRO_TYPE_PREFIX_KNOWN_TYPE;
+        return state->marker ? function_macro_known_type_item(lexer, name, trivia) : MACRO_TYPE_PREFIX_INVALID;
     }
     if (name->ascii && function_macro_word_in(name->word, function_macro_type_prefix_modifiers,
         sizeof(function_macro_type_prefix_modifiers) / sizeof(function_macro_type_prefix_modifiers[0]))) return MACRO_TYPE_PREFIX_MODIFIER;
     if (function_macro_type_prefix_keyword(name, reserved_words, reserved_count)) return MACRO_TYPE_PREFIX_INVALID;
     if (lexer->lookahead == '(') {
-        MacroGroup group = function_macro_group_prefix(lexer, '(', ')', NULL, NULL, type_argument, trivia);
-        if (group == MACRO_GROUP_BRACED) return MACRO_TYPE_PREFIX_TYPE;
-        if (group == MACRO_GROUP_BALANCED && scan_pragma_spacing_with(lexer, trivia)) return MACRO_TYPE_PREFIX_BALANCED_TYPE;
-        return MACRO_TYPE_PREFIX_INVALID;
+        return state->marker ? function_macro_macro_type_item(lexer, state, trivia) : MACRO_TYPE_PREFIX_INVALID;
     }
     return MACRO_TYPE_PREFIX_MARKER;
+}
+
+static MacroTypePrefix function_macro_known_type_item(TSLexer *lexer, const MacroName *name, const PragmaTrivia *trivia) {
+    if (lexer->lookahead == '(' && (!function_macro_modifier_balanced(lexer, '(', ')', trivia) || !scan_pragma_spacing_with(lexer, trivia))) return MACRO_TYPE_PREFIX_INVALID;
+    if (strcmp(name->word, "struct") == 0 || strcmp(name->word, "union") == 0 || strcmp(name->word, "enum") == 0) return MACRO_TYPE_PREFIX_TAGGED_TYPE;
+    return MACRO_TYPE_PREFIX_KNOWN_TYPE;
+}
+
+static MacroTypePrefix function_macro_macro_type_item(TSLexer *lexer, const MacroTypeState *state, const PragmaTrivia *trivia) {
+    MacroGroup group = function_macro_group_prefix(lexer, '(', ')', NULL, NULL, !state->known_type, trivia);
+    if (group == MACRO_GROUP_BRACED) return MACRO_TYPE_PREFIX_TYPE;
+    if (group == MACRO_GROUP_BALANCED && scan_pragma_spacing_with(lexer, trivia)) return MACRO_TYPE_PREFIX_BALANCED_TYPE;
+    return MACRO_TYPE_PREFIX_INVALID;
 }
 
 // code-gauge-allow functionCognitiveComplexity 16 -- Literal prefixes inspect one consumed first argument token without restarting the lexer.
@@ -604,7 +615,8 @@ static bool function_macro_word_in(const char *word, const char *const *words, u
     unsigned end = count;
     while (start < end) {
         unsigned middle = start + (end - start) / 2;
-        int order = strcmp(word, words[middle]);
+        int order = (unsigned char)word[0] - (unsigned char)words[middle][0];
+        if (!order && word[0]) order = strcmp(word + 1, words[middle] + 1);
         if (order == 0) return true;
         if (order < 0) end = middle;
         else start = middle + 1;

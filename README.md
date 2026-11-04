@@ -74,7 +74,10 @@ Append `_preproc_directive_start` in its inherited slot as a zero-width guard af
 including keywords in overridden directive rules. It is not an extra. Retain the phase-two splice handling in
 `preprocessorToken` when overriding keyword spelling.
 Port the scanner lifecycle functions together with `EmptyDirectives` from `emptyDirectives.h`; the source-boundary
-facts belong to one full parse and are freed by scanner destruction. Run `scan_directive_context` first,
+facts belong to one full parse and are freed by scanner destruction. When the scanner is ready and no external token
+other than `pragma_operator`, `_directive_context` and `preproc_empty` is valid, dispatch to `scan_extras` first;
+`only_extras_valid` checks the inherited slots only, so extend it to every external token the derived grammar adds,
+or the fast path drops those tokens. Otherwise run `scan_directive_context` first,
 emitting `_preproc_directive_start` only at `empty_directives_after_keyword` before null-directive consumption,
 then reject external scans at `empty_directives_at_line_end` before the other token dispatch. Pass `empty_directives_skip` and its state through `ConditionalMacroSymbols.skip_empty` and
 `empty_context` so declaration lookahead ignores null directives without moving the opening token's range.
