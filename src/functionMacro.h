@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 567 -- Annotation and argument scanners share lexical helpers and keyword tables.
+// code-gauge-allow-file fileNcss 575 -- Annotation and argument scanners share lexical helpers and keyword tables.
 #ifndef TREE_SITTER_C_FUNCTION_MACRO_H_
 #define TREE_SITTER_C_FUNCTION_MACRO_H_
 

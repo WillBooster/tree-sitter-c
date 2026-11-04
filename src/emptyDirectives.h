@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 695 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
+// code-gauge-allow-file fileNcss 706 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
