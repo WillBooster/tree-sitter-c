@@ -140,8 +140,7 @@ static bool empty_directives_skip(TSLexer *lexer, void *payload) {
     return empty_directives_consume(lexer, payload, false);
 }
 
-// A null directive, including its prefix, starts only at `#`, `\\` or a space, so other characters need no position query,
-// which would make the runtime allocate the token on the heap.
+// A null directive, including its prefix, starts only at `#`, `\\` or a space, so other characters cannot match `starts`.
 static bool empty_directives_consume(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix) {
     int32_t c = lexer->lookahead;
     if (!state || !state->starts || !(c == '#' || c == '\\' || pragma_space(c))) return false;

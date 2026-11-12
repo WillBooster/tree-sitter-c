@@ -85,9 +85,9 @@ static bool only_extras_valid(const EmptyDirectives *state, const bool *valid_sy
         !memchr(valid_symbols + PREPROC_ARG, true, (DIRECTIVE_CONTEXT - PREPROC_ARG) * sizeof(*valid_symbols));
 }
 
-// Decides as the general path does in states where only extras are valid, but queries a position only after a null
-// directive's `#` or `\` (when the file has null directives) or after `_Pragma` (when skipped spaces may include a line
-// end), since any position query makes the runtime allocate the token on the heap.
+// `starts` marks only `#`, `\`, and spaces/splices before a null directive's `#`, and `line_ends` marks only spaces and
+// newlines, so `extras_start_byte` restores the pre-space checkpoint via `mark_end_at` only after `#`/`\` (when `starts`
+// exists) or `_Pragma` (when skipped spaces may start at `line_ends`), avoiding checkpoint/column work on other tokens.
 static bool scan_extras(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
     bool allow_empty = valid_symbols[PREPROC_EMPTY] && state->starts;
     bool allow_pragma = valid_symbols[PRAGMA_OPERATOR];
