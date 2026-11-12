@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, type Node, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
+
+import { collectCaptures, hasSupertype } from '../helpers/ast.ts';
 
 const typeCases: [string, string, string][] = [
   ['char', 'primitive_type', 'char'],
@@ -20,7 +22,6 @@ test.each(typeCases)(
     await Parser.init();
     const language = await Language.load('tree-sitter-c.wasm');
     const parser = new Parser().setLanguage(language);
-    const types = new Query(language, '(declaration type: (type_specifier) @type)');
     try {
       for (const defined of [false, true]) {
         for (let count = 1; count <= 6; count++) {
@@ -63,7 +64,12 @@ test.each(typeCases)(
                 declaration!.startIndex + index * 2 + 1,
               ])
             );
-            expect(types.captures(declaration!).map(({ node }) => [node.type, node.text])).toEqual([[kind, text]]);
+            const capturedTypes = declaration!
+              .descendantsOfType('declaration')
+              .map((node) => node.childForFieldName('type'))
+              .filter((candidate) => hasSupertype(language, candidate, 'type_specifier'))
+              .map((candidate) => [candidate.type, candidate.text]);
+            expect(capturedTypes).toEqual([[kind, text]]);
             const following = tree.rootNode.descendantsOfType('function_definition').at(-1)!;
             expect([following.childForFieldName('declarator')?.text, following.startIndex, following.endIndex]).toEqual(
               ['following(void)', source.indexOf('int following'), source.length - 1]
@@ -74,7 +80,6 @@ test.each(typeCases)(
         }
       }
     } finally {
-      types.delete();
       parser.delete();
     }
   }
@@ -84,24 +89,13 @@ test('preserves typedef, opaque, enum, field, cast, and sizeof roles after annot
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
-  const query = new Query(
-    language,
-    `
-(declaration type: (_) @type declarator: (_) @name)
-(type_definition type: (_) @type declarator: (_) @name)
-(field_declaration type: (_) @type declarator: (_) @name)
-(function_definition type: (_) @type declarator: (_) @name)
-(enum_specifier underlying_type: (_) @type)
-(type_descriptor type: (_) @operand.type)
-`
-  );
   const fixture = fs.readFileSync('test/fixtures/macroSpecifierRecovery.c', 'utf8');
   const start = fixture.indexOf('A B C const char x;');
   try {
     for (const markers of ['A B C', 'A B C D']) {
       const tree = parser.parse(fixture.slice(0, start) + markers + fixture.slice(start + 'A B C'.length))!;
       try {
-        expect(query.captures(tree.rootNode).map(({ name, node }) => [name, node.text])).toEqual([
+        expect(collectCaptures(tree.rootNode, visitSpecifierRoles).map(({ name, node }) => [name, node.text])).toEqual([
           ['type', 'char'],
           ['name', 'x'],
           ['type', 'int'],
@@ -143,7 +137,29 @@ test('preserves typedef, opaque, enum, field, cast, and sizeof roles after annot
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });
+
+function visitSpecifierRoles(node: Node, emit: (name: string, target?: Node) => void): void {
+  if (['declaration', 'type_definition', 'field_declaration', 'function_definition'].includes(node.type)) {
+    const type = node.childForFieldName('type');
+    const declarators = node.childrenForFieldName('declarator').filter((child) => child.isNamed);
+    if (type?.isNamed && declarators.length > 0) {
+      for (const declarator of declarators) {
+        emit('type', type);
+        emit('name', declarator);
+      }
+    }
+    return;
+  }
+  if (node.type === 'enum_specifier') {
+    const underlying = node.childForFieldName('underlying_type');
+    if (underlying?.isNamed) emit('type', underlying);
+    return;
+  }
+  if (node.type === 'type_descriptor') {
+    const type = node.childForFieldName('type');
+    if (type?.isNamed) emit('operand.type', type);
+  }
+}

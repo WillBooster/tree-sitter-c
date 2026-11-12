@@ -1,13 +1,12 @@
 import fs from 'node:fs';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, type Node, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 test('keeps pointer calling-convention captures independent of surrounding declarations', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
-  const query = new Query(language, '(pointer_declarator (ms_call_modifier) @calling_convention)');
   const prototype = 'int __stdcall *f(void);';
   const definition = 'int __stdcall *f(void) { return 0; }';
   const surrounding = 'typedef int __stdcall *Callback(void); struct Holder { int __stdcall *(*factory)(void); };';
@@ -29,16 +28,12 @@ test('keeps pointer calling-convention captures independent of surrounding decla
           match.index,
           match.index + match[0].length,
         ]);
-        expect(
-          query.captures(tree.rootNode).map(({ node }) => [node.text, node.startIndex, node.endIndex]),
-          source
-        ).toEqual(expectedModifiers);
+        expect(collectModifierRanges(tree.rootNode, ['pointer_declarator']), source).toEqual(expectedModifiers);
       } finally {
         tree.delete();
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });
@@ -50,17 +45,12 @@ test.each(['__cdecl', '__clrcall', '__stdcall', '__fastcall', '__thiscall', '__v
     const language = await Language.load('tree-sitter-c.wasm');
     const parser = new Parser().setLanguage(language);
     const source = fs.readFileSync('test/fixtures/msBeforeParentheses.c', 'utf8').replaceAll('__stdcall', convention);
-    const query = new Query(
-      language,
-      `
-      (parenthesized_declarator (ms_call_modifier) @convention)
-      (abstract_parenthesized_declarator (ms_call_modifier) @convention)
-    `
-    );
     const tree = parser.parse(source)!;
     try {
       expect(tree.rootNode.hasError, source).toBe(false);
-      expect(query.captures(tree.rootNode).map(({ node }) => [node.text, node.startIndex, node.endIndex])).toEqual(
+      expect(
+        collectModifierRanges(tree.rootNode, ['parenthesized_declarator', 'abstract_parenthesized_declarator'])
+      ).toEqual(
         [...source.matchAll(new RegExp(convention, 'g'))].map((match) => [
           match[0],
           match.index,
@@ -85,7 +75,6 @@ test.each(['__cdecl', '__clrcall', '__stdcall', '__fastcall', '__thiscall', '__v
       ]);
     } finally {
       tree.delete();
-      query.delete();
       parser.delete();
     }
   }
@@ -98,7 +87,6 @@ test.each(['__cdecl', '__clrcall', '__stdcall', '__fastcall', '__thiscall', '__v
     const language = await Language.load('tree-sitter-c.wasm');
     const parser = new Parser().setLanguage(language);
     const original = fs.readFileSync('test/fixtures/msPostStar.c', 'utf8').replaceAll('__stdcall', convention);
-    const modifierQuery = new Query(language, '(ms_call_modifier) @convention');
     const startIndex = original.indexOf('__');
     const replacement = convention === '__cdecl' ? '__stdcall' : '__cdecl';
     const replaced =
@@ -110,9 +98,7 @@ test.each(['__cdecl', '__clrcall', '__stdcall', '__fastcall', '__thiscall', '__v
         const tree = parser.parse(source)!;
         try {
           expect(tree.rootNode.hasError, source).toBe(false);
-          expect(
-            modifierQuery.captures(tree.rootNode).map(({ node }) => [node.text, node.startIndex, node.endIndex])
-          ).toEqual(
+          expect(collectModifierRanges(tree.rootNode)).toEqual(
             [...source.matchAll(/__\w+/g)].map((match) => [match[0], match.index, match.index + match[0].length])
           );
           expect(
@@ -166,8 +152,14 @@ test.each(['__cdecl', '__clrcall', '__stdcall', '__fastcall', '__thiscall', '__v
         }
       }
     } finally {
-      modifierQuery.delete();
       parser.delete();
     }
   }
 );
+
+function collectModifierRanges(root: Node, parentTypes?: string[]): Array<[string, number, number]> {
+  return root
+    .descendantsOfType('ms_call_modifier')
+    .filter((node) => !parentTypes || parentTypes.includes(node.parent?.type ?? ''))
+    .map((node) => [node.text, node.startIndex, node.endIndex]);
+}

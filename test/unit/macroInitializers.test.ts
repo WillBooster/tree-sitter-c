@@ -1,4 +1,4 @@
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, type Node, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 const source = `void build_ui(void) {
@@ -19,22 +19,16 @@ void following(void) {}
 test('preserves nested braced macro initializers, blocks, and following declarations', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser();
-  parser.setLanguage(language);
+  const parser = new Parser().setLanguage(language);
   const tree = parser.parse(source)!;
-  let query: Query | undefined;
   try {
     expect(tree.rootNode.hasError).toBe(false);
-    query = new Query(
-      language,
-      '(call_expression function: (identifier) @call arguments: (argument_list (initializer_list) @initializer)) (declaration declarator: (init_declarator declarator: (identifier) @declaration))'
-    );
     expect(
       tree.rootNode.descendantsOfType('function_definition').map((node) => node.childForFieldName('declarator')?.text)
     ).toEqual(['build_ui(void)', 'following(void)']);
-    const captures = query.captures(tree.rootNode);
-    expect(captures.filter(({ name }) => name === 'call').map(({ node }) => node.text)).toEqual(['ui_node', 'ui_node']);
-    const initializers = captures.filter(({ name }) => name === 'initializer').map(({ node }) => node);
+    const matches = findInitializerCalls(tree.rootNode);
+    expect(matches.map(({ call }) => call.text)).toEqual(['ui_node', 'ui_node']);
+    const initializers = matches.map(({ initializer }) => initializer);
     expect(initializers).toHaveLength(2);
     expect(initializers[0]!.descendantsOfType('field_designator').map((node) => node.text)).toEqual([
       '.name',
@@ -46,10 +40,14 @@ test('preserves nested braced macro initializers, blocks, and following declarat
     expect(initializers[0]!.descendantsOfType('initializer_list').map((node) => node.text)).toContain(
       '{ 10, 20, 30, 40 }'
     );
-    expect(captures.filter(({ name }) => name === 'declaration').map(({ node }) => node.text)).toEqual([
-      'after',
-      'local',
-    ]);
+    const initializedDeclarations = tree.rootNode.descendantsOfType('declaration').flatMap((declaration) =>
+      declaration.childrenForFieldName('declarator').flatMap((declarator) => {
+        if (declarator.type !== 'init_declarator') return [];
+        const name = declarator.childForFieldName('declarator');
+        return name?.type === 'identifier' ? [name.text] : [];
+      })
+    );
+    expect(initializedDeclarations).toEqual(['after', 'local']);
     const blocks = tree.rootNode
       .descendantsOfType('call_expression')
       .filter((node) => ['BODY', 'EMPTY'].includes(node.childForFieldName('function')?.text ?? ''));
@@ -66,7 +64,6 @@ test('preserves nested braced macro initializers, blocks, and following declarat
       }
     }
   } finally {
-    query?.delete();
     tree.delete();
     parser.delete();
   }
@@ -85,9 +82,8 @@ test.each([
 ])('preserves initializer and block arguments beginning with %s', async (directive) => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser();
-  parser.setLanguage(language);
-  const source = `#define HEADER "items.h"
+  const parser = new Parser().setLanguage(language);
+  const directiveSource = `#define HEADER "items.h"
 #define HEADER_OF(name) <name.h>
 #define HEADER_PATH(name) <name>
 #define EMPTY
@@ -111,24 +107,12 @@ int local; use(local);
   int after;
 }
 `;
-  const tree = parser.parse(source)!;
-  let query: Query | undefined;
+  const tree = parser.parse(directiveSource)!;
   try {
     expect(tree.rootNode.hasError).toBe(false);
-    query = new Query(
-      language,
-      '(call_expression function: (identifier) @call arguments: (argument_list (initializer_list) @initializer))'
-    );
-    expect(
-      query
-        .captures(tree.rootNode)
-        .filter(({ name }) => name === 'call')
-        .map(({ node }) => node.text)
-    ).toEqual(['values', 'named']);
-    const initializers = query
-      .captures(tree.rootNode)
-      .filter(({ name }) => name === 'initializer')
-      .map(({ node }) => node);
+    const matches = findInitializerCalls(tree.rootNode);
+    expect(matches.map(({ call }) => call.text)).toEqual(['values', 'named']);
+    const initializers = matches.map(({ initializer }) => initializer);
     expect(initializers.map((node) => node.namedChildren[0]!.type)).toEqual(
       directive.startsWith('#include') ? ['preproc_include', 'preproc_include'] : ['preproc_call', 'preproc_call']
     );
@@ -146,16 +130,28 @@ int local; use(local);
       .descendantsOfType('declaration')
       .find((node) => node.childForFieldName('declarator')?.text === 'after');
     expect(after?.text).toBe('int after;');
-    const startIndex = source.indexOf('1, 2', source.indexOf('values('));
-    const variant = parser.parse(`${source.slice(0, startIndex)}10, 20${source.slice(startIndex + 4)}`)!;
+    const startIndex = directiveSource.indexOf('1, 2', directiveSource.indexOf('values('));
+    const variant = parser.parse(
+      `${directiveSource.slice(0, startIndex)}10, 20${directiveSource.slice(startIndex + 4)}`
+    )!;
     try {
       expect(variant.rootNode.hasError).toBe(false);
     } finally {
       variant.delete();
     }
   } finally {
-    query?.delete();
     tree.delete();
     parser.delete();
   }
 });
+
+function findInitializerCalls(root: Node): Array<{ call: Node; initializer: Node }> {
+  return root.descendantsOfType('call_expression').flatMap((expression) => {
+    const call = expression.childForFieldName('function');
+    const args = expression.childForFieldName('arguments');
+    if (call?.type !== 'identifier' || args?.type !== 'argument_list') return [];
+    return args.namedChildren
+      .filter((child) => child.type === 'initializer_list')
+      .map((initializer) => ({ call, initializer }));
+  });
+}

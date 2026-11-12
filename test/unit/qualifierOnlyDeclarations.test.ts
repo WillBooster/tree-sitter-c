@@ -1,13 +1,12 @@
 import fs from 'node:fs';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 test('keeps declarator-free qualifiers within their declarations with and without a declarator', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
-  const qualifiers = new Query(language, '(type_qualifier) @qualifier');
   const fixture = fs.readFileSync('test/fixtures/qualifierOnlyDeclarations.c', 'utf8');
   try {
     for (const name of [undefined, 'temporary']) {
@@ -16,9 +15,9 @@ test('keeps declarator-free qualifiers within their declarations with and withou
       const tree = parser.parse(source)!;
       try {
         expect(tree.rootNode.hasError).toBe(false);
-        const captures = qualifiers
-          .captures(tree.rootNode)
-          .map(({ node }) => [node.text, node.startIndex, node.endIndex]);
+        const captures = tree.rootNode
+          .descendantsOfType('type_qualifier')
+          .map((node) => [node.text, node.startIndex, node.endIndex]);
         expect(captures).toEqual(
           [...source.matchAll(/\b(?:const|volatile)\b/g)].map((match) => [
             match[0],
@@ -39,7 +38,6 @@ test('keeps declarator-free qualifiers within their declarations with and withou
       }
     }
   } finally {
-    qualifiers.delete();
     parser.delete();
   }
 });

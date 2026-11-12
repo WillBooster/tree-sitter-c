@@ -1,4 +1,4 @@
-import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, Parser, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 const declarations = [
@@ -33,13 +33,8 @@ test('confines marked initializer and trailing marker recovery to their declarat
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
-  let query: Query | undefined;
   try {
     parser.setLanguage(language);
-    query = new Query(
-      language,
-      '(declaration type: (struct_specifier) @recovered.type declarator: (_) @recovered.name)'
-    );
     for (const [statement, expectedDeclarator] of [
       ...declarations.map((statement) => [statement, undefined] as const),
       ...trailers,
@@ -72,12 +67,12 @@ test('confines marked initializer and trailing marker recovery to their declarat
             expect(declaration?.childForFieldName('type')?.text).toBe('struct S');
             expect(declaration?.childForFieldName('declarator')?.text).toBe(expectedDeclarator);
             expect(declaration?.endIndex).toBeLessThanOrEqual(after.startIndex);
-            expect(
-              query!
-                .captures(current.rootNode)
-                .filter(({ name }) => name === 'recovered.type' || name === 'recovered.name')
-                .map(({ node }) => node.text)
-            ).toEqual(['struct S', expectedDeclarator]);
+            const recovered = current.rootNode.descendantsOfType('declaration').flatMap((node) => {
+              const type = node.childForFieldName('type');
+              const declarator = node.childForFieldName('declarator');
+              return type?.type === 'struct_specifier' && declarator?.isNamed ? [type.text, declarator.text] : [];
+            });
+            expect(recovered).toEqual(['struct S', expectedDeclarator]);
           }
         };
         check(tree, text);
@@ -87,7 +82,6 @@ test('confines marked initializer and trailing marker recovery to their declarat
       }
     }
   } finally {
-    query?.delete();
     parser.delete();
   }
 });

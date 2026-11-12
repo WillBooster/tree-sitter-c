@@ -1,9 +1,11 @@
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, Parser, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
+
+import { hasSupertype } from '../helpers/ast.ts';
+import { parseNativeFiles } from '../helpers/nativeParse.ts';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const fixture = 'test/fixtures/statementMacros.c';
@@ -40,22 +42,26 @@ test('keeps Wasm function and conditional ranges after statement-like macros', a
 });
 
 test('keeps native function and conditional ranges after statement-like macros', { timeout: 300_000 }, () => {
-  const result = spawnSync(
-    'script/tree-sitter',
-    ['query', '--grammar-path', '.', '--captures', 'test/fixtures/statementMacros.scm', fixture],
-    {
-      cwd: root,
-      env: { ...process.env, TREE_SITTER_LIBDIR: path.join(root, '.tmp/statement-macro-recovery-lib') },
-      encoding: 'utf8',
-      timeout: 300_000,
-    }
-  );
-  expect(result.error).toBeUndefined();
-  expect(result.status, result.stderr).toBe(0);
-  expect(result.stdout).toContain(' - function, start: (0, 0), end: (10, 1)');
-  expect(result.stdout).toContain(' - function, start: (11, 0), end: (19, 1)');
-  expect(result.stdout).toContain(' - conditional, start: (15, 0), end: (17, 6)');
-  expect(result.stdout.match(/ - block,/g)).toHaveLength(3);
+  const rootNode = parseNativeFiles(root, path.join(root, '.tmp/statement-macro-recovery-lib'), [fixture])[0]!
+    .rootNode!;
+  expect(
+    rootNode.descendantsOfType('function_definition').map((node) => [node.startPosition, node.endPosition])
+  ).toEqual([
+    [
+      { row: 0, column: 0 },
+      { row: 10, column: 1 },
+    ],
+    [
+      { row: 11, column: 0 },
+      { row: 19, column: 1 },
+    ],
+  ]);
+  const conditionals = rootNode.descendantsOfType('preproc_ifdef');
+  expect(conditionals.map((node) => [node.startPosition, node.endPosition])).toContainEqual([
+    { row: 15, column: 0 },
+    { row: 17, column: 6 },
+  ]);
+  expect(rootNode.descendantsOfType('compound_statement')).toHaveLength(3);
 });
 
 test.each(['}', 'GENERATE(a)\nGENERATE(b)\nGENERATE(c)\n#define BOUNDARY 1'])(
@@ -64,10 +70,6 @@ test.each(['}', 'GENERATE(a)\nGENERATE(b)\nGENERATE(c)\n#define BOUNDARY 1'])(
     await Parser.init();
     const language = await Language.load(path.join(root, 'tree-sitter-c.wasm'));
     const parser = new Parser().setLanguage(language);
-    const query = new Query(
-      language,
-      '(declaration type: (type_specifier) @recovery.type declarator: (_) @recovery.name)'
-    );
     const body = `int f(void) {
 const T* const a0 = x+y;
 F fn = call(x,y);
@@ -76,8 +78,8 @@ T const other = x ? y : z;
 }
 int following(void){return 0;}
 `;
-    const source = `${prefix}\n${body}`;
-    const tree = parser.parse(source)!;
+    const fullSource = `${prefix}\n${body}`;
+    const tree = parser.parse(fullSource)!;
     const check = (current: Tree, text: string): void => {
       const functions = current.rootNode.descendantsOfType('function_definition');
       const block = functions
@@ -93,10 +95,12 @@ int following(void){return 0;}
         'other = x ? y : z',
       ]);
       expect(
-        query
-          .captures(block)
-          .filter(({ name }) => name === 'recovery.type')
-          .map(({ node }) => node.text)
+        block
+          .descendantsOfType('declaration')
+          .filter((node) => node.childForFieldName('declarator')?.isNamed)
+          .map((node) => node.childForFieldName('type'))
+          .filter((type) => hasSupertype(language, type, 'type_specifier'))
+          .map((type) => type.text)
       ).toEqual(['T', 'F', 'T', 'T']);
       const following = functions.at(-1)!;
       expect([following.text, following.startIndex, following.endIndex]).toEqual([
@@ -106,7 +110,7 @@ int following(void){return 0;}
       ]);
     };
     try {
-      check(tree, source);
+      check(tree, fullSource);
       const fresh = parser.parse(body)!;
       try {
         check(fresh, body);
@@ -115,7 +119,6 @@ int following(void){return 0;}
         fresh.delete();
       }
     } finally {
-      query.delete();
       tree.delete();
       parser.delete();
     }

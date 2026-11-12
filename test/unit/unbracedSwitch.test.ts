@@ -1,15 +1,13 @@
 import path from 'node:path';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, type Node, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
 await Parser.init();
 const language = await Language.load(path.join(import.meta.dirname, '../../tree-sitter-c.wasm'));
 
 test('bounds unbraced switch bodies without changing grouped cases', () => {
-  const parser = new Parser();
-  parser.setLanguage(language);
-  const query = new Query(language, '(switch_statement body: (_) @body)');
+  const parser = new Parser().setLanguage(language);
   try {
     for (const body of [
       'case 0: ;',
@@ -35,7 +33,7 @@ test('bounds unbraced switch bodies without changing grouped cases', () => {
         ]);
         expect(statements[0]!.childForFieldName('body')?.text).toBe(body);
         expect(statements[1]!.text).toBe('x += 2;');
-        expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([body]);
+        expect(switchBodies(tree.rootNode).map((node) => node.text)).toEqual([body]);
         if (body.startsWith('{')) {
           expect(statements[0]!.descendantsOfType('case_statement')[0]!.namedChildren.map((node) => node.type)).toEqual(
             ['number_literal', 'expression_statement', 'expression_statement', 'break_statement']
@@ -46,14 +44,12 @@ test('bounds unbraced switch bodies without changing grouped cases', () => {
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });
 
 test.each(['case 0:', 'default:', 'case 0: case 1:'])('accepts trailing C23 switch label %s', (body) => {
-  const parser = new Parser();
-  parser.setLanguage(language);
+  const parser = new Parser().setLanguage(language);
   const tree = parser.parse(`void f(int x) { switch (x) ${body} }`)!;
   try {
     expect(tree.rootNode.hasError, body).toBe(false);
@@ -99,9 +95,7 @@ test('keeps conditionally compiled case statements inside the switch', () => {
 });
 
 test('keeps braced switch bodies after an inserted #else directive', () => {
-  const parser = new Parser();
-  parser.setLanguage(language);
-  const query = new Query(language, '(switch_statement body: (_) @body)');
+  const parser = new Parser().setLanguage(language);
   try {
     for (const [original, marker] of [
       ['{switch(x){f\ny+;}return;}', 'switch(x)'],
@@ -113,13 +107,19 @@ test('keeps braced switch bodies after an inserted #else directive', () => {
       const offset = original.indexOf(marker) + marker.length;
       const tree = parser.parse(`${original.slice(0, offset)}#else\n${original.slice(offset)}`)!;
       try {
-        expect(query.captures(tree.rootNode).some(({ node }) => node.text.startsWith('{'))).toBe(true);
+        expect(switchBodies(tree.rootNode).some((node) => node.text.startsWith('{'))).toBe(true);
       } finally {
         tree.delete();
       }
     }
   } finally {
-    query.delete();
     parser.delete();
   }
 });
+
+function switchBodies(root: Node): Node[] {
+  return root.descendantsOfType('switch_statement').flatMap((node) => {
+    const body = node.childForFieldName('body');
+    return body?.isNamed ? [body] : [];
+  });
+}
