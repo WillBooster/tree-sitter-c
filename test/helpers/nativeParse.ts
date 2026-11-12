@@ -36,12 +36,19 @@ interface RawElement {
 }
 
 export function parseNativeFiles(root: string, libraryDirectory: string, files: string[]): NativeSource[] {
-  const result = spawnSync('script/tree-sitter', ['parse', '-x', '--grammar-path', '.', ...files], {
-    cwd: root,
-    env: { ...process.env, TREE_SITTER_LIBDIR: libraryDirectory },
-    encoding: 'utf8',
-    timeout: 300_000,
-  });
+  fs.mkdirSync(libraryDirectory, { recursive: true });
+  const configPath = path.join(libraryDirectory, 'config.json');
+  fs.writeFileSync(configPath, JSON.stringify({ 'parser-directories': [libraryDirectory] }));
+  const result = spawnSync(
+    'script/tree-sitter',
+    ['parse', '-x', '--config-path', configPath, '--grammar-path', '.', ...files],
+    {
+      cwd: root,
+      env: { ...process.env, TREE_SITTER_LIBDIR: libraryDirectory },
+      encoding: 'utf8',
+      timeout: 300_000,
+    }
+  );
   expect(result.error).toBeUndefined();
   expect(result.stderr).toBe('');
   expect([0, 1]).toContain(result.status);
