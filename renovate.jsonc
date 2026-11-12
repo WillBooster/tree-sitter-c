@@ -17,5 +17,15 @@
       "matchPackageNames": ["willbooster-tree-sitter"],
       "minimumReleaseAge": "0 days",
     },
+    {
+      // 19.0.2: Version 19 removes Query (https://github.com/WillBooster/tree-sitter/pull/350), which existing tests import and use; adopting it requires modifying those tests. Version 19.1.0 does not restore it.
+      "matchPackageNames": ["@willbooster/web-tree-sitter"],
+      "allowedVersions": "!/^19\\.0\\.2$/",
+    },
+    {
+      // 19.0.0: The locked runtime selects the v19 CLI, which removed the query command used by native tests (https://github.com/WillBooster/tree-sitter/pull/350); the repository also requires the Rust and Web runtimes to have the same version, and the Web update is reverted.
+      "matchPackageNames": ["tree-sitter"],
+      "allowedVersions": "!/^19\\.0\\.0$/",
+    },
   ],
 }
