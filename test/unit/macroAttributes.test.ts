@@ -1,9 +1,11 @@
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, type Node, Parser, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
+
+import { collectCaptures, hasSupertype } from '../helpers/ast.ts';
+import { type NativeNode, parseNativeFiles } from '../helpers/nativeParse.ts';
 
 const wasmPath = path.join(import.meta.dirname, '../../tree-sitter-c.wasm');
 
@@ -535,32 +537,16 @@ test('keeps native modifier captures and following function ranges', { timeout: 
   fs.mkdirSync(path.join(root, '.tmp'), { recursive: true });
   const libraryDirectory = fs.mkdtempSync(path.join(root, '.tmp/macro-modifier-native-'));
   try {
-    const result = spawnSync(
-      'script/tree-sitter',
-      [
-        'query',
-        '--grammar-path',
-        '.',
-        '--captures',
-        'test/fixtures/macroAttributes.scm',
-        'test/fixtures/macroAttributes.c',
-        'test/fixtures/statementMacroCases.c',
-        'test/fixtures/macroParameterDefinition.c',
-        'test/fixtures/bracedMacroAttributes.c',
-        'test/fixtures/bracedParameterTypes.c',
-      ],
-      {
-        cwd: root,
-        env: { ...process.env, TREE_SITTER_LIBDIR: libraryDirectory },
-        encoding: 'utf8',
-        timeout: 300_000,
-      }
-    );
-    expect(result.error).toBeUndefined();
-    expect(result.status, result.stderr).toBe(0);
-    const captures = [...result.stdout.matchAll(/ - (\w+),[^\n]*text: `([^`]*)`/g)];
-    const capturedText = (name: string): (string | undefined)[] =>
-      captures.filter((match) => match[1] === name).map((match) => match[2]);
+    const sources = parseNativeFiles(root, libraryDirectory, [
+      'test/fixtures/macroAttributes.c',
+      'test/fixtures/statementMacroCases.c',
+      'test/fixtures/macroParameterDefinition.c',
+      'test/fixtures/bracedMacroAttributes.c',
+      'test/fixtures/bracedParameterTypes.c',
+    ]);
+    const captures = sources.flatMap(({ rootNode }) => collectCaptures(rootNode, visitNativeAttributeNode));
+    const capturedText = (name: string): string[] =>
+      captures.filter((capture) => capture.name === name).map(({ node }) => node.text);
     expect(capturedText('modifier')).toEqual([
       '__printf',
       '__printf',
@@ -607,10 +593,22 @@ test('keeps native modifier captures and following function ranges', { timeout: 
       'opaque',
       'following',
     ]);
-    expect(result.stdout).toContain(' - function, start: (1, 0), end: (11, 1)');
-    expect(result.stdout).toContain(' - function, start: (12, 0), end: (12, 31)');
-    expect(result.stdout).toContain(' - function, start: (13, 0), end: (13, 26)');
-    expect(result.stdout).toContain(' - function, start: (2, 0), end: (2, 54)');
+    const functionRanges = captures
+      .filter(({ name }) => name === 'function')
+      .map(({ node }) => [
+        node.startPosition.row,
+        node.startPosition.column,
+        node.endPosition.row,
+        node.endPosition.column,
+      ]);
+    expect(functionRanges).toEqual(
+      expect.arrayContaining([
+        [1, 0, 11, 1],
+        [12, 0, 12, 31],
+        [13, 0, 13, 26],
+        [2, 0, 2, 54],
+      ])
+    );
   } finally {
     fs.rmSync(libraryDirectory, { recursive: true, force: true });
   }
@@ -836,16 +834,6 @@ test.each(bracedAnnotationArguments)(
     await Parser.init();
     const language = await Language.load(wasmPath);
     const parser = new Parser().setLanguage(language);
-    const query = new Query(
-      language,
-      `
-(type_definition type: (_) @typedef.type declarator: (_) @typedef.name)
-(struct_specifier name: (_) @struct.name)
-(field_declaration type: (_) @field.type declarator: (_) @field.name)
-(declaration type: (_) @prototype.type declarator: (function_declarator declarator: (_) @prototype.name))
-(function_definition type: (_) @function.type declarator: (function_declarator declarator: (_) @function.name))
-`
-    );
     const trailer = `typedef int saved_t;
 struct Saved { saved_t field; };
 saved_t declared(void);
@@ -855,16 +843,6 @@ saved_t after(void) { return 0; }
     const source = prefix + trailer;
     const control = parser.parse(trailer)!;
     const tree = parser.parse(source)!;
-    const captures = (root: typeof tree.rootNode, offset: number): Array<[string, string, number, number]> =>
-      query
-        .captures(root)
-        .filter(({ node }) => node.startIndex >= offset)
-        .map<[string, string, number, number]>(({ name, node }) => [
-          name,
-          node.text,
-          node.startIndex - offset,
-          node.endIndex - offset,
-        ]);
     try {
       expect(tree.rootNode.hasError).toBe(false);
       const attribute = tree.rootNode
@@ -876,7 +854,7 @@ saved_t after(void) { return 0; }
         'extern '.length + `CHECK(${argument})`.length,
       ]);
       expect(attribute?.childForFieldName('arguments')?.text).toBe(`(${argument})`);
-      const expected = captures(control.rootNode, 0);
+      const expected = bracedTrailerCaptures(control.rootNode, 0);
       expect(expected.map(([name, text]) => [name, text])).toEqual([
         ['typedef.type', 'int'],
         ['typedef.name', 'saved_t'],
@@ -888,17 +866,16 @@ saved_t after(void) { return 0; }
         ['function.type', 'saved_t'],
         ['function.name', 'after'],
       ]);
-      expect(captures(tree.rootNode, prefix.length)).toEqual(expected);
+      expect(bracedTrailerCaptures(tree.rootNode, prefix.length)).toEqual(expected);
       const at = source.indexOf('{');
       const text = '/* edit */';
       const commented = parser.parse(source.slice(0, at) + text + source.slice(at))!;
       try {
-        expect(captures(commented.rootNode, prefix.length + text.length)).toEqual(expected);
+        expect(bracedTrailerCaptures(commented.rootNode, prefix.length + text.length)).toEqual(expected);
       } finally {
         commented.delete();
       }
     } finally {
-      query.delete();
       control.delete();
       tree.delete();
       parser.delete();
@@ -1315,16 +1292,6 @@ test.each(guardedBoundaryFixtures)(
     const parser = new Parser().setLanguage(language);
     const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures', fixture.file), 'utf8');
     const tree = parser.parse(source)!;
-    const query = new Query(
-      language,
-      `
-(translation_unit (declaration type: (_) @boundary.type))
-(translation_unit (function_definition type: (_) @boundary.type))
-(init_declarator declarator: (_) @boundary.initialized)
-(attribute_specifier arguments: (argument_list (parameter_declaration type: (_) @boundary.parameterType declarator: (_) @boundary.parameter)))
-(attribute_specifier arguments: (argument_list (parameter_declaration (storage_class_specifier) @boundary.parameterStorage)))
-`
-    );
     try {
       expect(tree.rootNode.hasError).toBe(false);
       const structures = tree.rootNode.namedChildren.filter((node) =>
@@ -1342,10 +1309,10 @@ test.each(guardedBoundaryFixtures)(
         tree.rootNode.descendantsOfType('macro_type_specifier').map((node) => node.childForFieldName('type')?.text)
       ).toEqual(fixture.macroTypes);
       expect(
-        query
-          .captures(tree.rootNode)
-          .filter(({ name }) => name === 'boundary.type')
-          .map(({ node }) => node.text)
+        structures.flatMap((node) => {
+          const type = node.childForFieldName('type');
+          return type?.isNamed ? [type.text] : [];
+        })
       ).toEqual(fixture.structures.map(([, type]) => type).filter((type) => type !== undefined));
       expect(
         structures.find((node) => ['next', 'next(void)'].includes(node.childForFieldName('declarator')?.text ?? ''))
@@ -1359,29 +1326,31 @@ test.each(guardedBoundaryFixtures)(
       }
       if (fixture.initialized) {
         expect(
-          query
-            .captures(tree.rootNode)
-            .filter(({ name }) => name === 'boundary.initialized')
-            .map(({ node }) => node.text)
+          tree.rootNode.descendantsOfType('init_declarator').flatMap((node) => {
+            const declarator = node.childForFieldName('declarator');
+            return declarator?.isNamed ? [declarator.text] : [];
+          })
         ).toEqual(fixture.initialized);
       }
       if (fixture.parameters) {
+        const attributeParameters = collectAttributeParameters(tree.rootNode);
         expect(
-          query
-            .captures(tree.rootNode)
-            .filter(({ name }) => name === 'boundary.parameterStorage')
-            .map(({ node }) => node.text)
+          attributeParameters.flatMap((parameter) =>
+            parameter.namedChildren
+              .filter((child) => child.type === 'storage_class_specifier')
+              .map((child) => child.text)
+          )
         ).toEqual(fixture.parameterStorage ?? []);
         expect(
-          query
-            .matches(tree.rootNode)
-            .filter(({ captures }) => captures.some(({ name }) => name === 'boundary.parameterType'))
-            .map(({ captures }) => captures.map(({ node }) => node.text))
+          attributeParameters.flatMap((parameter) => {
+            const type = parameter.childForFieldName('type');
+            const declarator = parameter.childForFieldName('declarator');
+            return type?.isNamed && declarator?.isNamed ? [[type.text, declarator.text]] : [];
+          })
         ).toEqual(fixture.parameters);
       }
       verifyGuardedGroupComments(parser, tree, source, fixture.commentBefore);
     } finally {
-      query.delete();
       tree.delete();
       parser.delete();
     }
@@ -1458,11 +1427,6 @@ test('retains macro types after leading recognized attributes in declarations an
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/leadingAttributeTypes.c'), 'utf8');
   const tree = parser.parse(source)!;
-  const query = new Query(
-    language,
-    `(declaration type: (type_identifier) @opaque.type)
-(function_definition declarator: (_declarator) @function body: (_) @body)`
-  );
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const macroTypes = tree.rootNode.descendantsOfType('macro_type_specifier');
@@ -1470,12 +1434,13 @@ test('retains macro types after leading recognized attributes in declarations an
     expect(macroTypes.map((node) => node.childForFieldName('name')?.text)).toEqual(
       Array.from({ length: 13 }, () => 'TYPE')
     );
-    const captures = query.captures(tree.rootNode);
-    expect(captures.filter(({ name }) => name === 'opaque.type').map(({ node }) => node.text)).toEqual([
-      'Word',
-      'Word',
-    ]);
-    expect(captures.filter(({ name }) => name === 'function').map(({ node }) => node.text)).toEqual([
+    expect(
+      tree.rootNode.descendantsOfType('declaration').flatMap((node) => {
+        const type = node.childForFieldName('type');
+        return type?.type === 'type_identifier' ? [type.text] : [];
+      })
+    ).toEqual(['Word', 'Word']);
+    expect(collectSupertypeFunctions(language, tree.rootNode)).toEqual([
       'gnu_definition(void)',
       'c23_definition(void)',
       'block(void)',
@@ -1505,7 +1470,6 @@ test('retains macro types after leading recognized attributes in declarations an
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
     verifyGuardedGroupComments(parser, tree, source);
   } finally {
-    query.delete();
     tree.delete();
     parser.delete();
   }
@@ -1517,15 +1481,21 @@ test('retains opaque types and function names after leading braced annotations',
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/leadingOpaqueAnnotations.c'), 'utf8');
   const tree = parser.parse(source)!;
-  const query = new Query(
-    language,
-    `(declaration type: (type_identifier) @type declarator: (_) @declarator)
-(function_definition type: (type_identifier) @type declarator: (_) @declarator)
-(attribute_specifier name: (identifier) @attribute)`
-  );
   try {
     expect(tree.rootNode.hasError).toBe(false);
-    const captures = query.captures(tree.rootNode);
+    const captures = collectCaptures(tree.rootNode, (node, emit) => {
+      if (node.type === 'declaration' || node.type === 'function_definition') {
+        const type = node.childForFieldName('type');
+        if (type?.type !== 'type_identifier') return;
+        for (const declarator of node.childrenForFieldName('declarator').filter((child) => child.isNamed)) {
+          emit('type', type);
+          emit('declarator', declarator);
+        }
+      } else if (node.type === 'attribute_specifier') {
+        const name = node.childForFieldName('name');
+        if (name?.type === 'identifier') emit('attribute', name);
+      }
+    });
     expect(captures.filter(({ name }) => name === 'type').map(({ node }) => node.text)).toEqual(
       Array.from({ length: 8 }, () => 'Result')
     );
@@ -1545,7 +1515,6 @@ test('retains opaque types and function names after leading braced annotations',
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
     verifyGuardedGroupComments(parser, tree, source);
   } finally {
-    query.delete();
     tree.delete();
     parser.delete();
   }
@@ -1557,31 +1526,30 @@ test('retains physical declaration-macro terminators in blocks and for initializ
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/blockDeclarationMacros.c'), 'utf8');
   const tree = parser.parse(source)!;
-  const query = new Query(
-    language,
-    `(declaration (attribute_specifier name: (identifier) @macro.name)) @macro.declaration
-(init_declarator declarator: (_declarator) @initialized.name)
-(function_definition declarator: (_declarator) @function body: (_) @body)`
-  );
   try {
     expect(tree.rootNode.hasError).toBe(false);
-    const captures = query.captures(tree.rootNode);
-    expect(captures.filter(({ name }) => name === 'macro.declaration').map(({ node }) => node.text)).toEqual([
-      'static DECLARE(foo, {1, 2});',
-      'static DECLARE(foo, {1, 2});',
-      'const DECLARE(foo, {1, 2});',
-      'const DECLARE(foo, {1, 2});',
-    ]);
-    expect(captures.filter(({ name }) => name === 'macro.name').map(({ node }) => node.text)).toEqual(
-      Array.from({ length: 4 }, () => 'DECLARE')
+    const macroDeclarations = tree.rootNode.descendantsOfType('declaration').flatMap((node) =>
+      node.namedChildren
+        .filter((child) => child.type === 'attribute_specifier')
+        .flatMap((attribute) => {
+          const name = attribute.childForFieldName('name');
+          return name?.type === 'identifier' ? [{ declaration: node.text, name: name.text }] : [];
+        })
     );
-    expect(captures.filter(({ name }) => name === 'initialized.name').map(({ node }) => node.text)).toEqual([
-      'global_next',
-      'next',
-      'next',
-      'next',
+    expect(macroDeclarations.map(({ declaration }) => declaration)).toEqual([
+      'static DECLARE(foo, {1, 2});',
+      'static DECLARE(foo, {1, 2});',
+      'const DECLARE(foo, {1, 2});',
+      'const DECLARE(foo, {1, 2});',
     ]);
-    expect(captures.filter(({ name }) => name === 'function').map(({ node }) => node.text)).toEqual([
+    expect(macroDeclarations.map(({ name }) => name)).toEqual(Array.from({ length: 4 }, () => 'DECLARE'));
+    expect(
+      tree.rootNode.descendantsOfType('init_declarator').flatMap((node) => {
+        const declarator = node.childForFieldName('declarator');
+        return hasSupertype(language, declarator, '_declarator') ? [declarator.text] : [];
+      })
+    ).toEqual(['global_next', 'next', 'next', 'next']);
+    expect(collectSupertypeFunctions(language, tree.rootNode)).toEqual([
       'block(void)',
       'nested(void)',
       'loop(void)',
@@ -1600,7 +1568,6 @@ test('retains physical declaration-macro terminators in blocks and for initializ
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
     verifyGuardedGroupComments(parser, tree, source);
   } finally {
-    query.delete();
     tree.delete();
     parser.delete();
   }
@@ -1612,7 +1579,6 @@ test('retains GNU nested annotation and macro-type function bodies including old
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/nestedMacroFunctions.c'), 'utf8');
   const tree = parser.parse(source)!;
-  const query = new Query(language, '(function_definition type: (_) @type declarator: (_) @function body: (_) @body)');
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const marked = tree.rootNode
@@ -1622,13 +1588,17 @@ test('retains GNU nested annotation and macro-type function bodies including old
     expect(marked?.childForFieldName('body')?.text).toBe('{ return 0; }');
     const markedDeclarator = marked?.childForFieldName('declarator');
     const markedType = marked?.childForFieldName('type');
-    const captures = query.captures(tree.rootNode);
-    expect(captures.filter(({ name }) => name === 'function')).toHaveLength(8);
-    expect(captures.filter(({ name }) => name === 'type')).toHaveLength(8);
+    const definitions = tree.rootNode.descendantsOfType('function_definition').flatMap((node) => {
+      const type = node.childForFieldName('type');
+      const declarator = node.childForFieldName('declarator');
+      const body = node.childForFieldName('body');
+      return type?.isNamed && declarator?.isNamed && body?.isNamed ? [{ type, declarator, body }] : [];
+    });
+    expect(definitions).toHaveLength(8);
     expect(
-      captures
-        .filter(({ name, node }) => name === 'function' && node.startIndex !== markedDeclarator?.startIndex)
-        .map(({ node }) => node.text)
+      definitions
+        .filter(({ declarator }) => declarator.startIndex !== markedDeclarator?.startIndex)
+        .map(({ declarator }) => declarator.text)
     ).toEqual([
       'outer(void)',
       'annotated(void)',
@@ -1639,11 +1609,8 @@ test('retains GNU nested annotation and macro-type function bodies including old
       'following(void)',
     ]);
     expect(
-      captures
-        .filter(({ name, node }) => name === 'type' && node.startIndex !== markedType?.startIndex)
-        .map(({ node }) => node.text)
+      definitions.filter(({ type }) => type.startIndex !== markedType?.startIndex).map(({ type }) => type.text)
     ).toEqual(['int', 'int', 'TYPE(int)', 'TYPE(struct { int member; } *)', 'int', 'int', 'int']);
-    expect(captures.filter(({ name }) => name === 'body')).toHaveLength(8);
     const outerBody = tree.rootNode.namedChildren
       .find((node) => node.childForFieldName('declarator')?.text === 'outer(void)')
       ?.childForFieldName('body');
@@ -1666,7 +1633,6 @@ test('retains GNU nested annotation and macro-type function bodies including old
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
     verifyGuardedGroupComments(parser, tree, source);
   } finally {
-    query.delete();
     tree.delete();
     parser.delete();
   }
@@ -1678,15 +1644,19 @@ test('retains braced declarator-macro fields and following assignments at declar
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/bracedMacroDeclarators.c'), 'utf8');
   const tree = parser.parse(source)!;
-  const query = new Query(
-    language,
-    `(declaration declarator: (function_declarator) @call)
-(init_declarator declarator: (function_declarator) @call)
-(declaration type: (macro_type_specifier) @type)`
-  );
   try {
     expect(tree.rootNode.hasError).toBe(false);
-    const captures = query.captures(tree.rootNode);
+    const captures = collectCaptures(tree.rootNode, (node, emit) => {
+      if (node.type === 'declaration' || node.type === 'init_declarator') {
+        for (const declarator of node.childrenForFieldName('declarator')) {
+          if (declarator.type === 'function_declarator') emit('call', declarator);
+        }
+        if (node.type === 'declaration') {
+          const type = node.childForFieldName('type');
+          if (type?.type === 'macro_type_specifier') emit('type', type);
+        }
+      }
+    });
     const macroCalls = captures.filter(
       ({ name, node }) =>
         name === 'call' && ['ARRAY', 'NAME'].includes(node.childForFieldName('declarator')?.text ?? '')
@@ -1744,11 +1714,88 @@ test('retains braced declarator-macro fields and following assignments at declar
     expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following(void) { return 0; }');
     verifyGuardedGroupComments(parser, tree, source);
   } finally {
-    query.delete();
     tree.delete();
     parser.delete();
   }
 });
+
+function visitNativeAttributeNode(node: NativeNode, emit: (name: string, target?: NativeNode) => void): void {
+  if (node.type === 'attribute_specifier') {
+    const name = node.childForFieldName('name');
+    if (name?.type === 'identifier') emit('modifier', name);
+  } else if (node.type === 'declaration' || node.type === 'function_definition') {
+    const declarator = node.childForFieldName('declarator');
+    const name = declarator?.type === 'function_declarator' ? declarator.childForFieldName('declarator') : undefined;
+    if (name?.type !== 'identifier') return;
+    if (node.type === 'declaration') emit('prototype', name);
+    else {
+      emit('function');
+      emit('functionName', name);
+    }
+  }
+}
+
+function bracedTrailerCaptures(root: Node, offset: number): Array<[string, string, number, number]> {
+  return collectCaptures(root, visitBracedTrailerRoles)
+    .filter(({ node }) => node.startIndex >= offset)
+    .map<[string, string, number, number]>(({ name, node }) => [
+      name,
+      node.text,
+      node.startIndex - offset,
+      node.endIndex - offset,
+    ]);
+}
+
+function visitBracedTrailerRoles(node: Node, emit: (name: string, target?: Node) => void): void {
+  if (node.type === 'type_definition' || node.type === 'field_declaration') {
+    const prefix = node.type === 'type_definition' ? 'typedef' : 'field';
+    emitPair(
+      node.childForFieldName('type'),
+      node.childForFieldName('declarator'),
+      `${prefix}.type`,
+      `${prefix}.name`,
+      emit
+    );
+  } else if (node.type === 'struct_specifier') {
+    const name = node.childForFieldName('name');
+    if (name?.isNamed) emit('struct.name', name);
+  } else if (node.type === 'declaration' || node.type === 'function_definition') {
+    const prefix = node.type === 'declaration' ? 'prototype' : 'function';
+    const declarator = node.childForFieldName('declarator');
+    const inner = declarator?.type === 'function_declarator' ? declarator.childForFieldName('declarator') : undefined;
+    emitPair(node.childForFieldName('type'), inner, `${prefix}.type`, `${prefix}.name`, emit);
+  }
+}
+
+function emitPair(
+  first: Node | null,
+  second: Node | null | undefined,
+  firstName: string,
+  secondName: string,
+  emit: (name: string, target?: Node) => void
+): void {
+  if (!first?.isNamed || !second?.isNamed) return;
+  emit(firstName, first);
+  emit(secondName, second);
+}
+
+function collectAttributeParameters(root: Node): Node[] {
+  return root.descendantsOfType('attribute_specifier').flatMap((attribute) => {
+    const args = attribute.childForFieldName('arguments');
+    return args?.type === 'argument_list'
+      ? args.namedChildren.filter((child) => child.type === 'parameter_declaration')
+      : [];
+  });
+}
+
+function collectSupertypeFunctions(language: Language, root: Node): string[] {
+  return root.descendantsOfType('function_definition').flatMap((node) => {
+    const declarator = node.childForFieldName('declarator');
+    return hasSupertype(language, declarator, '_declarator') && node.childForFieldName('body')?.isNamed
+      ? [declarator.text]
+      : [];
+  });
+}
 
 function verifyGuardedGroupComments(parser: Parser, tree: Tree, source: string, commentBefore: string[] = []): void {
   const offsets = tree.rootNode

@@ -24,7 +24,7 @@ the trees that error recovery produces may change; such changes are released as 
 ## Usage
 
 The npm package ships `tree-sitter-c.wasm` for
-[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 17.0.1 or later within 17.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000c`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
+[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 19.1.1 or later within 19.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000c`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
 
 ```js
 import { fileURLToPath } from 'node:url';
@@ -123,7 +123,7 @@ and initialized declarators. Derived custom declaration builders also need `_gua
 also anchor the guarded type route. Retain that route in custom block and for-declaration builders. Keep the marked-type rule's
 ordinary type and annotation alternatives after the prefix guard, so typedef-return prototypes remain prototypes.
 Guard-owned initialized declarators also need their `_declarator` supertype alias; accepting the syntax alone does not
-preserve subtype queries. Keep ordinary initializers on their existing declarator family. Custom declaration builders
+preserve supertype metadata. Keep ordinary initializers on their existing declarator family. Custom declaration builders
 must admit `_bare_marker_initializer_declaration` where they need the published bare-name initializer preference.
 If their ordinary function declarators reject C's opaque trailing identifiers, adapt that private initializer route
 separately and retain its `_declarator` alias.
@@ -149,7 +149,7 @@ Annotation lookahead hands the first unquoted brace in an argument group to the 
 whole braced body. The argument grammar handles compound literals, inline types, aggregate initializers, and GNU
 statement expressions. Proved braced arguments also accept named declarations such as `register int a[sizeof(struct { int m; })]`,
 including declaration specifiers and trailing GNU attributes. Their `parameter_declaration` nodes require a name and retain
-public type and declarator subtype queries. Quoted punctuation and comments remain literal content. Semicolons and preprocessing directives
+public type and declarator supertypes. Quoted punctuation and comments remain literal content. Semicolons and preprocessing directives
 encountered before an unknown annotation's braced handoff reject that lookahead; directive-bearing arguments need
 separate support. The marker proof balances recognized declaration-modifier groups, including inline types inside
 attribute arguments, in one pass. Those recognized groups do not turn an attribute's internal brace into the following
@@ -165,7 +165,7 @@ can declare an integer when `Word` is a typedef and `ATTR` is empty, or a struct
 selects its argument. For a genuinely bare prefix with an initialized first declarator, the grammar preserves the
 published first type-name preference, even though the remaining declarator can be approximate. Uninitialized marked
 types and prefixes with recognized declaration attributes or known specifiers keep the concrete macro-type route.
-This preference preserves query fields; it does not resolve both macro expansions semantically.
+This preference preserves the `type` field; it does not resolve both macro expansions semantically.
 
 A proved braced macro call can also supply a declarator. Its `function_declarator` keeps the macro name in `declarator`
 and the structural argument group in `parameters`, so a physical semicolon, comma, initializer or function body
@@ -214,7 +214,7 @@ In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-
 fuzzed with, at the version recorded in `Cargo.lock`:
 
 ```sh
-cargo add willbooster-tree-sitter@17.0.1 --rename tree-sitter
+cargo add willbooster-tree-sitter@19.1.1 --rename tree-sitter
 cargo add willbooster-tree-sitter-c --rename tree-sitter-c
 ```
 

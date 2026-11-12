@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, type Node, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
+
+import { collectCaptures } from '../helpers/ast.ts';
 
 const wasmPath = path.join(import.meta.dirname, '../../tree-sitter-c.wasm');
 
@@ -155,22 +157,9 @@ test('preserves annotation name ranges and following captures', async () => {
   await Parser.init();
   const language = await Language.load(wasmPath);
   const parser = new Parser().setLanguage(language);
-  const query = new Query(
-    language,
-    `
-    (attribute_specifier name: (identifier) @annotation arguments: (_) @arguments)
-    (declaration type: (_) @type declarator: (_) @object)
-    (type_definition declarator: (_) @typedef)
-    (function_definition declarator: (_) @function)
-  `
-  );
   const source =
     'int /* type */ *value ATTR /* note */ ((1));\ntypedef void (*saved_t)(int);\nint after(void) { return 0; }\n';
   const tree = parser.parse(source)!;
-  const captures = (root: typeof tree.rootNode): Array<[string, string, number, number]> =>
-    query
-      .captures(root)
-      .map<[string, string, number, number]>(({ name, node }) => [name, node.text, node.startIndex, node.endIndex]);
   try {
     expect(tree.rootNode.hasError).toBe(false);
     const attribute = tree.rootNode.descendantsOfType('attribute_specifier')[0]!;
@@ -178,17 +167,18 @@ test('preserves annotation name ranges and following captures', async () => {
     expect(name.text).toBe('ATTR');
     expect(name.childCount).toBe(0);
     expect(source.slice(name.startIndex, name.endIndex)).toBe('ATTR');
-    expect(captures(tree.rootNode).map(([kind, text]) => [kind, text])).toEqual([
-      ['type', 'int'],
-      ['object', '*value'],
-      ['annotation', 'ATTR'],
-      ['arguments', '((1))'],
-      ['typedef', '(*saved_t)(int)'],
-      ['function', 'after(void)'],
-    ]);
+    expect(collectCaptures(tree.rootNode, visitTrailingRoles).map(({ name: kind, node }) => [kind, node.text])).toEqual(
+      [
+        ['type', 'int'],
+        ['object', '*value'],
+        ['annotation', 'ATTR'],
+        ['arguments', '((1))'],
+        ['typedef', '(*saved_t)(int)'],
+        ['function', 'after(void)'],
+      ]
+    );
   } finally {
     tree.delete();
-    query.delete();
     parser.delete();
   }
 });
@@ -313,11 +303,10 @@ test.each(['\\\n', '\\\r\n'])(
   }
 );
 
-test('preserves GNU assembly labels and their query fields beside trailing object annotations', async () => {
+test('preserves GNU assembly labels and their fields beside trailing object annotations', async () => {
   await Parser.init();
   const language = await Language.load(wasmPath);
   const parser = new Parser().setLanguage(language);
-  const query = new Query(language, '(gnu_asm_expression assembly_code: (string_literal) @assembly)');
   const source = `int foo __asm__("bar");
 int *baz asm("qux");
 int a2 __asm("x");
@@ -327,7 +316,11 @@ int after(void) { return 0; }
   const tree = parser.parse(source)!;
   try {
     expect(tree.rootNode.hasError).toBe(false);
-    expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual(['"bar"', '"qux"', '"x"']);
+    const assemblyLiterals = tree.rootNode.descendantsOfType('gnu_asm_expression').flatMap((node) => {
+      const code = node.childForFieldName('assembly_code');
+      return code?.type === 'string_literal' ? [code.text] : [];
+    });
+    expect(assemblyLiterals).toEqual(['"bar"', '"qux"', '"x"']);
     expect(tree.rootNode.descendantsOfType('gnu_asm_expression').map((node) => node.text)).toEqual([
       '__asm__("bar")',
       'asm("qux")',
@@ -339,7 +332,6 @@ int after(void) { return 0; }
     ]);
   } finally {
     tree.delete();
-    query.delete();
     parser.delete();
   }
 });
@@ -383,3 +375,24 @@ int after(void) { return 0; }
     parser.delete();
   }
 });
+
+function visitTrailingRoles(node: Node, emit: (name: string, target?: Node) => void): void {
+  if (node.type === 'attribute_specifier') {
+    const name = node.childForFieldName('name');
+    const args = node.childForFieldName('arguments');
+    if (name?.type === 'identifier' && args?.isNamed) {
+      emit('annotation', name);
+      emit('arguments', args);
+    }
+  } else if (node.type === 'declaration') {
+    const type = node.childForFieldName('type');
+    const declarator = node.childForFieldName('declarator');
+    if (type?.isNamed && declarator?.isNamed) {
+      emit('type', type);
+      emit('object', declarator);
+    }
+  } else if (node.type === 'type_definition' || node.type === 'function_definition') {
+    const declarator = node.childForFieldName('declarator');
+    if (declarator?.isNamed) emit(node.type === 'type_definition' ? 'typedef' : 'function', declarator);
+  }
+}

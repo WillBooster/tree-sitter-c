@@ -5,6 +5,16 @@ import path from 'node:path';
 import { Language, type Node, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
 
+import { collectCaptures } from '../helpers/ast.ts';
+import { type NativeNode, parseNativeFiles } from '../helpers/nativeParse.ts';
+
+interface NativeCaptureSummary {
+  name: string;
+  start: [number, number];
+  end: [number, number];
+  text: string;
+}
+
 const root = path.resolve(import.meta.dirname, '../..');
 const fixture = 'test/fixtures/fieldMacros.h';
 const source = fs.readFileSync(path.join(root, fixture), 'utf8');
@@ -139,32 +149,25 @@ test('keeps enclosing conditionals closed before following declarations', async 
 });
 
 test('keeps native conditional return types and enclosing directive boundaries', { timeout: 300_000 }, () => {
-  const result = spawnSync(
-    'script/tree-sitter',
-    [
-      'query',
-      '--grammar-path',
-      '.',
-      '--captures',
-      'test/fixtures/fieldMacros.scm',
-      'test/fixtures/conditionalType.c',
-      'test/fixtures/conditionalOuter.c',
-      'test/fixtures/conditionalDirective.c',
-    ],
-    {
-      cwd: root,
-      env: { ...process.env, TREE_SITTER_LIBDIR: path.join(root, '.tmp/field-macro-recovery-lib') },
-      encoding: 'utf8',
-      timeout: 300_000,
-    }
-  );
-  expect(result.error).toBeUndefined();
-  expect(result.status, result.stderr).toBe(0);
-  expect(result.stdout).toContain(' - function, start: (4, 0), end: (4, 1), text: `f`');
-  expect(result.stdout.match(/ - branch, start: \(0, 0\), end: \(4, 6\)/gu)).toHaveLength(2);
-  expect(result.stdout).toContain(' - function, start: (5, 4), end: (5, 5), text: `f`');
-  expect(result.stdout).toContain(' - function, start: (6, 4), end: (6, 5), text: `g`');
-  expect(result.stdout).toContain(' - conditional, start: (6, 0), end: (8, 6)');
+  const captures = collectFieldMacroCaptures([
+    'test/fixtures/conditionalType.c',
+    'test/fixtures/conditionalOuter.c',
+    'test/fixtures/conditionalDirective.c',
+  ]);
+  expect(captures).toContainEqual({ name: 'function', start: [4, 0], end: [4, 1], text: 'f' });
+  expect(
+    captures.filter(
+      (capture) =>
+        capture.name === 'branch' &&
+        capture.start[0] === 0 &&
+        capture.start[1] === 0 &&
+        capture.end[0] === 4 &&
+        capture.end[1] === 6
+    )
+  ).toHaveLength(2);
+  expect(captures).toContainEqual({ name: 'function', start: [5, 4], end: [5, 5], text: 'f' });
+  expect(captures).toContainEqual({ name: 'function', start: [6, 4], end: [6, 5], text: 'g' });
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'conditional', start: [6, 0], end: [8, 6] }));
 });
 
 test('keeps tag-only declarations free of phantom declarators', async () => {
@@ -245,32 +248,14 @@ test('retains conditional typedefs, grouped modifiers and following prototypes',
   }
 });
 
-test('retains native conditional typedefs and following prototype queries', { timeout: 300_000 }, () => {
-  const result = spawnSync(
-    'script/tree-sitter',
-    [
-      'query',
-      '--grammar-path',
-      '.',
-      '--captures',
-      'test/fixtures/fieldMacros.scm',
-      'test/fixtures/conditionalDeclarations.c',
-    ],
-    {
-      cwd: root,
-      env: { ...process.env, TREE_SITTER_LIBDIR: path.join(root, '.tmp/field-macro-recovery-lib') },
-      encoding: 'utf8',
-      timeout: 300_000,
-    }
-  );
-  expect(result.error).toBeUndefined();
-  expect(result.status, result.stderr).toBe(0);
-  expect(result.stdout).not.toContain(' - error,');
-  expect(result.stdout).toContain(' - type, start: (4, 12), end: (4, 18), text: `Before`');
-  expect(result.stdout).toContain(' - type, start: (9, 4), end: (9, 9), text: `After`');
-  expect(result.stdout).toContain(' - declarator, start: (31, 4), end: (31, 5), text: `g`');
-  expect(result.stdout).toContain(' - declarator, start: (32, 4), end: (32, 5), text: `h`');
-  expect(result.stdout).toContain(' - function, start: (33, 5), end: (33, 6), text: `i`');
+test('retains native conditional typedefs and following prototypes', { timeout: 300_000 }, () => {
+  const captures = collectFieldMacroCaptures(['test/fixtures/conditionalDeclarations.c']);
+  expect(captures.filter((capture) => capture.name === 'error')).toHaveLength(0);
+  expect(captures).toContainEqual({ name: 'type', start: [4, 12], end: [4, 18], text: 'Before' });
+  expect(captures).toContainEqual({ name: 'type', start: [9, 4], end: [9, 9], text: 'After' });
+  expect(captures).toContainEqual({ name: 'declarator', start: [31, 4], end: [31, 5], text: 'g' });
+  expect(captures).toContainEqual({ name: 'declarator', start: [32, 4], end: [32, 5], text: 'h' });
+  expect(captures).toContainEqual({ name: 'function', start: [33, 5], end: [33, 6], text: 'i' });
 });
 
 test('retains a following prototype after versioned annotation groups', async () => {
@@ -309,46 +294,67 @@ test.each([
 });
 
 test('keeps native header declarations after semicolonless field macros', { timeout: 300_000 }, () => {
-  const result = spawnSync(
-    'script/tree-sitter',
-    [
-      'query',
-      '--grammar-path',
-      '.',
-      '--captures',
-      'test/fixtures/fieldMacros.scm',
-      fixture,
-      conditionalFixture,
-      'test/fixtures/conditionalReturn.c',
-      'test/fixtures/conditionalAlias.c',
-    ],
-    {
-      cwd: root,
-      env: { ...process.env, TREE_SITTER_LIBDIR: path.join(root, '.tmp/field-macro-recovery-lib') },
-      encoding: 'utf8',
-      timeout: 300_000,
-    }
-  );
-  expect(result.error).toBeUndefined();
-  expect(result.status, result.stderr).toBe(0);
-  expect(result.stdout).toContain(' - structure, start: (2, 7), end: (2, 11)');
-  expect(result.stdout).toContain(' - structure, start: (6, 15), end: (6, 21)');
-  expect(result.stdout).toContain(' - structure, start: (12, 7), end: (12, 12)');
-  expect(result.stdout).toContain(' - type, start: (9, 2), end: (9, 8)');
-  expect(result.stdout).toContain(' - type, start: (10, 12), end: (10, 16)');
-  expect(result.stdout).toContain(' - conditional, start: (0, 0), end: (13, 6)');
-  expect(result.stdout).toContain(' - conditional, start: (2, 0), end: (4, 6)');
-  expect(result.stdout).toContain(' - branch, start: (1, 0), end: (8, 6)');
-  expect(result.stdout).toContain(' - marker, start: (3, 0), end: (3, 13)');
-  expect(result.stdout).toContain(' - function, start: (5, 5), end: (5, 10)');
-  expect(result.stdout).toContain(' - function, start: (9, 4), end: (9, 9)');
-  expect(result.stdout).toContain(' - declarator, start: (5, 0), end: (5, 6), text: `lookup`');
-  expect(result.stdout).toContain('text: `alias`');
-  expect(result.stdout).toContain('text: `timer`');
-  expect(result.stdout).toContain('text: `postAlias`');
-  expect(result.stdout).toContain('text: `followingAlias`');
-  expect(result.stdout).not.toContain(' - error,');
+  const captures = collectFieldMacroCaptures([
+    fixture,
+    conditionalFixture,
+    'test/fixtures/conditionalReturn.c',
+    'test/fixtures/conditionalAlias.c',
+  ]);
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'structure', start: [2, 7], end: [2, 11] }));
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'structure', start: [6, 15], end: [6, 21] }));
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'structure', start: [12, 7], end: [12, 12] }));
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'type', start: [9, 2], end: [9, 8] }));
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'type', start: [10, 12], end: [10, 16] }));
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'conditional', start: [0, 0], end: [13, 6] }));
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'conditional', start: [2, 0], end: [4, 6] }));
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'branch', start: [1, 0], end: [8, 6] }));
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'marker', start: [3, 0], end: [3, 13] }));
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'function', start: [5, 5], end: [5, 10] }));
+  expect(captures).toContainEqual(expect.objectContaining({ name: 'function', start: [9, 4], end: [9, 9] }));
+  expect(captures).toContainEqual({ name: 'declarator', start: [5, 0], end: [5, 6], text: 'lookup' });
+  const texts = captures.map((capture) => capture.text);
+  expect(texts).toEqual(expect.arrayContaining(['alias', 'timer', 'postAlias', 'followingAlias']));
+  expect(captures.filter((capture) => capture.name === 'error')).toHaveLength(0);
 });
+
+function collectFieldMacroCaptures(files: string[]): NativeCaptureSummary[] {
+  const sources = parseNativeFiles(root, path.join(root, '.tmp/field-macro-recovery-lib'), files);
+  return sources.flatMap(({ rootNode }) =>
+    collectCaptures(rootNode, visitFieldMacroNode).map(({ name, node }) => ({
+      name,
+      start: [node.startPosition.row, node.startPosition.column] as [number, number],
+      end: [node.endPosition.row, node.endPosition.column] as [number, number],
+      text: node.text,
+    }))
+  );
+}
+
+function visitFieldMacroNode(node: NativeNode, emit: (name: string, target?: NativeNode) => void): void {
+  if (node.type === 'struct_specifier') emitFieldIfType(node, 'name', 'type_identifier', 'structure', emit);
+  else if (node.type === 'type_definition') emitFieldIfType(node, 'declarator', 'type_identifier', 'type', emit);
+  else if (node.type === 'preproc_ifdef') emit('conditional');
+  else if (node.type === 'preproc_if') emit('branch');
+  else if (node.type === 'macro_specifier') emitFieldIfType(node, 'name', 'identifier', 'marker', emit);
+  else if (node.type === 'ERROR') emit('error');
+  else if (node.type === 'function_declarator') emitFieldIfType(node, 'declarator', 'identifier', 'declarator', emit);
+  else if (node.type === 'function_definition') {
+    const declarator = node.childForFieldName('declarator');
+    if (declarator?.type === 'function_declarator') {
+      emitFieldIfType(declarator, 'declarator', 'identifier', 'function', emit);
+    }
+  }
+}
+
+function emitFieldIfType(
+  node: NativeNode,
+  field: string,
+  expectedType: string,
+  captureName: string,
+  emit: (name: string, target?: NativeNode) => void
+): void {
+  const child = node.childForFieldName(field);
+  if (child?.type === expectedType) emit(captureName, child);
+}
 
 function definitionName(node: Node): string | undefined {
   let declarator = node.childForFieldName('declarator');

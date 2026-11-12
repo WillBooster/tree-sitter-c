@@ -13,6 +13,8 @@ static EmptyDirectives *scanner_directives(CScanner *scanner);
 
 static bool only_extras_valid(const EmptyDirectives *state, const bool *valid_symbols);
 static bool scan_extras(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
+static bool scan_extras_pragma(EmptyDirectives *state, TSLexer *lexer, const TSLexerCheckpoint *start, bool skipped);
+static uint32_t extras_start_byte(TSLexer *lexer, const TSLexerCheckpoint *start, bool skipped);
 static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_declaration_tokens(CScanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
@@ -79,35 +81,49 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
 }
 
 static bool only_extras_valid(const EmptyDirectives *state, const bool *valid_symbols) {
-    if (!state || !state->ready) return false;
-    for (unsigned i = PREPROC_ARG; i < DIRECTIVE_CONTEXT; i++) {
-        if (valid_symbols[i]) return false;
-    }
-    return !valid_symbols[PREPROC_DIRECTIVE_START];
+    return state && state->ready && !valid_symbols[PREPROC_DIRECTIVE_START] &&
+        !memchr(valid_symbols + PREPROC_ARG, true, (DIRECTIVE_CONTEXT - PREPROC_ARG) * sizeof(*valid_symbols));
 }
 
-// Decides as the general path does in states where only extras are valid, but queries the position only once the first
-// non-space character shows that a null directive or `_Pragma` may follow, since any position query makes the runtime
-// allocate the token on the heap. A null directive's prefix holds only spaces and splices, and line ends are recorded
-// only at spaces and newlines. The skipped spaces moved the lexer, so the start position is read back through the mark.
+// `starts` marks only `#`, `\`, and spaces/splices before a null directive's `#`, and `line_ends` marks only spaces and
+// newlines, so `extras_start_byte` restores the pre-space checkpoint via `mark_end_at` only after `#`/`\` (when `starts`
+// exists) or `_Pragma` (when skipped spaces may start at `line_ends`), avoiding checkpoint/column work on other tokens.
 static bool scan_extras(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
-    TSLexerCheckpoint start;
-    lexer->get_checkpoint(lexer, &start);
+    bool allow_empty = valid_symbols[PREPROC_EMPTY] && state->starts;
+    bool allow_pragma = valid_symbols[PRAGMA_OPERATOR];
+    if (!allow_empty && !allow_pragma) return false;
+    bool skipped = pragma_space(lexer->lookahead);
+    TSLexerCheckpoint start = {0};
+    if (skipped && (allow_empty || state->line_ends)) lexer->get_checkpoint(lexer, &start);
     while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
     int32_t c = lexer->lookahead;
-    if (c != '#' && c != '\\' && c != '_') return false;
-    TSLexerPosition position;
-    lexer->mark_end_at(lexer, &start);
-    lexer->get_mark_end(lexer, &position);
-    if (valid_symbols[PREPROC_EMPTY] && empty_directives_start_at(state, position.bytes)) {
-        empty_directives_consume_started(lexer, state, true);
-        lexer->mark_end(lexer);
-        lexer->result_symbol = PREPROC_EMPTY;
-        return true;
+    if (c == '_') return allow_pragma && scan_extras_pragma(state, lexer, &start, skipped);
+    if (!allow_empty || (c != '#' && c != '\\')) return false;
+    if (!empty_directives_start_at(state, extras_start_byte(lexer, &start, skipped))) return false;
+    empty_directives_consume_started(lexer, state, true);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = PREPROC_EMPTY;
+    return true;
+}
+
+static bool scan_extras_pragma(EmptyDirectives *state, TSLexer *lexer, const TSLexerCheckpoint *start, bool skipped) {
+    if (!scan_pragma_word(lexer)) return false;
+    if (skipped && state->line_ends && empty_directives_line_end_at(state, extras_start_byte(lexer, start, true))) {
+        return false;
     }
-    if (!valid_symbols[PRAGMA_OPERATOR] || empty_directives_line_end_at(state, position.bytes)) return false;
     lexer->result_symbol = PRAGMA_OPERATOR;
-    return scan_pragma_with(lexer, &(PragmaTrivia){empty_directives_skip, state});
+    return scan_pragma_suffix_end_with(lexer, true, &(PragmaTrivia){empty_directives_skip, state});
+}
+
+static uint32_t extras_start_byte(TSLexer *lexer, const TSLexerCheckpoint *start, bool skipped) {
+    TSLexerPosition position;
+    if (skipped) {
+        lexer->mark_end_at(lexer, start);
+        lexer->get_mark_end(lexer, &position);
+    } else {
+        lexer->get_position(lexer, &position);
+    }
+    return position.bytes;
 }
 
 static bool scan_conditional_directive(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {

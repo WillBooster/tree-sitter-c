@@ -51,7 +51,7 @@ static bool scan_pragma_empty(TSLexer *lexer, const PragmaTrivia *trivia);
 static bool scan_pragma_suffix_end_with(TSLexer *lexer, bool mark_end, const PragmaTrivia *trivia);
 static bool scan_pragma_suffix(TSLexer *lexer);
 static bool scan_pragma_suffix_end(TSLexer *lexer, bool mark_end);
-static bool pragma_space(int32_t c);
+static inline bool pragma_space(int32_t c);
 static bool scan_pragma_word(TSLexer *lexer);
 static bool scan_preproc_newline(TSLexer *lexer, bool skip);
 static bool scan_preproc_splices(TSLexer *lexer);
@@ -443,10 +443,11 @@ static bool scan_preproc_splices(TSLexer *lexer) {
     return true;
 }
 
-static bool pragma_space(int32_t c) {
-    return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' || c == '\v' ||
-           c == 0x85 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200A) ||
-           c == 0x2028 || c == 0x2029 || c == 0x202F || c == 0x205F || c == 0x3000;
+static inline bool pragma_space(int32_t c) {
+    return c < 0x85
+        ? c == ' ' || (uint32_t)(c - '\t') <= '\r' - '\t'
+        : c == 0x85 || c == 0xA0 || c == 0x1680 || (uint32_t)(c - 0x2000) <= 0x200A - 0x2000 ||
+          c == 0x2028 || c == 0x2029 || c == 0x202F || c == 0x205F || c == 0x3000;
 }
 
 static bool scan_function_macro_name(TSLexer *lexer, bool allow_pragma, TSSymbol pragma_symbol) {

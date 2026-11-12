@@ -1,25 +1,26 @@
-import { Language, Parser, Query, type Tree } from '@willbooster/web-tree-sitter';
+import { Language, type Node, Parser, type Tree } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
+
+import { collectCaptures, hasSupertype } from '../helpers/ast.ts';
 
 test('preserves sized declaration and enum base types', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser();
-  parser.setLanguage(language);
+  const parser = new Parser().setLanguage(language);
   const tree = parser.parse('unsigned char a; unsigned _BitInt(8) b; enum E : unsigned char { A };');
-  const query = new Query(
-    language,
-    '(declaration type: (type_specifier) @type) (enum_specifier underlying_type: (sized_type_specifier) @type)'
-  );
   try {
     expect(tree?.rootNode.hasError).toBe(false);
-    expect(query.captures(tree!.rootNode).map(({ node }) => node.text)).toEqual([
-      'unsigned char',
-      'unsigned _BitInt(8)',
-      'unsigned char',
-    ]);
+    const types = collectCaptures(tree!.rootNode, (node, emit) => {
+      if (node.type === 'declaration') {
+        const type = node.childForFieldName('type');
+        if (hasSupertype(language, type, 'type_specifier')) emit('type', type);
+      } else if (node.type === 'enum_specifier') {
+        const underlying = node.childForFieldName('underlying_type');
+        if (underlying?.type === 'sized_type_specifier') emit('type', underlying);
+      }
+    });
+    expect(types.map(({ node }) => node.text)).toEqual(['unsigned char', 'unsigned _BitInt(8)', 'unsigned char']);
   } finally {
-    query.delete();
     tree?.delete();
     parser.delete();
   }
@@ -28,8 +29,7 @@ test('preserves sized declaration and enum base types', async () => {
 test('preserves pointer declarators for old-style and prototype signatures', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser();
-  parser.setLanguage(language);
+  const parser = new Parser().setLanguage(language);
   const signatures = [
     ['int *f(a) int a; ', ['*f(a)']],
     ['int *f(int a) ', ['*f(int a)']],
@@ -58,8 +58,7 @@ test('preserves pointer declarators for old-style and prototype signatures', asy
 test('keeps control flow after macros followed by ordinary declarations', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser();
-  parser.setLanguage(language);
+  const parser = new Parser().setLanguage(language);
   const source = `
 #include <stddef.h>
 #define BEGIN(...)
@@ -73,15 +72,12 @@ void f(void) {
 }
 `;
   const tree = parser.parse(source)!;
-  const query = new Query(language, '(function_definition) @function (if_statement) @condition');
   try {
-    const captures = query.captures(tree.rootNode);
-    expect(captures.filter(({ name }) => name === 'function')).toHaveLength(1);
-    expect(captures.filter(({ name }) => name === 'condition').map(({ node }) => node.text)).toEqual([
+    expect(tree.rootNode.descendantsOfType('function_definition')).toHaveLength(1);
+    expect(tree.rootNode.descendantsOfType('if_statement').map((node) => node.text)).toEqual([
       'if (count == 1) { p = 0; }',
     ]);
   } finally {
-    query.delete();
     tree.delete();
     parser.delete();
   }
@@ -90,8 +86,7 @@ void f(void) {
 test('keeps assignments following malformed macro arguments', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser();
-  parser.setLanguage(language);
+  const parser = new Parser().setLanguage(language);
   const source = `void f(void) {
   int test_res;
   test_res = TEST(t_skip(), "test_skip()");
@@ -99,16 +94,14 @@ test('keeps assignments following malformed macro arguments', async () => {
   test_res = TEST(t_skip_todo(), "test_skip() inside TEST_TODO()");
 }`;
   const tree = parser.parse(source)!;
-  const query = new Query(language, '(assignment_expression) @assignment');
   try {
     expect(tree.rootNode.hasError).toBe(true);
     expect(tree.rootNode.descendantsOfType('expression_statement')).toHaveLength(3);
-    expect(query.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([
+    expect(tree.rootNode.descendantsOfType('assignment_expression').map((node) => node.text)).toEqual([
       'test_res = TEST(t_skip(), "test_skip()")',
       'test_res = TEST(t_skip_todo(), "test_skip() inside TEST_TODO()")',
     ]);
   } finally {
-    query.delete();
     tree.delete();
     parser.delete();
   }
@@ -117,8 +110,7 @@ test('keeps assignments following malformed macro arguments', async () => {
 test('keeps macro-decorated declaration names during recovery', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser();
-  parser.setLanguage(language);
+  const parser = new Parser().setLanguage(language);
   const source = `API_TYPE(Result)
 read_value PARAMS((
   CONST Reader *r,
@@ -126,13 +118,19 @@ read_value PARAMS((
 int after;
 void other(void);`;
   const tree = parser.parse(source)!;
-  const query = new Query(
-    language,
-    '(declaration type: (macro_type_specifier name: (identifier) @macro) declarator: (identifier) @name)'
-  );
   try {
     expect(tree.rootNode.hasError).toBe(true);
-    expect(query.captures(tree.rootNode).map(({ name, node }) => [name, node.text])).toEqual([
+    const captures = collectCaptures(tree.rootNode, (node, emit) => {
+      if (node.type !== 'declaration') return;
+      const type = node.childForFieldName('type');
+      const macroName = type?.type === 'macro_type_specifier' ? type.childForFieldName('name') : undefined;
+      const declarator = node.childForFieldName('declarator');
+      if (macroName?.type === 'identifier' && declarator?.type === 'identifier') {
+        emit('macro', macroName);
+        emit('name', declarator);
+      }
+    });
+    expect(captures.map(({ name, node }) => [name, node.text])).toEqual([
       ['macro', 'API_TYPE'],
       ['name', 'read_value'],
     ]);
@@ -143,7 +141,6 @@ void other(void);`;
         .slice(-2)
     ).toEqual(['after', 'other(void)']);
   } finally {
-    query.delete();
     tree.delete();
     parser.delete();
   }
@@ -154,7 +151,6 @@ test('keeps known type constructors after marker prefixes', async () => {
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser();
   let ownedTree: Tree | undefined;
-  let ownedQuery: Query | undefined;
   try {
     parser.setLanguage(language);
     const keywords = ['typeof', '__typeof', '__typeof__', 'typeof_unqual', '__typeof_unqual', '__typeof_unqual__'];
@@ -163,11 +159,6 @@ test('keeps known type constructors after marker prefixes', async () => {
     const source = `#define MARK\n#define TYPE(...) __VA_ARGS__\n${types.map((type, index) => `MARK const ${type} f${index}(${parameter});`).join('\n')}\nint next;\n`;
     let tree = parser.parse(source)!;
     ownedTree = tree;
-    const query = new Query(
-      language,
-      '(declaration type: (typeof_specifier) @return.type declarator: (function_declarator declarator: (identifier) @return.name))'
-    );
-    ownedQuery = query;
     const check = (): void => {
       expect(tree.rootNode.hasError).toBe(false);
       const declarations = tree.rootNode.namedChildren.filter((node) => node.type === 'declaration');
@@ -182,19 +173,24 @@ test('keeps known type constructors after marker prefixes', async () => {
       expect(declarations.at(-1)?.text).toBe('int next;');
     };
     check();
-    const result = query.captures(tree.rootNode);
-    expect(result.filter(({ name }) => name === 'return.type').map(({ node }) => node.text)).toEqual(
+    const typeofDeclarations = tree.rootNode.descendantsOfType('declaration').flatMap((node) => {
+      const type = node.childForFieldName('type');
+      const declarator = node.childForFieldName('declarator');
+      const fnName =
+        declarator?.type === 'function_declarator' ? declarator.childForFieldName('declarator') : undefined;
+      return type?.type === 'typeof_specifier' && fnName?.type === 'identifier'
+        ? [{ returnType: type.text, returnName: fnName.text }]
+        : [];
+    });
+    expect(typeofDeclarations.map(({ returnType }) => returnType)).toEqual(
       keywords.map((keyword) => `${keyword}(int)`)
     );
-    expect(result.filter(({ name }) => name === 'return.name').map(({ node }) => node.text)).toEqual(
-      keywords.map((_, index) => `f${index}`)
-    );
+    expect(typeofDeclarations.map(({ returnName }) => returnName)).toEqual(keywords.map((_, index) => `f${index}`));
     tree = parser.parse(source.replaceAll(parameter, 'int p'))!;
     ownedTree.delete();
     ownedTree = tree;
     check();
   } finally {
-    ownedQuery?.delete();
     ownedTree?.delete();
     parser.delete();
   }
@@ -203,35 +199,15 @@ test('keeps known type constructors after marker prefixes', async () => {
 test('preserves compound literal fields', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser();
-  parser.setLanguage(language);
+  const parser = new Parser().setLanguage(language);
   const source = 'void f(void){(static /* storage */ thread_local int){42}; (constexpr int){7};}';
   const tree = parser.parse(source)!;
-  let query: Query | undefined;
   try {
-    query = new Query(
-      language,
-      '(compound_literal_expression storage_class: (storage_class_specifier) @storage) (compound_literal_expression type: (type_descriptor) @type value: (initializer_list) @value)'
-    );
     expect(tree.rootNode.hasError).toBe(false);
-    expect(
-      query
-        .captures(tree.rootNode)
-        .filter(({ name }) => name === 'storage')
-        .map(({ node }) => node.text)
-    ).toEqual(['static', 'thread_local']);
-    expect(
-      query
-        .captures(tree.rootNode)
-        .filter(({ name }) => name === 'type')
-        .map(({ node }) => node.text)
-    ).toEqual(['int', 'constexpr int']);
-    expect(
-      query
-        .captures(tree.rootNode)
-        .filter(({ name }) => name === 'value')
-        .map(({ node }) => node.text)
-    ).toEqual(['{42}', '{7}']);
+    const roles = collectCompoundLiteralRoles(tree.rootNode);
+    expect(roles.storage).toEqual(['static', 'thread_local']);
+    expect(roles.types).toEqual(['int', 'constexpr int']);
+    expect(roles.values).toEqual(['{42}', '{7}']);
     for (const variant of [
       source.replace('static', 'register').replace('thread_local ', ''),
       source.replace('static /* storage */ thread_local ', ''),
@@ -244,7 +220,6 @@ test('preserves compound literal fields', async () => {
       }
     }
   } finally {
-    query?.delete();
     tree.delete();
     parser.delete();
   }
@@ -253,21 +228,19 @@ test('preserves compound literal fields', async () => {
 test('keeps constexpr recovery fields in compound literals', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser();
-  parser.setLanguage(language);
+  const parser = new Parser().setLanguage(language);
   const tree = parser.parse('void f(void){(constexpr _Atomic(int)){0};}')!;
-  let query: Query | undefined;
   try {
-    query = new Query(
-      language,
-      '(compound_literal_expression storage_class: (storage_class_specifier) @storage) (compound_literal_expression type: (type_descriptor) @type) ((type_qualifier) @constexpr (#eq? @constexpr "constexpr"))'
-    );
-    const captures = query.captures(tree.rootNode).map(({ name, node }) => ({ name, text: node.text }));
-    expect(captures.filter(({ name }) => name === 'storage')).toEqual([]);
-    expect(captures.filter(({ name }) => name === 'type').map(({ text }) => text)).toEqual(['constexpr _Atomic(int)']);
-    expect(captures.filter(({ name }) => name === 'constexpr').map(({ text }) => text)).toEqual(['constexpr']);
+    const roles = collectCompoundLiteralRoles(tree.rootNode);
+    expect(roles.storage).toEqual([]);
+    expect(roles.types).toEqual(['constexpr _Atomic(int)']);
+    expect(
+      tree.rootNode
+        .descendantsOfType('type_qualifier')
+        .filter((node) => node.text === 'constexpr')
+        .map((node) => node.text)
+    ).toEqual(['constexpr']);
   } finally {
-    query?.delete();
     tree.delete();
     parser.delete();
   }
@@ -276,25 +249,15 @@ test('keeps constexpr recovery fields in compound literals', async () => {
 test('preserves thread_local typedef names in compound literal roles', async () => {
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
-  const parser = new Parser();
-  parser.setLanguage(language);
+  const parser = new Parser().setLanguage(language);
   const source = 'typedef int thread_local; void f(void){(thread_local){0};}';
   const tree = parser.parse(source)!;
-  let query: Query | undefined;
   try {
-    query = new Query(
-      language,
-      '(compound_literal_expression storage_class: (storage_class_specifier) @storage) (compound_literal_expression type: (type_descriptor) @type value: (initializer_list) @value)'
-    );
-    const snapshot = (root: typeof tree.rootNode): { name: string; text: string; start: number; end: number }[] =>
-      query!
-        .captures(root)
-        .map(({ name, node }) => ({ name, text: node.text, start: node.startIndex, end: node.endIndex }));
     expect(tree.rootNode.hasError).toBe(false);
-    const captures = snapshot(tree.rootNode);
-    expect(captures.filter(({ name }) => name === 'storage')).toEqual([]);
-    expect(captures.filter(({ name }) => name === 'type').map(({ text }) => text)).toEqual(['thread_local']);
-    expect(captures.filter(({ name }) => name === 'value').map(({ text }) => text)).toEqual(['{0}']);
+    const roles = collectCompoundLiteralRoles(tree.rootNode);
+    expect(roles.storage).toEqual([]);
+    expect(roles.types).toEqual(['thread_local']);
+    expect(roles.values).toEqual(['{0}']);
     for (const variant of [
       source.replace('(thread_local)', '(static thread_local int)'),
       source.replace('(thread_local)', '(thread_local *)'),
@@ -308,7 +271,6 @@ test('preserves thread_local typedef names in compound literal roles', async () 
       }
     }
   } finally {
-    query?.delete();
     tree.delete();
     parser.delete();
   }
@@ -389,3 +351,24 @@ API signed char byte;`)!;
     parser.delete();
   }
 });
+
+function collectCompoundLiteralRoles(root: Node): { storage: string[]; types: string[]; values: string[] } {
+  const literals = root.descendantsOfType('compound_literal_expression');
+  return {
+    storage: literals.flatMap((node) =>
+      node
+        .childrenForFieldName('storage_class')
+        .filter((child) => child.type === 'storage_class_specifier')
+        .map((child) => child.text)
+    ),
+    types: literals.flatMap((node) => {
+      const type = node.childForFieldName('type');
+      return type?.type === 'type_descriptor' ? [type.text] : [];
+    }),
+    values: literals.flatMap((node) => {
+      const type = node.childForFieldName('type');
+      const value = node.childForFieldName('value');
+      return type?.type === 'type_descriptor' && value?.type === 'initializer_list' ? [value.text] : [];
+    }),
+  };
+}

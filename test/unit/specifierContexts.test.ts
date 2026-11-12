@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 
-import { Language, Parser, Query } from '@willbooster/web-tree-sitter';
+import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { expect, test } from 'vitest';
+
+import { collectCaptures, hasSupertype } from '../helpers/ast.ts';
 
 test('keeps enum underlying types and qualifier ranges in their enum context', async () => {
   await Parser.init();
@@ -9,8 +11,6 @@ test('keeps enum underlying types and qualifier ranges in their enum context', a
   const parser = new Parser().setLanguage(language);
   const source = fs.readFileSync('test/fixtures/specifierContexts.c', 'utf8');
   const tree = parser.parse(source)!;
-  const types = new Query(language, '(enum_specifier underlying_type: (sized_type_specifier) @type)');
-  const qualifiers = new Query(language, '(type_qualifier) @qualifier');
   try {
     expect(tree.rootNode.hasError).toBe(false);
     expect(
@@ -30,13 +30,20 @@ test('keeps enum underlying types and qualifier ranges in their enum context', a
       [undefined, 'unsigned', ['E']],
       ['Prefix', 'unsigned', ['F']],
     ]);
-    expect(types.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([
+    const underlyingSizedTypes = collectCaptures(tree.rootNode, (node, emit) => {
+      if (node.type !== 'enum_specifier') return;
+      const underlying = node.childForFieldName('underlying_type');
+      if (underlying?.type === 'sized_type_specifier') emit('type', underlying);
+    });
+    expect(underlyingSizedTypes.map(({ node }) => node.text)).toEqual([
       'unsigned',
       'unsigned long',
       'unsigned',
       'unsigned',
     ]);
-    expect(qualifiers.captures(tree.rootNode).map(({ node }) => [node.text, node.startIndex, node.endIndex])).toEqual(
+    expect(
+      tree.rootNode.descendantsOfType('type_qualifier').map((node) => [node.text, node.startIndex, node.endIndex])
+    ).toEqual(
       [...source.matchAll(/\b(?:const|volatile)\b/g)].map((match) => [
         match[0],
         match.index,
@@ -44,8 +51,6 @@ test('keeps enum underlying types and qualifier ranges in their enum context', a
       ])
     );
   } finally {
-    qualifiers.delete();
-    types.delete();
     tree.delete();
     parser.delete();
   }
@@ -55,7 +60,6 @@ test('keeps storage-prefixed empty declarations, loop initializers, and unnamed 
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
-  const expressions = new Query(language, '(for_statement initializer: (expression) @initializer)');
   const fixture = fs.readFileSync('test/fixtures/specifierContexts.c', 'utf8');
   const start = fixture.indexOf('static long const', fixture.indexOf('void contexts'));
   try {
@@ -90,13 +94,12 @@ test('keeps storage-prefixed empty declarations, loop initializers, and unnamed 
           ['declaration', 'unsigned int', undefined],
           ['declaration', 'long', 'value = 0'],
         ]);
-        expect(expressions.captures(tree.rootNode).map(({ node }) => node.text)).toEqual([
-          'n',
-          'i',
-          'n + 1',
-          '(n)',
-          'parameter(y)',
-        ]);
+        const expressionInitializers = collectCaptures(tree.rootNode, (node, emit) => {
+          if (node.type !== 'for_statement') return;
+          const initializer = node.childForFieldName('initializer');
+          if (hasSupertype(language, initializer, 'expression')) emit('initializer', initializer);
+        });
+        expect(expressionInitializers.map(({ node }) => node.text)).toEqual(['n', 'i', 'n + 1', '(n)', 'parameter(y)']);
         expect(
           tree.rootNode
             .descendantsOfType('field_declaration')
@@ -122,7 +125,6 @@ test('keeps storage-prefixed empty declarations, loop initializers, and unnamed 
       }
     }
   } finally {
-    expressions.delete();
     parser.delete();
   }
 });
@@ -131,7 +133,6 @@ test('preserves initializer field roles for an expression and a qualified empty 
   await Parser.init();
   const language = await Language.load('tree-sitter-c.wasm');
   const parser = new Parser().setLanguage(language);
-  const expressions = new Query(language, '(for_statement initializer: (expression) @initializer)');
   const fixture = fs.readFileSync('test/fixtures/specifierContexts.c', 'utf8');
   const start = fixture.indexOf('for (n;') + 'for ('.length;
   try {
@@ -162,7 +163,6 @@ test('preserves initializer field roles for an expression and a qualified empty 
       }
     }
   } finally {
-    expressions.delete();
     parser.delete();
   }
 });
