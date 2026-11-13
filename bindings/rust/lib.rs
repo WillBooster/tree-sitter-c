@@ -10,14 +10,14 @@
 //! parser
 //!     .set_language(&language.into())
 //!     .expect("Error loading C parser");
-//! let tree = parser.parse(code, None).unwrap();
+//! let tree = parser.parse(code).unwrap();
 //! assert!(!tree.root_node().has_error());
 //! ```
 //!
 //! The parser uses the ABI of the WillBooster/tree-sitter generator. Use the matching
-//! `willbooster-tree-sitter` runtime, pinned to 19.1.1 for this crate's tests; other tree-sitter runtimes reject it.
+//! `willbooster-tree-sitter` runtime, pinned to 20.0.0 for this crate's tests; other tree-sitter runtimes reject it.
 //!
-//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/19.1.1/tree_sitter/struct.Parser.html
+//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/20.0.0/tree_sitter/struct.Parser.html
 //! [tree-sitter]: https://tree-sitter.github.io/
 
 use tree_sitter_language::LanguageFn;
@@ -57,7 +57,6 @@ mod tests {
                 ));
                 let tree = tree_sitter::ffi::ts_parser_parse_string_encoding(
                     parser,
-                    std::ptr::null(),
                     source.as_ptr().cast(),
                     source.len() as u32,
                     tree_sitter::ffi::TSInputEncodingUTF16LE,
@@ -81,7 +80,7 @@ mod tests {
             b"char *s = \"caf\xe9 /*\";\n#define VALUE 1\nint following = VALUE;\n/* end */\n";
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(&super::LANGUAGE.into()).unwrap();
-        let tree = parser.parse(source, None).unwrap();
+        let tree = parser.parse(source).unwrap();
         assert_definition(&tree, source, b"char *s = \"caf\xe9 /*\";\n".len());
         assert_eq!(
             tree.root_node().named_child(2).unwrap().kind(),
@@ -113,7 +112,7 @@ mod tests {
                     },
                 ])
                 .unwrap();
-            let tree = parser.parse(&source, None).unwrap();
+            let tree = parser.parse(&source).unwrap();
             assert_definition(&tree, source.as_bytes(), second_start);
         }
     }
@@ -130,7 +129,7 @@ mod tests {
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(&super::LANGUAGE.into()).unwrap();
         let tree = parser
-            .parse_custom_encoding::<Latin1, _, _>(&mut |byte, _| &source[byte..], None, None)
+            .parse_custom_encoding::<Latin1, _, _>(&mut |byte, _| &source[byte..], None)
             .unwrap();
         assert_definition(&tree, source, b"/* caf\xe9 */\n".len());
     }
