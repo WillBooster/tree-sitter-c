@@ -2127,7 +2127,7 @@ module.exports = Object.assign(
         update_expression: ($) => {
           const argument = field('argument', $.expression);
           const operator = field('operator', choice('--', '++'));
-          return prec.right(PREC.UNARY, choice(seq(operator, argument), seq(argument, operator)));
+          return choice(prec.right(PREC.UNARY, seq(operator, argument)), prec.left(PREC.CALL, seq(argument, operator)));
         },
 
         cast_expression: ($) =>
