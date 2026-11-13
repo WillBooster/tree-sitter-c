@@ -9,6 +9,7 @@ static const char *const function_macro_keywords[] = {
   "_Alignof",
   "_Atomic",
   "_BitInt",
+  "_Bool",
   "_Complex",
   "_Countof",
   "_Defer",
@@ -148,6 +149,7 @@ static const char *const function_macro_group_modifiers[] = {
 static const char *const function_macro_type_keywords[] = {
   "_Atomic",
   "_BitInt",
+  "_Bool",
   "_Complex",
   "_Imaginary",
   "__complex__",
@@ -192,6 +194,7 @@ static const char *const function_macro_type_keywords[] = {
   "void",
 };
 static const char *const function_macro_scalar_type_keywords[] = {
+  "_Bool",
   "bool",
   "char",
   "char16_t",
@@ -222,6 +225,7 @@ static const char *const function_macro_scalar_type_keywords[] = {
 static const char *const function_macro_object_prefix_keywords[] = {
   "_Alignas",
   "_Atomic",
+  "_Bool",
   "_Complex",
   "_Imaginary",
   "_Nonnull",
