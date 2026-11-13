@@ -47856,6 +47856,10 @@
         "members": [
           {
             "type": "STRING",
+            "value": "_Bool"
+          },
+          {
+            "type": "STRING",
             "value": "bool"
           },
           {
