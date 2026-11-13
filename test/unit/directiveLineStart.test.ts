@@ -155,7 +155,7 @@ test.each(['x', 'xx', '<%XXXXXXXX%>', 'λ𐐀'])('keeps directives after exclude
   const start = prefix.length + gap.length + 1;
   const parser = new Parser().setLanguage(language);
   try {
-    const tree = parser.parse(source, undefined, {
+    const tree = parser.parse(source, {
       includedRanges: [
         {
           startIndex: 0,
