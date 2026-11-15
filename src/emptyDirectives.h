@@ -1,9 +1,12 @@
-// code-gauge-allow-file fileNcss 733 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
+// code-gauge-allow-file fileNcss 735 -- One source-fact pass shares compact character storage, directive lexing and physical-position conversion.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
 #include "pragma.h"
 #include <stdlib.h>
+
+#define DIRECTIVE_PAGE_SHIFT 12
+#define DIRECTIVE_PAGE_SIZE (1 << DIRECTIVE_PAGE_SHIFT)
 
 typedef struct {
     uint32_t index, byte, width;
@@ -159,11 +162,11 @@ static bool empty_directives_start_at(const EmptyDirectives *state, uint32_t byt
 // prefix characters.
 static void empty_directives_consume_started(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix) {
     TSLexerPosition position;
-    while (lexer->lookahead != '#' && !lexer->eof(lexer)) lexer->advance(lexer, skip_prefix);
+    while (lexer->lookahead != '#' && !pragma_eof(lexer)) lexer->advance(lexer, skip_prefix);
     do {
         lexer->advance(lexer, false);
         lexer->get_position(lexer, &position);
-    } while (!lexer->eof(lexer) && position.bytes < state->bytes &&
+    } while (!pragma_eof(lexer) && position.bytes < state->bytes &&
         !(state->ends[position.bytes / 8] & (1u << (position.bytes % 8))));
 }
 
@@ -173,7 +176,7 @@ static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer) {
     lexer->get_position(lexer, &start);
     DirectiveInput input = {.byte = start.bytes};
     uint32_t capacity = 0, byte = start.bytes;
-    while (!lexer->eof(lexer)) {
+    while (!pragma_eof(lexer)) {
         if (!directive_append(&input, &capacity, &byte, lexer)) goto failed;
     }
     input.end = byte;
@@ -302,7 +305,7 @@ static bool directive_position(DirectiveInput *input, uint32_t index, uint32_t b
 
 static bool directive_reserve(DirectiveInput *input, uint32_t *capacity, unsigned width) {
     if (input->length > UINT32_MAX - width) return false;
-    uint32_t last = (input->length + width - 1) >> 16;
+    uint32_t last = (input->length + width - 1) >> DIRECTIVE_PAGE_SHIFT;
     if (last >= *capacity) {
         uint32_t next = *capacity ? *capacity * 2 : 16;
         if (next < *capacity || (size_t)next > SIZE_MAX / sizeof(*input->characters)) return false;
@@ -312,7 +315,7 @@ static bool directive_reserve(DirectiveInput *input, uint32_t *capacity, unsigne
         *capacity = next;
     }
     while (input->page_count <= last) {
-        uint16_t *page = malloc(((size_t)1 << 16) * sizeof(*page));
+        uint16_t *page = malloc((size_t)DIRECTIVE_PAGE_SIZE * sizeof(*page));
         if (!page) return false;
         input->characters[input->page_count++] = page;
     }
@@ -330,11 +333,11 @@ static void directive_encode(DirectiveInput *input, uint32_t c) {
 }
 
 static uint16_t directive_character(const DirectiveInput *input, uint32_t index) {
-    return input->characters[index >> 16][index & 0xffff];
+    return input->characters[index >> DIRECTIVE_PAGE_SHIFT][index & (DIRECTIVE_PAGE_SIZE - 1)];
 }
 
 static void directive_store(DirectiveInput *input, uint16_t c) {
-    input->characters[input->length >> 16][input->length & 0xffff] = c;
+    input->characters[input->length >> DIRECTIVE_PAGE_SHIFT][input->length & (DIRECTIVE_PAGE_SIZE - 1)] = c;
     input->length++;
 }
 

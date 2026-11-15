@@ -76,13 +76,13 @@ static bool function_macro_word_in(const char *word, const char *const *words, u
 // code-gauge-allow functionNcss 33 -- Balanced delimiter recovery, trivia, and braced handoff share one consumed group.
 static inline bool scan_raw_macro_type_tail(TSLexer *lexer, const PragmaTrivia *trivia) {
     while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
-    if (lexer->lookahead == ')' || lexer->eof(lexer)) return false;
+    if (lexer->lookahead == ')' || pragma_eof(lexer)) return false;
     unsigned depth = 1;
     unsigned nested = 0;
     unsigned braces = 0;
     bool balanced = true;
     MacroArgumentWord word = {0};
-    while (!lexer->eof(lexer)) {
+    while (!pragma_eof(lexer)) {
         if (scan_pragma_empty(lexer, trivia)) {
             word = (MacroArgumentWord){0};
             continue;
@@ -401,7 +401,7 @@ static MacroGroup function_macro_group_contents(TSLexer *lexer, int32_t open, in
             word = (MacroArgumentWord){0};
             continue;
         }
-        if (lexer->eof(lexer)) return MACRO_GROUP_INVALID;
+        if (pragma_eof(lexer)) return MACRO_GROUP_INVALID;
         int32_t c = lexer->lookahead;
         if (c == '{' && !modifier) return MACRO_GROUP_BRACED;
         if (function_macro_group_separator(c, depth, nested, type_argument, braces)) return MACRO_GROUP_INVALID;
@@ -452,7 +452,7 @@ static bool function_macro_declaration_continues(TSLexer *lexer, bool post_type,
     MacroPrototypeTail tail = {.post_type = post_type, .explicit_type = post_type};
     for (;;) {
         bool escaped = false;
-        if (!function_macro_tail_spacing(lexer, &escaped, trivia) || lexer->eof(lexer)) return false;
+        if (!function_macro_tail_spacing(lexer, &escaped, trivia) || pragma_eof(lexer)) return false;
         int32_t c = lexer->lookahead;
         if (escaped || preproc_word(c, false)) {
             if (!function_macro_tail_word(lexer, escaped, &tail)) return false;
@@ -559,14 +559,15 @@ static MacroArgumentToken function_macro_argument_token(TSLexer *lexer, MacroArg
     return MACRO_ARGUMENT_CONSUMED;
 }
 
+// code-gauge-allow functionCognitiveComplexity 18 -- Raw and escaped quote scanning share delimiter, newline, and splice termination.
 static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote, bool raw, bool *unterminated_raw) {
     lexer->advance(lexer, false);
     if (raw) {
         bool terminated = scan_gnu_raw_string_end(lexer);
-        if (!terminated && unterminated_raw) *unterminated_raw = lexer->eof(lexer);
+        if (!terminated && unterminated_raw) *unterminated_raw = pragma_eof(lexer);
         return terminated;
     }
-    while (!lexer->eof(lexer)) {
+    while (!pragma_eof(lexer)) {
         int32_t c = lexer->lookahead;
         lexer->advance(lexer, false);
         if (c == quote) return true;
@@ -574,7 +575,7 @@ static bool function_macro_argument_quote(TSLexer *lexer, int32_t quote, bool ra
         if (c != '\\') continue;
         if (scan_preproc_newline(lexer, false)) continue;
         if (!scan_preproc_splices(lexer)) continue;
-        if (lexer->eof(lexer)) return false;
+        if (pragma_eof(lexer)) return false;
         lexer->advance(lexer, false);
     }
     return false;
@@ -588,6 +589,7 @@ static bool function_macro_argument_slash(TSLexer *lexer, bool allow_division) {
     return allow_division;
 }
 
+// code-gauge-allow functionCognitiveComplexity 16 -- Identifier, pp-number, and GNU raw-string prefix transitions share token-character state.
 static void function_macro_argument_word(MacroArgumentWord *word, int32_t c) {
     bool member = preproc_word(c, word->identifier || word->number);
     bool digit = c >= '0' && c <= '9';

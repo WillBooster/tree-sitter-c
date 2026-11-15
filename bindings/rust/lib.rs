@@ -15,9 +15,9 @@
 //! ```
 //!
 //! The parser uses the ABI of the WillBooster/tree-sitter generator. Use the matching
-//! `willbooster-tree-sitter` runtime, pinned to 20.0.0 for this crate's tests; other tree-sitter runtimes reject it.
+//! `willbooster-tree-sitter` runtime, pinned to 22.0.0 for this crate's tests; other tree-sitter runtimes reject it.
 //!
-//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/20.0.0/tree_sitter/struct.Parser.html
+//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/22.0.0/tree_sitter/struct.Parser.html
 //! [tree-sitter]: https://tree-sitter.github.io/
 
 use tree_sitter_language::LanguageFn;
@@ -75,17 +75,36 @@ mod tests {
     }
 
     #[test]
-    fn invalid_utf8_in_strings_preserves_following_directives() {
+    fn invalid_utf8_reports_error_and_preserves_following_directives() {
         let source =
-            b"char *s = \"caf\xe9 /*\";\n#define VALUE 1\nint following = VALUE;\n/* end */\n";
+            b"char *s = \"caf\xe9 value\";\n#define VALUE 1\nint following = VALUE;\n/* end */\n";
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(&super::LANGUAGE.into()).unwrap();
         let tree = parser.parse(source).unwrap();
-        assert_definition(&tree, source, b"char *s = \"caf\xe9 /*\";\n".len());
+        let root = tree.root_node();
+        assert!(root.has_error(), "{}", root.to_sexp());
+        assert_eq!(root.end_byte(), source.len());
+        let mut cursor = root.walk();
+        let definition = root
+            .named_children(&mut cursor)
+            .find(|node| node.kind() == "preproc_def")
+            .unwrap();
+        assert!(!definition.has_error(), "{}", definition.to_sexp());
         assert_eq!(
-            tree.root_node().named_child(2).unwrap().kind(),
-            "declaration"
+            definition.start_byte(),
+            b"char *s = \"caf\xe9 value\";\n".len()
         );
+        assert_eq!(
+            definition
+                .child_by_field_name("name")
+                .unwrap()
+                .utf8_text(source)
+                .unwrap(),
+            "VALUE"
+        );
+        let following = root.named_child(2).unwrap();
+        assert_eq!(following.kind(), "declaration");
+        assert!(!following.has_error(), "{}", following.to_sexp());
     }
 
     #[test]

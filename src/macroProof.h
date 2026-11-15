@@ -8,7 +8,7 @@ typedef struct { void *children[256]; } MacroProofNode;
 typedef struct { uint32_t values[256]; } MacroProofPage;
 typedef struct { uint32_t byte; uint8_t state; } MacroProofKey;
 typedef struct {
-    MacroProofNode root;
+    MacroProofNode *root;
     MacroProofKey *trace;
     uint32_t length, capacity;
     const char *const *reserved_words;
@@ -59,12 +59,17 @@ static void macro_proof_finish(MacroProofMemo *memo, bool accepted) {
 
 static void macro_proof_destroy(MacroProofMemo *memo) {
     if (!memo) return;
-    macro_proof_free_node(&memo->root, 3);
+    if (memo->root) {
+        macro_proof_free_node(memo->root, 3);
+        free(memo->root);
+    }
     free(memo->trace);
 }
 
 static MacroProofPage *macro_proof_page(MacroProofMemo *memo, uint32_t byte, bool create) {
-    MacroProofNode *node = &memo->root;
+    if (!memo->root && create) memo->root = calloc(1, sizeof(*memo->root));
+    MacroProofNode *node = memo->root;
+    if (!node) return NULL;
     for (unsigned level = 3; level > 0; level--) {
         unsigned index = (byte >> (8 * level)) & 255;
         if (!node->children[index] && create) {

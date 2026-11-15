@@ -220,7 +220,7 @@ static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bo
                 return argument_valid && scan_preproc_arg(lexer, true, argument_mode);
             }
         }
-        if (lexer->eof(lexer) || scan_preproc_newline(lexer, false)) {
+        if (pragma_eof(lexer) || scan_preproc_newline(lexer, false)) {
             lexer->mark_end(lexer);
             lexer->result_symbol = PREPROC_NEWLINE;
             return true;

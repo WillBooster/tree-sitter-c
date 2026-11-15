@@ -9,6 +9,10 @@ typedef struct {
     unsigned length;
 } GnuRawStringPrefix;
 
+static inline bool pragma_eof(const TSLexer *lexer) {
+    return lexer->lookahead == 0 && lexer->eof(lexer);
+}
+
 static bool scan_gnu_raw_string_body(TSLexer *lexer);
 static void gnu_raw_string_prefix_invalidate(GnuRawStringPrefix *prefix);
 
@@ -49,12 +53,12 @@ static bool scan_gnu_raw_string_body(TSLexer *lexer) {
     unsigned length = 0;
     while (lexer->lookahead != '(') {
         int32_t c = lexer->lookahead;
-        if (lexer->eof(lexer) || length == sizeof delimiter || c < 0x21 || c > 0x7e || c == ')' || c == '\\') return false;
+        if (pragma_eof(lexer) || length == sizeof delimiter || c < 0x21 || c > 0x7e || c == ')' || c == '\\') return false;
         delimiter[length++] = (char)c;
         lexer->advance(lexer, false);
     }
     lexer->advance(lexer, false);
-    for (int delimiter_index = -1; !lexer->eof(lexer); lexer->advance(lexer, false)) {
+    for (int delimiter_index = -1; !pragma_eof(lexer); lexer->advance(lexer, false)) {
         if (delimiter_index >= 0 && (unsigned)delimiter_index == length && lexer->lookahead == '"') break;
         if (delimiter_index >= 0 && (unsigned)delimiter_index < length &&
             lexer->lookahead == delimiter[delimiter_index]) {

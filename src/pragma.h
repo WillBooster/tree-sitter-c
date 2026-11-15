@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 489 -- Preprocessor tokens and pragma operators share names, spacing, and literal readers.
+// code-gauge-allow-file fileNcss 493 -- Preprocessor tokens and pragma operators share names, spacing, and literal readers.
 #ifndef TREE_SITTER_C_PRAGMA_H_
 #define TREE_SITTER_C_PRAGMA_H_
 
@@ -69,7 +69,7 @@ static bool scan_pragma_with(TSLexer *lexer, const PragmaTrivia *trivia) {
     return scan_pragma_suffix_end_with(lexer, true, trivia);
 }
 
-static bool scan_pragma(TSLexer *lexer) {
+static inline bool scan_pragma(TSLexer *lexer) {
     return scan_pragma_with(lexer, NULL);
 }
 
@@ -92,7 +92,27 @@ static bool scan_pragma_suffix_end_with(TSLexer *lexer, bool mark_end, const Pra
     return true;
 }
 
+static bool scan_pragma_string_prefix(TSLexer *lexer, bool *raw);
+
 static bool scan_pragma_argument(TSLexer *lexer) {
+    bool raw = false;
+    if (!scan_pragma_string_prefix(lexer, &raw) || lexer->lookahead != '"') return false;
+    lexer->advance(lexer, false);
+    if (raw) return scan_gnu_raw_string_end(lexer);
+    while (lexer->lookahead != '"') {
+        if (pragma_eof(lexer) || lexer->lookahead == '\n' || lexer->lookahead == '\r') return false;
+        if (lexer->lookahead == '\\') {
+            lexer->advance(lexer, false);
+            if (pragma_eof(lexer)) return false;
+            if (scan_preproc_newline(lexer, false)) continue;
+        }
+        lexer->advance(lexer, false);
+    }
+    lexer->advance(lexer, false);
+    return true;
+}
+
+static bool scan_pragma_string_prefix(TSLexer *lexer, bool *raw) {
     if (lexer->lookahead == 'L' || lexer->lookahead == 'u' || lexer->lookahead == 'U') {
         bool utf8 = lexer->lookahead == 'u';
         lexer->advance(lexer, false);
@@ -100,23 +120,9 @@ static bool scan_pragma_argument(TSLexer *lexer) {
         if (utf8 && lexer->lookahead == '8') lexer->advance(lexer, false);
         if (!scan_preproc_splices(lexer)) return false;
     }
-    bool raw = lexer->lookahead == 'R';
-    if (raw) lexer->advance(lexer, false);
-    if (!scan_preproc_splices(lexer)) return false;
-    if (lexer->lookahead != '"') return false;
-    lexer->advance(lexer, false);
-    if (raw) return scan_gnu_raw_string_end(lexer);
-    while (lexer->lookahead != '"') {
-        if (lexer->eof(lexer) || lexer->lookahead == '\n' || lexer->lookahead == '\r') return false;
-        if (lexer->lookahead == '\\') {
-            lexer->advance(lexer, false);
-            if (lexer->eof(lexer)) return false;
-            if (scan_preproc_newline(lexer, false)) continue;
-        }
-        lexer->advance(lexer, false);
-    }
-    lexer->advance(lexer, false);
-    return true;
+    *raw = lexer->lookahead == 'R';
+    if (*raw) lexer->advance(lexer, false);
+    return scan_preproc_splices(lexer);
 }
 
 static bool scan_pragma_spacing_with(TSLexer *lexer, const PragmaTrivia *trivia) {
@@ -155,7 +161,7 @@ static bool scan_pragma_comment(TSLexer *lexer) {
 
 static bool scan_preproc_line_comment(TSLexer *lexer) {
     lexer->advance(lexer, false);
-    while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
+    while (!pragma_eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         int32_t c = lexer->lookahead;
         lexer->advance(lexer, false);
         if (c == '\\') scan_preproc_newline(lexer, false);
@@ -166,7 +172,7 @@ static bool scan_preproc_line_comment(TSLexer *lexer) {
 static bool scan_preproc_block_comment(TSLexer *lexer) {
     lexer->advance(lexer, false);
     bool star = false;
-    while (!lexer->eof(lexer)) {
+    while (!pragma_eof(lexer)) {
         int32_t c = lexer->lookahead;
         lexer->advance(lexer, false);
         if (c == '\\' && scan_preproc_newline(lexer, false)) continue;
@@ -195,7 +201,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, PreprocArg
     if (consumed_backslash) gnu_raw_string_prefix_invalidate(&raw_prefix);
     if (consumed_backslash) lexer->mark_end(lexer);
     int32_t number_last = 0;
-    while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
+    while (!pragma_eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
         int32_t c = lexer->lookahead;
         bool word = preproc_word(c, in_identifier || in_number);
         bool digit = c >= '0' && c <= '9';
@@ -220,7 +226,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, PreprocArg
             bool delimiter = scan_preproc_splices(lexer);
             if (delimiter && lexer->lookahead == '/') {
                 if (!has_content || after_comment) break;
-                while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
+                while (!pragma_eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') {
                     if (lexer->lookahead == '\\') {
                         do {
                             lexer->advance(lexer, false);
@@ -238,7 +244,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, PreprocArg
                 lexer->advance(lexer, false);
                 bool star = false;
                 bool split_delimiter = split_opener;
-                while (!lexer->eof(lexer)) {
+                while (!pragma_eof(lexer)) {
                     if (lexer->lookahead == '\\') {
                         if (!scan_preproc_splices(lexer)) star = false;
                         else if (star && lexer->lookahead == '/') split_delimiter = true;
@@ -248,7 +254,7 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, PreprocArg
                     star = lexer->lookahead == '*';
                     lexer->advance(lexer, false);
                 }
-                if (lexer->eof(lexer)) break;
+                if (pragma_eof(lexer)) break;
                 lexer->advance(lexer, false);
                 after_comment = !split_delimiter;
                 if (split_delimiter) lexer->mark_end(lexer);
@@ -313,65 +319,75 @@ static bool scan_preproc_arg(TSLexer *lexer, bool consumed_backslash, PreprocArg
 
 static bool scan_preproc_raw_quote(TSLexer *lexer) {
     if (scan_gnu_raw_string_end(lexer)) return true;
-    while (!lexer->eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') lexer->advance(lexer, false);
+    while (!pragma_eof(lexer) && lexer->lookahead != '\n' && lexer->lookahead != '\r') lexer->advance(lexer, false);
     lexer->mark_end(lexer);
     return false;
 }
 
+typedef struct {
+    bool literal, slash, block, line, star, split_comment, after_comment, directive_text;
+} PreprocQuoteState;
+
+static bool scan_preproc_quote_step(TSLexer *lexer, PreprocQuoteState *state, int32_t c);
+
+// code-gauge-allow functionCognitiveComplexity 25 -- Unterminated quote recovery tracks line splices alongside comment fallback boundaries.
 static bool scan_preproc_quote(TSLexer *lexer, int32_t quote, bool escaped, bool directive_text) {
     lexer->mark_end(lexer);
-    bool literal = true;
-    bool slash = false;
-    bool block = false;
-    bool line = false;
-    bool star = false;
-    bool split_comment = false;
-    bool after_comment = false;
-    while (!lexer->eof(lexer) && (block || (lexer->lookahead != '\n' && lexer->lookahead != '\r'))) {
+    PreprocQuoteState state = {.literal = true, .directive_text = directive_text};
+    while (!pragma_eof(lexer) && (state.block || (lexer->lookahead != '\n' && lexer->lookahead != '\r'))) {
         int32_t c = lexer->lookahead;
         lexer->advance(lexer, false);
-        if (c == '\n' || c == '\r') literal = false;
-        if (literal && c == quote && !escaped) {
+        if (c == '\n' || c == '\r') state.literal = false;
+        if (state.literal && c == quote && !escaped) {
             lexer->mark_end(lexer);
             return true;
         }
         if (c == '\\' && scan_preproc_newline(lexer, false)) {
-            if (slash || star) split_comment = true;
-            if (!block && !slash && !after_comment) lexer->mark_end(lexer);
+            if (state.slash || state.star) state.split_comment = true;
+            if (!state.block && !state.slash && !state.after_comment) lexer->mark_end(lexer);
             continue;
         }
         escaped = c == '\\' && !escaped;
-        if (line) {
-            if (!after_comment) lexer->mark_end(lexer);
-        } else if (block) {
-            if (star && c == '/') {
-                if (!literal) return false;
-                block = false;
-                after_comment = !split_comment;
-                if (split_comment) lexer->mark_end(lexer);
-                split_comment = false;
-                star = false;
-            } else {
-                star = c == '*';
-            }
-        } else if (slash && c == '/') {
-            line = directive_text;
-            slash = false;
-            if (!after_comment) lexer->mark_end(lexer);
-        } else if (slash && c == '*') {
-            block = true;
-            slash = false;
-        } else {
-            if (slash || (c != '/' && !pragma_space(c))) after_comment = false;
-            slash = c == '/';
-            if (!slash) split_comment = false;
-            if (!slash && !after_comment) lexer->mark_end(lexer);
-        }
+        if (!scan_preproc_quote_step(lexer, &state, c)) return false;
     }
-    if (slash) lexer->mark_end(lexer);
+    if (state.slash) lexer->mark_end(lexer);
     return false;
 }
 
+// code-gauge-allow functionCognitiveComplexity 30 -- Comment transitions in unterminated quotes share split-splice and mark-end state.
+// code-gauge-allow functionNcss 36 -- Comment transitions in unterminated quotes share split-splice and mark-end state.
+static bool scan_preproc_quote_step(TSLexer *lexer, PreprocQuoteState *state, int32_t c) {
+    if (state->line) {
+        if (!state->after_comment) lexer->mark_end(lexer);
+    } else if (state->block) {
+        if (state->star && c == '/') {
+            if (!state->literal) return false;
+            state->block = false;
+            state->after_comment = !state->split_comment;
+            if (state->split_comment) lexer->mark_end(lexer);
+            state->split_comment = false;
+            state->star = false;
+        } else {
+            state->star = c == '*';
+        }
+    } else if (state->slash && c == '/') {
+        state->line = state->directive_text;
+        state->slash = false;
+        if (!state->after_comment) lexer->mark_end(lexer);
+    } else if (state->slash && c == '*') {
+        state->block = true;
+        state->slash = false;
+    } else {
+        if (state->slash || (c != '/' && !pragma_space(c))) state->after_comment = false;
+        state->slash = c == '/';
+        if (!state->slash) state->split_comment = false;
+        if (!state->slash && !state->after_comment) lexer->mark_end(lexer);
+    }
+    return true;
+}
+
+// code-gauge-allow functionCognitiveComplexity 29 -- Standard, delimited, and named universal character names share hex/name validation.
+// code-gauge-allow functionNcss 32 -- Standard, delimited, and named universal character names share hex/name validation.
 static bool scan_preproc_ucn(TSLexer *lexer, bool *in_number) {
     while (!scan_preproc_splices(lexer)) *in_number = false;
     int32_t prefix = lexer->lookahead;

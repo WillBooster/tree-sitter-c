@@ -56,7 +56,7 @@ static bool conditional_macro_body(TSLexer *lexer, const ConditionalMacroSymbols
     if (!conditional_macro_spacing(lexer, &separated, escaped, false) || !separated ||
         !conditional_macro_word(lexer, &condition, *escaped) || !conditional_macro_next_line(lexer, symbols, escaped)) return false;
     if (!conditional_macro_marker_line(lexer, symbols, escaped) || !conditional_macro_closing(lexer)) return false;
-    return conditional_macro_skip_lines(lexer, symbols, escaped) && !lexer->eof(lexer) && lexer->lookahead != '#';
+    return conditional_macro_skip_lines(lexer, symbols, escaped) && !pragma_eof(lexer) && lexer->lookahead != '#';
 }
 
 static bool conditional_macro_closing(TSLexer *lexer) {
@@ -67,7 +67,7 @@ static bool conditional_macro_closing(TSLexer *lexer) {
     bool separated = false;
     bool escaped = false;
     if (!conditional_macro_spacing(lexer, &separated, &escaped, false)) return false;
-    return !escaped && (lexer->eof(lexer) || lexer->lookahead == '\n' || lexer->lookahead == '\r');
+    return !escaped && (pragma_eof(lexer) || lexer->lookahead == '\n' || lexer->lookahead == '\r');
 }
 
 
@@ -183,7 +183,7 @@ static bool conditional_macro_next_line(TSLexer *lexer, const ConditionalMacroSy
     if (!conditional_macro_spacing(lexer, &separated, escaped, false) || *escaped ||
         !scan_preproc_newline(lexer, false)) return false;
     for (;;) {
-        if (!conditional_macro_spacing(lexer, &separated, escaped, false) || lexer->eof(lexer)) return false;
+        if (!conditional_macro_spacing(lexer, &separated, escaped, false) || pragma_eof(lexer)) return false;
         if (symbols->skip_empty && symbols->skip_empty(lexer, symbols->empty_context)) continue;
         if (*escaped || !scan_preproc_newline(lexer, false)) return true;
     }
