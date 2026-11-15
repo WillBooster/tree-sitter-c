@@ -15,9 +15,9 @@
 //! ```
 //!
 //! The parser uses the ABI of the WillBooster/tree-sitter generator. Use the matching
-//! `willbooster-tree-sitter` runtime, pinned to 20.0.0 for this crate's tests; other tree-sitter runtimes reject it.
+//! `willbooster-tree-sitter` runtime, pinned to 23.0.0 for this crate's tests; other tree-sitter runtimes reject it.
 //!
-//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/20.0.0/tree_sitter/struct.Parser.html
+//! [`Parser`]: https://docs.rs/willbooster-tree-sitter/23.0.0/tree_sitter/struct.Parser.html
 //! [tree-sitter]: https://tree-sitter.github.io/
 
 use tree_sitter_language::LanguageFn;
@@ -76,16 +76,40 @@ mod tests {
 
     #[test]
     fn invalid_utf8_in_strings_preserves_following_directives() {
-        let source =
-            b"char *s = \"caf\xe9 /*\";\n#define VALUE 1\nint following = VALUE;\n/* end */\n";
+        let cases: &[(&[u8], usize)] = &[
+            (
+                b"char *s = \"caf\xe9 /*\";\n#define VALUE 1\nint following = VALUE;\n/* end */\n",
+                b"char *s = \"caf\xe9 /*\";\n".len(),
+            ),
+            (
+                b"const char *u = \"caf\xe9 http://x\";\n#define VALUE 1\nint following = VALUE;\n",
+                b"const char *u = \"caf\xe9 http://x\";\n".len(),
+            ),
+            (
+                b"char c = 'a\xe9z';\n#define VALUE 1\nint following = VALUE;\n",
+                b"char c = 'a\xe9z';\n".len(),
+            ),
+            (
+                b"/* caf\xe9 \"unclosed */\n#define VALUE 1\nint following = VALUE;\n",
+                b"/* caf\xe9 \"unclosed */\n".len(),
+            ),
+            (
+                b"// caf\xe9 /*\n#define VALUE 1\nint following = VALUE;\n/* end */\n",
+                b"// caf\xe9 /*\n".len(),
+            ),
+        ];
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(&super::LANGUAGE.into()).unwrap();
-        let tree = parser.parse(source).unwrap();
-        assert_definition(&tree, source, b"char *s = \"caf\xe9 /*\";\n".len());
-        assert_eq!(
-            tree.root_node().named_child(2).unwrap().kind(),
-            "declaration"
-        );
+        for &(source, expected_start) in cases {
+            let tree = parser.parse(source).unwrap();
+            let root = tree.root_node();
+            assert!(root.has_error(), "{}", root.to_sexp());
+            let definition = assert_definition_at(root, source, expected_start);
+            assert!(!definition.has_error(), "{}", definition.to_sexp());
+            let following = definition.next_named_sibling().unwrap();
+            assert_eq!(following.kind(), "declaration");
+            assert!(!following.has_error(), "{}", following.to_sexp());
+        }
     }
 
     #[test]
@@ -137,6 +161,14 @@ mod tests {
     fn assert_definition(tree: &tree_sitter::Tree, source: &[u8], start: usize) {
         let root = tree.root_node();
         assert!(!root.has_error(), "{}", root.to_sexp());
+        assert_definition_at(root, source, start);
+    }
+
+    fn assert_definition_at<'a>(
+        root: tree_sitter::Node<'a>,
+        source: &[u8],
+        start: usize,
+    ) -> tree_sitter::Node<'a> {
         assert_eq!(root.end_byte(), source.len());
         let mut cursor = root.walk();
         let definition = root
@@ -152,5 +184,6 @@ mod tests {
                 .unwrap(),
             "VALUE"
         );
+        definition
     }
 }
