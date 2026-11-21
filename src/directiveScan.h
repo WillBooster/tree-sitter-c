@@ -2,18 +2,34 @@
 #define TREE_SITTER_C_DIRECTIVE_SCAN_H_
 
 #include "pragma.h"
+#include <stdlib.h>
+
+// Bytes from `start` to before `end` that hold contiguous characters, and possibly bytes that an included range leaves
+// out after them, which the lexer never reads.
+typedef struct {
+    uint32_t start, end;
+} DirectiveSpan;
+
+// A run of characters in byte order, split where included ranges leave bytes out.
+typedef struct {
+    DirectiveSpan *items;
+    uint32_t count, capacity;
+    bool failed;
+} DirectiveSpans;
 
 typedef enum { SCAN_CODE, SCAN_SLASH, SCAN_LINE_COMMENT, SCAN_BLOCK_COMMENT, SCAN_QUOTE, SCAN_WORD, SCAN_RAW_DELIMITER, SCAN_RAW_BODY } DirectiveScanMode;
 
 // The line-state pass of `emptyDirectives.h` in the state it has on ordinary code, before the first directive and after
 // each directive line that ends with no directive state left, fed one physical character at a time so that the code is
 // never stored. It also tracks the run of spaces and backslashes before the next character, which a null directive's
-// prefix covers.
+// prefix covers: the first `run_spans` spans in `run` and the current one, from `run_start` to `run_end` and over
+// `run_pending` more characters whose positions were not read.
 typedef struct {
     DirectiveScanMode mode;
     GnuRawStringPrefix raw;
-    int32_t quote, previous, lead, pair;
-    uint32_t spaces, run_start;
+    DirectiveSpans *run;
+    int32_t quote, previous, pair;
+    uint32_t spaces, run_start, run_end, run_pending, run_spans;
     unsigned delimiter_length, closing_length, closing_end;
     char delimiter[16], closing[18];
     bool beginning, number, escape, star, splice, in_run;
@@ -27,7 +43,6 @@ static inline void directive_scan_lexer_run(DirectiveScan *scan, TSLexer *lexer,
 static inline bool directive_scan_ascii_word(int32_t c);
 static inline bool directive_scan_ascii_special(int32_t c);
 static bool directive_scan_pending(DirectiveScan *scan, int32_t c);
-static bool directive_scan_join(DirectiveScan *scan, int32_t c);
 static bool directive_scan_splice(DirectiveScan *scan, int32_t c);
 static bool directive_scan_logical(DirectiveScan *scan, int32_t c);
 static bool directive_scan_slash(DirectiveScan *scan, int32_t c);
@@ -39,12 +54,15 @@ static bool directive_scan_raw_delimiter(DirectiveScan *scan, int32_t c);
 static void directive_scan_raw_body(DirectiveScan *scan, int32_t c);
 static bool directive_horizontal(int32_t c);
 static bool directive_newline(int32_t c);
+static void directive_spans_push(DirectiveSpans *spans, uint32_t start, uint32_t end);
+static void directive_scan_close_run(DirectiveScan *scan, uint32_t limit);
+static void directive_scan_push(DirectiveScan *scan, uint32_t start, uint32_t end);
 
 // Consumes the lexer's ASCII characters that need no physical-layer work and change no state but the line beginning,
 // the current word, the end of a comment and the run of spaces, which is most of the input, and stops at a character
 // that `directive_scan_feed` has to handle.
 static void directive_scan_plain_run(DirectiveScan *target, TSLexer *lexer) {
-    if (target->lead || target->pair || target->splice) return;
+    if (target->pair || target->splice) return;
     // The lexer's calls cannot reach this copy, so it can stay in registers.
     DirectiveScan copy = *target;
     while (directive_scan_plain(&copy, lexer)) lexer->advance(lexer, false);
@@ -103,15 +121,37 @@ static inline bool directive_scan_plain_text(DirectiveScan *scan, TSLexer *lexer
     return true;
 }
 
-// Extends or ends the run of spaces and backslashes with the lookahead, as `directive_scan_run` does.
+// Extends or ends the run of spaces and backslashes with the lookahead, as `directive_scan_run` does, reading the
+// position only where a span starts: at the run's start and where the lexer skipped to the next included range.
 static inline void directive_scan_lexer_run(DirectiveScan *scan, TSLexer *lexer, bool member) {
-    if (!member) scan->in_run = false;
-    else if (!scan->in_run) {
+    if (!member) {
+        scan->in_run = false;
+        return;
+    }
+    if (!scan->in_run || lexer->is_at_included_range_start(lexer)) {
         TSLexerPosition position;
         lexer->get_position(lexer, &position);
-        scan->run_start = position.bytes;
+        if (scan->in_run) directive_scan_close_run(scan, position.bytes);
+        else scan->run_spans = 0;
+        scan->run_start = scan->run_end = position.bytes;
+        scan->run_pending = 0;
         scan->in_run = true;
     }
+    scan->run_pending++;
+}
+
+// Stores the current span, ending it at `limit` or after its pending characters, each of at most 4 bytes, whichever
+// comes first, so that a span covers each character it holds but never more bytes than 4 per character.
+static void directive_scan_close_run(DirectiveScan *scan, uint32_t limit) {
+    uint64_t bound = (uint64_t)scan->run_end + 4 * (uint64_t)scan->run_pending;
+    directive_scan_push(scan, scan->run_start, bound < limit ? (uint32_t)bound : limit);
+}
+
+// The list is written only here, so that the run's start leaves memory alone.
+static void directive_scan_push(DirectiveScan *scan, uint32_t start, uint32_t end) {
+    scan->run->count = scan->run_spans;
+    directive_spans_push(scan->run, start, end);
+    scan->run_spans = scan->run->count;
 }
 
 static inline bool directive_scan_ascii_word(int32_t c) {
@@ -127,12 +167,22 @@ static inline bool directive_scan_ascii_special(int32_t c) {
     return (special[c / 64] >> (c % 64)) & 1;
 }
 
-static void directive_scan_run(DirectiveScan *scan, int32_t c, uint32_t byte) {
-    if (!pragma_space(c) && c != '\\') scan->in_run = false;
-    else if (!scan->in_run) {
-        scan->run_start = byte;
-        scan->in_run = true;
+// Extends or ends the run with the character `c` from `start` to `end`, which precedes the lexer's characters, so the
+// current span has no pending characters.
+static void directive_scan_run(DirectiveScan *scan, int32_t c, uint32_t start, uint32_t end) {
+    if (!pragma_space(c) && c != '\\') {
+        scan->in_run = false;
+        return;
     }
+    if (!scan->in_run) {
+        scan->run_spans = 0;
+        scan->run_start = start;
+        scan->in_run = true;
+    } else if (start != scan->run_end) {
+        directive_scan_push(scan, scan->run_start, scan->run_end);
+        scan->run_start = start;
+    }
+    scan->run_end = end;
 }
 
 // Applies the physical layer of `directive_next` (line splices, paired newlines, and the character mapping of
@@ -155,24 +205,14 @@ static bool directive_scan_feed(DirectiveScan *scan, int32_t c) {
     return directive_scan_logical(scan, c);
 }
 
-// Resolves the high surrogate, the newline and the line splice that wait for `c`; true when `c` belongs to them.
+// Resolves the newline and the line splice that wait for `c`; true when `c` belongs to them.
 static bool directive_scan_pending(DirectiveScan *scan, int32_t c) {
-    if (scan->lead && directive_scan_join(scan, c)) return true;
     if (scan->pair) {
         int32_t pair = scan->pair;
         scan->pair = 0;
         if (directive_newline(c) && c != pair) return true;
     }
     return scan->splice && directive_scan_splice(scan, c);
-}
-
-// `directive_expected_width` joins a high surrogate with a following low one, which may start a word.
-static bool directive_scan_join(DirectiveScan *scan, int32_t c) {
-    int32_t lead = scan->lead;
-    scan->lead = 0;
-    if (c < 0xdc00 || c > 0xdfff) return false;
-    directive_scan_word_start(scan, 0x10000 + ((lead - 0xd800) << 10) + (c - 0xdc00));
-    return true;
 }
 
 static bool directive_scan_splice(DirectiveScan *scan, int32_t c) {
@@ -256,8 +296,6 @@ static bool directive_scan_code(DirectiveScan *scan, int32_t c) {
         scan->mode = SCAN_QUOTE;
         scan->quote = c;
         scan->escape = false;
-    } else if (c >= 0xd800 && c <= 0xdbff) {
-        scan->lead = c;
     } else {
         directive_scan_word_start(scan, c);
     }
@@ -334,6 +372,22 @@ static bool directive_horizontal(int32_t c) {
 
 static bool directive_newline(int32_t c) {
     return c == '\n' || c == '\r';
+}
+
+static void directive_spans_push(DirectiveSpans *spans, uint32_t start, uint32_t end) {
+    if (spans->count == spans->capacity) {
+        uint32_t capacity = spans->capacity ? spans->capacity * 2 : 8;
+        DirectiveSpan *items = capacity > spans->capacity && (size_t)capacity <= SIZE_MAX / sizeof(*items)
+            ? realloc(spans->items, (size_t)capacity * sizeof(*items))
+            : NULL;
+        if (!items) {
+            spans->failed = true;
+            return;
+        }
+        spans->items = items;
+        spans->capacity = capacity;
+    }
+    spans->items[spans->count++] = (DirectiveSpan){start, end};
 }
 
 #endif

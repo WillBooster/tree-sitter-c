@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 830 -- One source-fact pass shares on-demand directive-segment storage, directive lexing, physical-position conversion and fact bitsets.
+// code-gauge-allow-file fileNcss 882 -- One source-fact pass shares on-demand directive-segment storage, directive lexing, physical-position conversion, prefix spans and fact bitsets.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
@@ -40,9 +40,10 @@ typedef struct {
 
 typedef enum { DIRECTIVE_ORDINARY, DIRECTIVE_CONDITION, DIRECTIVE_DIAGNOSTIC, DIRECTIVE_REQUIRED, DIRECTIVE_UNDEF, DIRECTIVE_LINE, DIRECTIVE_PRAGMA, DIRECTIVE_HEADER } DirectiveKind;
 
+// The reverse pass's state; the trailing run's open span covers the bytes from `tail_start` to before `tail_end`.
 typedef struct {
-    bool prefix, line_end, tail;
-    uint32_t tail_start;
+    bool prefix, line_end, tail, tail_open;
+    uint32_t tail_start, tail_end;
 } DirectiveCarry;
 
 typedef struct {
@@ -52,15 +53,20 @@ typedef struct {
     uint32_t start, required_end;
 } DirectiveLine;
 
-static bool directive_scan_buffered(DirectiveScan *scan, DirectiveInput *input, uint32_t *prefix_start);
-static bool directive_scan_lexer(DirectiveScan *scan, DirectiveBuffer *buffer, uint32_t *prefix_start);
+static bool directive_scan_buffered(DirectiveScan *scan, DirectiveInput *input);
+static bool directive_scan_lexer(DirectiveScan *scan, DirectiveBuffer *buffer);
+static void directive_scan_resume(DirectiveScan *scan, DirectiveSpans *tail);
+static void directive_scan_handoff(DirectiveScan *scan, uint32_t hash);
 static bool directive_segment(EmptyDirectives *state, DirectiveInput *input);
 static bool directive_line_clean(const DirectiveLine *line);
 static void directive_shift(DirectiveBuffer *buffer, uint32_t start);
 static bool directive_finish(EmptyDirectives *state, DirectiveBuffer *buffer);
-static uint32_t directive_prefixes(EmptyDirectives *state, const DirectiveInput *input, uint32_t prefix_start, uint32_t start);
-static bool directive_step_back(const DirectiveInput *input, uint32_t *index, uint32_t *position, uint32_t *byte, int32_t *c);
+static void directive_prefixes(EmptyDirectives *state, const DirectiveInput *input, const DirectiveSpans *prefix, DirectiveSpans *tail);
+static bool directive_step_back(const DirectiveInput *input, uint32_t *index, uint32_t *position, uint32_t *byte, int32_t *c, uint32_t *width);
 static void directive_carry(EmptyDirectives *state, DirectiveBuffer *buffer, DirectiveCarry *carry, int32_t c, uint32_t byte);
+static void directive_carry_tail(DirectiveCarry *carry, DirectiveSpans *tail, uint32_t byte, uint32_t width);
+static void directive_spans_reverse(DirectiveSpans *spans);
+static void directive_mark_spans(EmptyDirectives *state, DirectiveBuffer *buffer, const DirectiveSpans *spans);
 static uint32_t directive_skip_inert(const EmptyDirectives *state, const DirectiveInput *input, uint32_t end, uint32_t position, uint32_t *byte);
 static bool directive_has(const DirectiveInput *input, uint32_t index);
 static bool directive_append(DirectiveBuffer *buffer);
@@ -201,43 +207,67 @@ static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer) {
     lexer->get_position(lexer, &position);
     DirectiveBuffer buffer = {.lexer = lexer, .fill_byte = position.bytes};
     DirectiveInput input = {.buffer = &buffer, .byte = position.bytes};
-    DirectiveScan scan = {.beginning = true};
-    uint32_t prefix_start;
+    // `run` holds the run before a segment's `#`, and `tail` the segment's trailing run.
+    DirectiveSpans run = {0}, tail = {0};
+    DirectiveScan scan = {.beginning = true, .run = &run};
     for (;;) {
-        if (!directive_scan_buffered(&scan, &input, &prefix_start)) {
+        if (!directive_scan_buffered(&scan, &input)) {
             buffer.length = buffer.position_count = 0;
-            if (!directive_scan_lexer(&scan, &buffer, &prefix_start)) break;
+            if (!directive_scan_lexer(&scan, &buffer)) break;
             input = (DirectiveInput){.buffer = &buffer, .byte = buffer.fill_byte};
         }
         directive_shift(&buffer, input.index);
         uint32_t start = input.byte;
         input = (DirectiveInput){.buffer = &buffer, .byte = start, .previous_byte = start, .before_previous_byte = start};
         bool more = directive_segment(state, &input);
-        uint32_t tail = directive_prefixes(state, &input, prefix_start, start);
+        directive_prefixes(state, &input, &run, &tail);
         if (!more || buffer.failed) break;
-        scan = (DirectiveScan){.beginning = true, .in_run = tail < input.byte, .run_start = tail};
+        DirectiveSpans before = run;
+        run = tail;
+        tail = before;
+        scan = (DirectiveScan){.beginning = true, .run = &run};
+        directive_scan_resume(&scan, &run);
     }
+    if (run.failed || tail.failed) buffer.failed = true;
+    free(run.items);
+    free(tail.items);
     return directive_finish(state, &buffer);
+}
+
+// Continues the run with a segment's trailing run, whose spans `tail` holds in byte order.
+static void directive_scan_resume(DirectiveScan *scan, DirectiveSpans *tail) {
+    if (!tail->count) return;
+    DirectiveSpan last = tail->items[--tail->count];
+    scan->run_spans = tail->count;
+    scan->in_run = true;
+    scan->run_start = last.start;
+    scan->run_end = last.end;
+}
+
+// Completes the run's spans before the directive's `#` at `hash`.
+static void directive_scan_handoff(DirectiveScan *scan, uint32_t hash) {
+    if (scan->in_run) directive_scan_close_run(scan, hash);
+    scan->run->count = scan->in_run ? scan->run_spans : 0;
 }
 
 // Feeds the characters a directive segment's lookahead stored past its end. Returns true at a directive's `#`, which
 // is left at `input`.
-static bool directive_scan_buffered(DirectiveScan *scan, DirectiveInput *input, uint32_t *prefix_start) {
+static bool directive_scan_buffered(DirectiveScan *scan, DirectiveInput *input) {
     while (input->index < input->buffer->length) {
         DirectiveInput before = *input;
         int32_t c = directive_physical_next(input);
         if (directive_scan_feed(scan, c)) {
             *input = before;
-            *prefix_start = scan->in_run ? scan->run_start : before.byte;
+            directive_scan_handoff(scan, before.byte);
             return true;
         }
-        directive_scan_run(scan, c, before.byte);
+        directive_scan_run(scan, c, input->previous_byte, input->byte);
     }
     return false;
 }
 
 // Feeds the lexer's characters until a directive's `#`, which is left as the lookahead, or the end of the input.
-static bool directive_scan_lexer(DirectiveScan *scan, DirectiveBuffer *buffer, uint32_t *prefix_start) {
+static bool directive_scan_lexer(DirectiveScan *scan, DirectiveBuffer *buffer) {
     TSLexer *lexer = buffer->lexer;
     TSLexerPosition position;
     for (;;) {
@@ -247,7 +277,7 @@ static bool directive_scan_lexer(DirectiveScan *scan, DirectiveBuffer *buffer, u
         if (directive_scan_feed(scan, c)) {
             lexer->get_position(lexer, &position);
             buffer->fill_byte = position.bytes;
-            *prefix_start = scan->in_run ? scan->run_start : position.bytes;
+            directive_scan_handoff(scan, position.bytes);
             return true;
         }
         directive_scan_lexer_run(scan, lexer, pragma_space(c) || c == '\\');
@@ -315,44 +345,63 @@ static bool directive_finish(EmptyDirectives *state, DirectiveBuffer *buffer) {
 }
 
 // Marks the prefixes of the segment's null directives and the spaces before its directive line ends, reading the
-// segment backwards from `input`, where its forward pass stopped. A prefix reaching the segment's `#` at `start`
-// extends back to `prefix_start`, over the run before the segment. Returns the start of the segment's trailing run of
-// spaces and backslashes after its last line end, over which a later null directive's prefix may extend.
-static uint32_t directive_prefixes(EmptyDirectives *state, const DirectiveInput *input, uint32_t prefix_start, uint32_t start) {
-    DirectiveCarry carry = {.tail = true, .tail_start = input->byte};
-    uint32_t byte = input->byte, position = input->position_index;
+// segment backwards from `input`, where its forward pass stopped. A prefix reaching the segment's `#` extends over the
+// run before the segment, whose spans `prefix` holds. Stores in `tail`, in byte order, the spans of the segment's
+// trailing run of spaces and backslashes after its last line end, over which a later null directive's prefix may extend.
+static void directive_prefixes(EmptyDirectives *state, const DirectiveInput *input, const DirectiveSpans *prefix, DirectiveSpans *tail) {
+    DirectiveCarry carry = {.tail = true};
+    uint32_t byte = input->byte, position = input->position_index, width;
+    bool complete = true;
+    tail->count = 0;
     for (uint32_t i = input->index; i > 0;) {
         if (!carry.prefix && !carry.line_end && !carry.tail) i = directive_skip_inert(state, input, i, position, &byte);
         if (!i) break;
         int32_t c;
-        if (!directive_step_back(input, &i, &position, &byte, &c)) return carry.tail_start;
+        complete = directive_step_back(input, &i, &position, &byte, &c, &width);
+        if (!complete) break;
         directive_carry(state, input->buffer, &carry, c, byte);
+        if (carry.tail) directive_carry_tail(&carry, tail, byte, width);
     }
-    if (carry.prefix) {
-        for (uint32_t b = prefix_start; b < start; b++) directive_set(state, input->buffer, &state->starts, b);
-    }
-    return carry.tail_start;
+    if (carry.tail_open) directive_spans_push(tail, carry.tail_start, carry.tail_end);
+    directive_spans_reverse(tail);
+    if (complete && carry.prefix) directive_mark_spans(state, input->buffer, prefix);
 }
 
-// Moves back to the character before `*index`, reading a surrogate pair as one character, and decodes it into `*c`;
-// false when its width exceeds the bytes left.
-static bool directive_step_back(const DirectiveInput *input, uint32_t *index, uint32_t *position, uint32_t *byte, int32_t *c) {
+static void directive_spans_reverse(DirectiveSpans *spans) {
+    for (uint32_t i = 0; i < spans->count / 2; i++) {
+        DirectiveSpan span = spans->items[i];
+        spans->items[i] = spans->items[spans->count - 1 - i];
+        spans->items[spans->count - 1 - i] = span;
+    }
+}
+
+static void directive_mark_spans(EmptyDirectives *state, DirectiveBuffer *buffer, const DirectiveSpans *spans) {
+    for (uint32_t i = 0; i < spans->count; i++) {
+        for (uint32_t b = spans->items[i].start; b < spans->items[i].end; b++) directive_set(state, buffer, &state->starts, b);
+    }
+}
+
+// Moves back to the character before `*index`, reading a surrogate pair as one character, and decodes it into `*c` and
+// its byte width into `*width`; false when its width exceeds the bytes left.
+static bool directive_step_back(const DirectiveInput *input, uint32_t *index, uint32_t *position, uint32_t *byte, int32_t *c, uint32_t *width) {
     const DirectiveBuffer *buffer = input->buffer;
     uint32_t i = --*index;
     if (i && directive_character(input, i) >= 0xdc00 && directive_character(input, i) <= 0xdfff &&
         directive_character(input, i - 1) >= 0xd800 && directive_character(input, i - 1) <= 0xdbff) i = --*index;
-    uint32_t width = directive_expected_width(input, i, c);
+    *width = directive_expected_width(input, i, c);
     if (*position && buffer->positions[*position - 1].index == i) {
-        *byte = buffer->positions[--*position].byte;
+        DirectivePosition recorded = buffer->positions[--*position];
+        *byte = recorded.byte;
+        *width = recorded.width;
         return true;
     }
-    if (width > *byte) return false;
-    *byte -= width;
+    if (*width > *byte) return false;
+    *byte -= *width;
     return true;
 }
 
 // Carries null-directive prefixes back from their `#` and line ends back from their barriers over the character `c` at
-// `byte`, and measures the trailing run.
+// `byte`, and whether the trailing run continues.
 static void directive_carry(EmptyDirectives *state, DirectiveBuffer *buffer, DirectiveCarry *carry, int32_t c, uint32_t byte) {
     bool hash = c == '#' && directive_bit(state, state->starts, byte);
     bool condition_end = directive_bit(state, state->line_ends, byte);
@@ -362,7 +411,18 @@ static void directive_carry(EmptyDirectives *state, DirectiveBuffer *buffer, Dir
     carry->prefix = !condition_end && (hash || (carry->prefix && space));
     if (carry->prefix) directive_set(state, buffer, &state->starts, byte);
     carry->tail = carry->tail && !condition_end && space;
-    if (carry->tail) carry->tail_start = byte;
+}
+
+// Extends the trailing run back over the character at `byte`, starting a span where an included range left bytes out.
+static void directive_carry_tail(DirectiveCarry *carry, DirectiveSpans *tail, uint32_t byte, uint32_t width) {
+    if (carry->tail_open && byte + width == carry->tail_start) {
+        carry->tail_start = byte;
+        return;
+    }
+    if (carry->tail_open) directive_spans_push(tail, carry->tail_start, carry->tail_end);
+    carry->tail_start = byte;
+    carry->tail_end = byte + width;
+    carry->tail_open = true;
 }
 
 // Steps back from the character before `end` over characters that cannot change the reverse pass's state while no
@@ -448,10 +508,12 @@ static bool directive_reserve(DirectiveBuffer *buffer, unsigned width) {
     return true;
 }
 
-// A decoding error is stored as U+FFFD, which `directive_append` gives a recorded position, so that it never joins a
-// preceding high surrogate.
+// Only the two units of a character above U+FFFF form a surrogate pair. A decoding error is stored as U+FFFD with the
+// recorded position `directive_append` gives it, and a lone surrogate as U+E000, which `preproc_word` and `pragma_space`
+// classify alike, so that neither joins a neighbouring lone surrogate into a character the lexer did not read.
 static void directive_encode(DirectiveBuffer *buffer, uint32_t c) {
     if (c > 0x10ffff) directive_store(buffer, 0xfffd);
+    else if (c >= 0xd800 && c <= 0xdfff) directive_store(buffer, 0xe000);
     else if (c <= 0xffff) directive_store(buffer, c);
     else {
         c -= 0x10000;
