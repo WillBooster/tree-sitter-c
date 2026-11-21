@@ -20,7 +20,6 @@ typedef struct {
     uint32_t length, page_count, page_capacity, position_count, position_capacity;
     // The lexer's byte position, which follows the last stored character.
     uint32_t fill_byte;
-    // The bytes of the fact bitsets that hold a set bit, out of the `size` allocated while building.
     uint32_t conditional_depth;
     bool utf16, encoding_known, failed;
 } DirectiveBuffer;
@@ -34,8 +33,9 @@ typedef struct {
 #define DIRECTIVE_FACT_PAGE_SHIFT 15
 #define DIRECTIVE_FACT_PAGE_SIZE (1 << DIRECTIVE_FACT_PAGE_SHIFT)
 
-// Each kind of fact is a directory of `pages` bitset pages, one per `DIRECTIVE_FACT_PAGE_SIZE` source bytes, allocated
-// only where a fact is set, so a missing directory or page holds no fact and excluded source ranges take no memory.
+// Each kind of fact is a directory of `pages` pointers, one per `DIRECTIVE_FACT_PAGE_SIZE` source bytes up to and
+// possibly past the furthest fact, to bitset pages allocated only where a fact is set, so a missing directory or page
+// holds no fact; source without facts, such as an excluded range, costs one pointer per page of each directory.
 // `empty_directives_release` frees them.
 typedef struct {
     uint8_t **starts, **ends, **line_ends, **directive_starts, **directive_ends;
@@ -206,7 +206,7 @@ static void empty_directives_consume_started(TSLexer *lexer, EmptyDirectives *st
 
 // Ordinary code goes through `DirectiveScan` without being stored, and only directive segments, each from a directive's
 // `#` to the end of the logical line where no directive state is left, are stored for the line-state pass and the
-// reverse prefix pass. The facts are bitsets that grow with, and end at, the furthest marked byte.
+// reverse prefix pass. The facts are stored as `EmptyDirectives` describes.
 static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer) {
     TSLexerPosition position;
     lexer->get_position(lexer, &position);
