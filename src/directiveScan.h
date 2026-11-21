@@ -17,6 +17,10 @@ typedef struct {
     bool failed;
 } DirectiveSpans;
 
+// The most bytes one character takes, which bounds a span's end: the position after a character also includes the bytes
+// an included range leaves out after it.
+#define DIRECTIVE_CHARACTER_BYTES 4
+
 typedef enum { SCAN_CODE, SCAN_SLASH, SCAN_LINE_COMMENT, SCAN_BLOCK_COMMENT, SCAN_QUOTE, SCAN_WORD, SCAN_RAW_DELIMITER, SCAN_RAW_BODY } DirectiveScanMode;
 
 // The line-state pass of `emptyDirectives.h` in the state it has on ordinary code, before the first directive and after
@@ -144,10 +148,10 @@ static inline void directive_scan_lexer_run(DirectiveScan *scan, TSLexer *lexer,
     scan->run_pending++;
 }
 
-// Stores the current span, ending it at `limit` or after its pending characters, each of at most 4 bytes, whichever
-// comes first, so that a span covers each character it holds but never more bytes than 4 per character.
+// Stores the current span, ending it at `limit` or after its pending characters, whichever comes first, so that a span
+// covers each character it holds but never more than `DIRECTIVE_CHARACTER_BYTES` per character.
 static void directive_scan_close_run(DirectiveScan *scan, uint32_t limit) {
-    uint64_t bound = (uint64_t)scan->run_end + 4 * (uint64_t)scan->run_pending;
+    uint64_t bound = (uint64_t)scan->run_end + DIRECTIVE_CHARACTER_BYTES * (uint64_t)scan->run_pending;
     directive_scan_push(scan, scan->run_start, bound < limit ? (uint32_t)bound : limit);
 }
 
@@ -186,7 +190,7 @@ static void directive_scan_run(DirectiveScan *scan, int32_t c, uint32_t start, u
         directive_scan_push(scan, scan->run_start, scan->run_end);
         scan->run_start = start;
     }
-    scan->run_end = end;
+    scan->run_end = end - start > DIRECTIVE_CHARACTER_BYTES ? start + DIRECTIVE_CHARACTER_BYTES : end;
 }
 
 // Applies the physical layer of `directive_next` (line splices, paired newlines, and the character mapping of

@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 889 -- One source-fact pass shares on-demand directive-segment storage, directive lexing, physical-position conversion, prefix spans and fact bitsets.
+// code-gauge-allow-file fileNcss 891 -- One source-fact pass shares on-demand directive-segment storage, directive lexing, physical-position conversion, prefix spans and fact bitsets.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
@@ -424,6 +424,7 @@ static void directive_carry(EmptyDirectives *state, DirectiveBuffer *buffer, Dir
 
 // Extends the trailing run back over the character at `byte`, starting a span where an included range left bytes out.
 static void directive_carry_tail(DirectiveCarry *carry, DirectiveSpans *tail, uint32_t byte, uint32_t width) {
+    if (width > DIRECTIVE_CHARACTER_BYTES) width = DIRECTIVE_CHARACTER_BYTES;
     if (carry->tail_open && byte + width == carry->tail_start) {
         carry->tail_start = byte;
         return;
