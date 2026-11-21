@@ -211,10 +211,10 @@ arrays, parenthesized/function declarators, initializers and multiple declarator
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
-fuzzed with, at the version recorded in `Cargo.lock`:
+fuzzed with, at 23.x (`Cargo.lock` records the exact version):
 
 ```sh
-cargo add willbooster-tree-sitter@23.0.0 --rename tree-sitter
+cargo add willbooster-tree-sitter@23 --rename tree-sitter
 cargo add willbooster-tree-sitter-c --rename tree-sitter-c
 ```
 
