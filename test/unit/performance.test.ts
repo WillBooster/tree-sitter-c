@@ -27,6 +27,7 @@ test('uses a Wasm build built from the current parser', () => {
     'src/macroProof.h',
     'src/conditionalMacro.h',
     'src/emptyDirectives.h',
+    'src/directiveScan.h',
     'src/gnuRawString.h',
   ].map((name) => fs.statSync(path.join(Root, name)).mtimeMs);
   expect(
@@ -49,6 +50,23 @@ test.each(['', 'int before;'])(
     for (let run = 0; run < 5; run++) {
       smallFastest = Math.min(smallFastest, parseAverageCpuTime(small, expectedError));
       largeFastest = Math.min(largeFastest, parseAverageCpuTime(large, expectedError));
+    }
+    expect(largeFastest / smallFastest).toBeLessThan(18);
+  }
+);
+
+test.each(['#define VALUE 1\nint value;\n', '#\n/* a */ int value; // b\n', '#if A\n#elif B\n#endif\n'])(
+  'keeps the directive pre-pass approximately linear for %j',
+  { timeout: 60_000 },
+  (lines) => {
+    const small = lines.repeat(1000);
+    const large = lines.repeat(10_000);
+    parseAverageCpuTime(large);
+    let smallFastest = Infinity;
+    let largeFastest = Infinity;
+    for (let run = 0; run < 5; run++) {
+      smallFastest = Math.min(smallFastest, parseAverageCpuTime(small));
+      largeFastest = Math.min(largeFastest, parseAverageCpuTime(large));
     }
     expect(largeFastest / smallFastest).toBeLessThan(18);
   }

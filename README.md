@@ -66,7 +66,7 @@ parser.setLanguage(await Language.load(c));
 The package also ships `grammar.js`, scanner sources under `src/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
 The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, `functionMacro.h`,
-`conditionalMacro.h`, `emptyDirectives.h`, `macroProof.h`, and `gnuRawString.h`.
+`conditionalMacro.h`, `emptyDirectives.h`, `directiveScan.h`, `macroProof.h`, and `gnuRawString.h`.
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
 Append `_directive_context` and `preproc_empty` in their inherited external-token slots and retain them as extras.
