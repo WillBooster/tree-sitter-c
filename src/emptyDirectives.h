@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 882 -- One source-fact pass shares on-demand directive-segment storage, directive lexing, physical-position conversion, prefix spans and fact bitsets.
+// code-gauge-allow-file fileNcss 889 -- One source-fact pass shares on-demand directive-segment storage, directive lexing, physical-position conversion, prefix spans and fact bitsets.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
@@ -21,7 +21,7 @@ typedef struct {
     // The lexer's byte position, which follows the last stored character.
     uint32_t fill_byte;
     // The bytes of the fact bitsets that hold a set bit, out of the `size` allocated while building.
-    uint32_t bitset_used, conditional_depth;
+    uint32_t conditional_depth;
     bool utf16, encoding_known, failed;
 } DirectiveBuffer;
 
@@ -31,10 +31,15 @@ typedef struct {
     uint32_t index, byte, position_index, previous_byte, before_previous_byte;
 } DirectiveInput;
 
-// Each allocated bitset holds `size` bytes, so a byte offset beyond them has no fact.
+#define DIRECTIVE_FACT_PAGE_SHIFT 15
+#define DIRECTIVE_FACT_PAGE_SIZE (1 << DIRECTIVE_FACT_PAGE_SHIFT)
+
+// Each kind of fact is a directory of `pages` bitset pages, one per `DIRECTIVE_FACT_PAGE_SIZE` source bytes, allocated
+// only where a fact is set, so a missing directory or page holds no fact and excluded source ranges take no memory.
+// `empty_directives_release` frees them.
 typedef struct {
-    uint8_t *starts, *ends, *line_ends, *directive_starts, *directive_ends;
-    uint32_t size;
+    uint8_t **starts, **ends, **line_ends, **directive_starts, **directive_ends;
+    uint32_t pages;
     bool built, ready;
 } EmptyDirectives;
 
@@ -77,9 +82,9 @@ static uint16_t directive_character(const DirectiveInput *input, uint32_t index)
 static void directive_store(DirectiveBuffer *buffer, uint16_t c);
 static void directive_release(DirectiveBuffer *buffer);
 static unsigned directive_utf8_width(uint32_t c);
-static void directive_set(EmptyDirectives *state, DirectiveBuffer *buffer, uint8_t **bits, uint32_t byte);
-static bool directive_bit(const EmptyDirectives *state, const uint8_t *bits, uint32_t byte);
-static bool directive_resize_bitsets(EmptyDirectives *state, uint32_t size);
+static void directive_set(EmptyDirectives *state, DirectiveBuffer *buffer, uint8_t ***facts, uint32_t byte);
+static bool directive_bit(const EmptyDirectives *state, uint8_t *const *facts, uint32_t byte);
+static bool directive_grow_directories(EmptyDirectives *state, uint32_t pages);
 static void directive_barrier(EmptyDirectives *state, DirectiveInput *input);
 static void directive_line_end(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line);
 static void directive_complete_required(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line);
@@ -95,6 +100,7 @@ static void directive_line_comment(EmptyDirectives *state, DirectiveInput *input
 static uint32_t directive_splice_end(const DirectiveInput *input);
 
 static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer);
+static void empty_directives_release(EmptyDirectives *state);
 static bool empty_directives_line_end_at(const EmptyDirectives *state, uint32_t byte);
 static bool empty_directives_start_at(const EmptyDirectives *state, uint32_t byte);
 static void empty_directives_consume_started(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix);
@@ -145,14 +151,14 @@ static bool empty_directives_after_keyword(const EmptyDirectives *state, TSLexer
     if (!state || !state->directive_ends) return false;
     TSLexerPosition position;
     lexer->get_position(lexer, &position);
-    return position.bytes / 8 < state->size && (state->directive_ends[position.bytes / 8] & (1u << (position.bytes % 8)));
+    return directive_bit(state, state->directive_ends, position.bytes);
 }
 
 static bool empty_directives_at_start(const EmptyDirectives *state, TSLexer *lexer) {
     if (!state || !state->directive_starts) return false;
     TSLexerPosition position;
     lexer->get_position(lexer, &position);
-    return position.bytes / 8 < state->size && (state->directive_starts[position.bytes / 8] & (1u << (position.bytes % 8)));
+    return directive_bit(state, state->directive_starts, position.bytes);
 }
 
 static bool empty_directives_at_line_end(const EmptyDirectives *state, TSLexer *lexer) {
@@ -163,7 +169,7 @@ static bool empty_directives_at_line_end(const EmptyDirectives *state, TSLexer *
 }
 
 static bool empty_directives_line_end_at(const EmptyDirectives *state, uint32_t byte) {
-    return state->line_ends && byte / 8 < state->size && (state->line_ends[byte / 8] & (1u << (byte % 8)));
+    return directive_bit(state, state->line_ends, byte);
 }
 
 static bool empty_directives_consume(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix);
@@ -184,7 +190,7 @@ static bool empty_directives_consume(TSLexer *lexer, EmptyDirectives *state, boo
 }
 
 static bool empty_directives_start_at(const EmptyDirectives *state, uint32_t byte) {
-    return state->starts && byte / 8 < state->size && (state->starts[byte / 8] & (1u << (byte % 8)));
+    return directive_bit(state, state->starts, byte);
 }
 
 // Consumes the rest of a null directive whose start was confirmed at a position the lexer has not left except over
@@ -195,8 +201,7 @@ static void empty_directives_consume_started(TSLexer *lexer, EmptyDirectives *st
     do {
         lexer->advance(lexer, false);
         lexer->get_position(lexer, &position);
-    } while (!pragma_eof(lexer) && position.bytes / 8 < state->size &&
-        !(state->ends[position.bytes / 8] & (1u << (position.bytes % 8))));
+    } while (!pragma_eof(lexer) && !directive_bit(state, state->ends, position.bytes));
 }
 
 // Ordinary code goes through `DirectiveScan` without being stored, and only directive segments, each from a directive's
@@ -331,17 +336,21 @@ static void directive_shift(DirectiveBuffer *buffer, uint32_t start) {
 }
 
 static bool directive_finish(EmptyDirectives *state, DirectiveBuffer *buffer) {
-    bool built = !buffer->failed && directive_resize_bitsets(state, buffer->bitset_used);
     directive_release(buffer);
-    if (built) return true;
-    free(state->starts);
-    free(state->ends);
-    free(state->line_ends);
-    free(state->directive_starts);
-    free(state->directive_ends);
-    state->starts = state->ends = state->line_ends = state->directive_starts = state->directive_ends = NULL;
-    state->size = 0;
+    if (!buffer->failed) return true;
+    empty_directives_release(state);
     return false;
+}
+
+static void empty_directives_release(EmptyDirectives *state) {
+    uint8_t **directories[] = {state->starts, state->ends, state->line_ends, state->directive_starts, state->directive_ends};
+    for (unsigned i = 0; i < sizeof directories / sizeof *directories; i++) {
+        if (!directories[i]) continue;
+        for (uint32_t page = 0; page < state->pages; page++) free(directories[i][page]);
+        free(directories[i]);
+    }
+    state->starts = state->ends = state->line_ends = state->directive_starts = state->directive_ends = NULL;
+    state->pages = 0;
 }
 
 // Marks the prefixes of the segment's null directives and the spaces before its directive line ends, reading the
@@ -541,39 +550,42 @@ static unsigned directive_utf8_width(uint32_t c) {
     return c < 0x80 || c > 0x10ffff ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4;
 }
 
-static void directive_set(EmptyDirectives *state, DirectiveBuffer *buffer, uint8_t **bits, uint32_t byte) {
+static void directive_set(EmptyDirectives *state, DirectiveBuffer *buffer, uint8_t ***facts, uint32_t byte) {
     if (buffer->failed) return;
-    uint32_t index = byte / 8;
-    if (index >= state->size) {
-        uint32_t size = state->size > UINT32_MAX / 2 ? UINT32_MAX : state->size * 2;
-        if (size <= index) size = index < 256 ? 256 : index + 1;
-        if (!directive_resize_bitsets(state, size)) {
-            buffer->failed = true;
-            return;
-        }
-    }
-    if (!*bits && !(*bits = calloc(state->size, 1))) {
+    uint32_t page = byte >> DIRECTIVE_FACT_PAGE_SHIFT;
+    if (page >= state->pages && !directive_grow_directories(state, state->pages * 2 > page ? state->pages * 2 : page + 1)) {
         buffer->failed = true;
         return;
     }
-    (*bits)[index] |= 1u << (byte % 8);
-    if (index >= buffer->bitset_used) buffer->bitset_used = index + 1;
-}
-
-static bool directive_bit(const EmptyDirectives *state, const uint8_t *bits, uint32_t byte) {
-    return bits && byte / 8 < state->size && (bits[byte / 8] & (1u << (byte % 8)));
-}
-
-static bool directive_resize_bitsets(EmptyDirectives *state, uint32_t size) {
-    uint8_t **bitsets[] = {&state->starts, &state->ends, &state->line_ends, &state->directive_starts, &state->directive_ends};
-    for (unsigned i = 0; i < sizeof bitsets / sizeof *bitsets; i++) {
-        if (!*bitsets[i]) continue;
-        uint8_t *bits = realloc(*bitsets[i], size);
-        if (!bits) return false;
-        if (size > state->size) memset(bits + state->size, 0, size - state->size);
-        *bitsets[i] = bits;
+    if (!*facts && !(*facts = calloc(state->pages, sizeof **facts))) {
+        buffer->failed = true;
+        return;
     }
-    state->size = size;
+    uint8_t **bits = &(*facts)[page];
+    if (!*bits && !(*bits = calloc(DIRECTIVE_FACT_PAGE_SIZE / 8, 1))) {
+        buffer->failed = true;
+        return;
+    }
+    uint32_t offset = byte & (DIRECTIVE_FACT_PAGE_SIZE - 1);
+    (*bits)[offset / 8] |= 1u << (offset % 8);
+}
+
+static bool directive_bit(const EmptyDirectives *state, uint8_t *const *facts, uint32_t byte) {
+    uint32_t page = byte >> DIRECTIVE_FACT_PAGE_SHIFT, offset = byte & (DIRECTIVE_FACT_PAGE_SIZE - 1);
+    return facts && page < state->pages && facts[page] && (facts[page][offset / 8] & (1u << (offset % 8)));
+}
+
+static bool directive_grow_directories(EmptyDirectives *state, uint32_t pages) {
+    uint8_t ***directories[] = {&state->starts, &state->ends, &state->line_ends, &state->directive_starts, &state->directive_ends};
+    if ((size_t)pages > SIZE_MAX / sizeof(uint8_t *)) return false;
+    for (unsigned i = 0; i < sizeof directories / sizeof *directories; i++) {
+        if (!*directories[i]) continue;
+        uint8_t **directory = realloc(*directories[i], (size_t)pages * sizeof *directory);
+        if (!directory) return false;
+        memset(directory + state->pages, 0, (size_t)(pages - state->pages) * sizeof *directory);
+        *directories[i] = directory;
+    }
+    state->pages = pages;
     return true;
 }
 

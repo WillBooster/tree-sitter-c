@@ -28,11 +28,7 @@ void tree_sitter_c_external_scanner_destroy(void *payload) {
     CScanner *scanner = payload;
     EmptyDirectives *state = scanner_directives(scanner);
     if (!state) return;
-    free(state->starts);
-    free(state->ends);
-    free(state->line_ends);
-    free(state->directive_starts);
-    free(state->directive_ends);
+    empty_directives_release(state);
     macro_proof_destroy(&scanner->proof_memo);
     free(scanner);
 }

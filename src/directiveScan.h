@@ -86,6 +86,10 @@ static inline bool directive_scan_plain(DirectiveScan *scan, TSLexer *lexer) {
             return true;
         case SCAN_QUOTE:
             return !scan->escape && c != scan->quote && directive_scan_plain_text(scan, lexer, c);
+        case SCAN_RAW_BODY:
+            if (c == '"' || !directive_scan_plain_text(scan, lexer, c)) return false;
+            directive_scan_raw_body(scan, c);
+            return true;
         default:
             return false;
     }
@@ -357,7 +361,7 @@ static void directive_scan_raw_body(DirectiveScan *scan, int32_t c) {
     unsigned size = scan->delimiter_length + 2;
     unsigned oldest = scan->closing_end;
     scan->closing[oldest] = c > 0 && c < 0x80 ? (char)c : 0;
-    scan->closing_end = (oldest + 1) % size;
+    scan->closing_end = oldest + 1 == size ? 0 : oldest + 1;
     if (scan->closing_length < size) scan->closing_length++;
     if (c != '"' || scan->closing_length < size || scan->closing[scan->closing_end] != ')') return;
     for (unsigned i = 0; i < scan->delimiter_length; i++) {
