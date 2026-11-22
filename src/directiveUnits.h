@@ -4,8 +4,9 @@
 #ifndef TREE_SITTER_C_DIRECTIVE_UNITS_H_
 #define TREE_SITTER_C_DIRECTIVE_UNITS_H_
 
-#ifdef __ARM_NEON
+#if defined(__ARM_NEON) && defined(__aarch64__)
 #include <arm_neon.h>
+#define DIRECTIVE_USE_NEON 1
 #endif
 
 // The classes of an ASCII character among the units of the input: whether it is part of a word, horizontal space, or
@@ -38,7 +39,7 @@ typedef struct {
     DirectiveScanMode mode;
     bool lines, beginning, star, number, pragma, fresh;
     uint8_t seen;
-#ifdef __ARM_NEON
+#ifdef DIRECTIVE_USE_NEON
     uint8x16x4_t table_lo, table_hi;
     uint8x16_t seen_vec;
 #endif
@@ -62,7 +63,7 @@ DIRECTIVE_INLINE bool directive_units_line_comment(DirectiveUnitPass *pass, unsi
 DIRECTIVE_INLINE bool directive_units_block_comment(DirectiveUnitPass *pass, unsigned size);
 DIRECTIVE_INLINE bool directive_units_quoted(DirectiveUnitPass *pass, unsigned size);
 DIRECTIVE_INLINE uint32_t directive_units_advance_mask(DirectiveUnitPass *pass, unsigned size, uint8_t mask);
-#ifdef __ARM_NEON
+#ifdef DIRECTIVE_USE_NEON
 DIRECTIVE_INLINE void directive_units_neon_advance(DirectiveUnitPass *pass, unsigned size, uint8_t mask);
 DIRECTIVE_INLINE bool directive_units_neon_load(const char *units, unsigned size, uint32_t i, uint8x16_t *chars);
 #endif
@@ -86,7 +87,7 @@ DIRECTIVE_INLINE DirectiveUnits directive_scan_units(DirectiveScan *scan, const 
     DirectiveUnitPass pass = {
         .units = units, .classes = scan->classes, .count = count, .quote = (uint32_t)scan->quote, .previous = scan->previous,
         .mode = scan->mode, .lines = lines, .beginning = scan->beginning, .star = scan->star, .number = scan->number,
-#ifdef __ARM_NEON
+#ifdef DIRECTIVE_USE_NEON
         .table_lo = vld1q_u8_x4(scan->classes), .table_hi = vld1q_u8_x4(scan->classes + 64), .seen_vec = vdupq_n_u8(0),
 #endif
     };
@@ -354,7 +355,7 @@ DIRECTIVE_INLINE bool directive_units_quoted(DirectiveUnitPass *pass, unsigned s
     }
 }
 
-#ifdef __ARM_NEON
+#ifdef DIRECTIVE_USE_NEON
 DIRECTIVE_INLINE void directive_units_neon_advance(DirectiveUnitPass *pass, unsigned size, uint8_t mask) {
     uint8x16_t mask_vec = vdupq_n_u8(mask);
     uint8x16_t hi_xor = vdupq_n_u8(0x40);
@@ -393,7 +394,7 @@ DIRECTIVE_INLINE bool directive_units_neon_load(const char *units, unsigned size
 #endif
 
 DIRECTIVE_INLINE uint32_t directive_units_advance_mask(DirectiveUnitPass *pass, unsigned size, uint8_t mask) {
-#ifdef __ARM_NEON
+#ifdef DIRECTIVE_USE_NEON
     if (pass->count - pass->i >= 16) directive_units_neon_advance(pass, size, mask);
 #endif
     uint32_t c = 0;
@@ -442,7 +443,7 @@ DIRECTIVE_INLINE bool directive_units_escape(const DirectiveUnitPass *pass, unsi
 }
 
 DIRECTIVE_INLINE void directive_units_flush_pragma(DirectiveUnitPass *pass, unsigned size) {
-#ifdef __ARM_NEON
+#ifdef DIRECTIVE_USE_NEON
     if (vmaxvq_u8(vandq_u8(pass->seen_vec, vdupq_n_u8(UNIT_UNDERSCORE)))) pass->seen |= UNIT_UNDERSCORE;
     if (vmaxvq_u8(vandq_u8(pass->seen_vec, vdupq_n_u8(UNIT_P)))) pass->seen |= UNIT_P;
     pass->seen_vec = vdupq_n_u8(0);
