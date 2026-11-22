@@ -70,6 +70,8 @@ The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h
 `gnuRawString.h`.
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
+The headers call `peek_units` and `advance_units` of `TSLexer`, so generate the derived parser with the CLI of
+WillBooster/tree-sitter 23.1.0 or later, whose `src/tree_sitter/parser.h` declares them, and run it on that runtime.
 Append `_directive_context` and `preproc_empty` in their inherited external-token slots and retain them as extras.
 Append `_preproc_directive_start` in its inherited slot as a zero-width guard after every directive keyword token,
 including keywords in overridden directive rules. It is not an extra. Retain the phase-two splice handling in
