@@ -182,10 +182,14 @@ mod tests {
         assert_definition(&tree, source, b"/* caf\xe9 */\n".len());
     }
 
-    fn assert_definition(tree: &tree_sitter::Tree, source: &[u8], start: usize) {
+    fn assert_definition<'a>(
+        tree: &'a tree_sitter::Tree,
+        source: &[u8],
+        start: usize,
+    ) -> tree_sitter::Node<'a> {
         let root = tree.root_node();
         assert!(!root.has_error(), "{}", root.to_sexp());
-        assert_definition_at(root, source, start);
+        assert_definition_at(root, source, start)
     }
 
     fn assert_definition_at<'a>(
