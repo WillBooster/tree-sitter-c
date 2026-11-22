@@ -302,7 +302,8 @@ static bool scan_hash_directive(EmptyDirectives *state, TSLexer *lexer, const bo
 static bool scan_declaration_tokens(CScanner *scanner, TSLexer *lexer, const bool *valid_symbols, bool consumed_backslash) {
     EmptyDirectives *state = scanner_directives(scanner);
     int32_t c = lexer->lookahead;
-    bool can_start_braced = valid_symbols[BRACED_MACRO_TYPE_START] && !consumed_backslash && (c == '[' || starts_macro_scan(c, false));
+    bool can_start_braced = valid_symbols[BRACED_MACRO_TYPE_START] &&
+        ((!consumed_backslash && c == '[') || starts_macro_scan(c, consumed_backslash));
     if (!can_start_braced && !starts_macro_scan(c, consumed_backslash)) return false;
     static const TSSymbol attribute_tokens[] = {
         FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, POST_TYPE_FUNCTION_ATTRIBUTE_START,
@@ -320,7 +321,7 @@ static bool scan_declaration_tokens(CScanner *scanner, TSLexer *lexer, const boo
     };
     if (can_start_braced) {
         lexer->result_symbol = BRACED_MACRO_TYPE_START;
-        return scan_braced_macro_type_start(lexer, &symbols, NULL, 0);
+        return scan_braced_macro_type_start_from(lexer, consumed_backslash, &symbols, NULL, 0);
     }
     for (unsigned i = 0; i < sizeof(attribute_tokens) / sizeof(attribute_tokens[0]); i++) {
         TSSymbol token = attribute_tokens[i];

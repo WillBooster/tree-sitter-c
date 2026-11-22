@@ -615,9 +615,9 @@ static bool scan_macro_name_ascii(TSLexer *lexer, MacroName *name) {
     return true;
 }
 
-static void scan_macro_name_start(TSLexer *lexer, bool lookahead_only) {
-    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
-    if (lookahead_only) lexer->mark_end(lexer);
+static void scan_macro_name_start(TSLexer *lexer, bool mark_boundary) {
+    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, mark_boundary);
+    if (mark_boundary) lexer->mark_end(lexer);
 }
 
 static MacroNameCharacter scan_macro_name_character(TSLexer *lexer, bool continuation, MacroName *name) {

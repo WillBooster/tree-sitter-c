@@ -205,34 +205,47 @@ static MacroTypePrefix function_macro_macro_type_item(TSLexer *lexer, const Macr
 
 static MacroTypeResult function_macro_type_transition(MacroTypeState *state, MacroTypePrefix kind);
 static MacroTypeResult function_macro_type_group(TSLexer *lexer, MacroTypeState *state, const PragmaTrivia *trivia);
-static MacroTypeResult function_macro_type_word(TSLexer *lexer, const MacroAttributeSymbols *symbols,
+static MacroTypeResult function_macro_type_word(TSLexer *lexer, bool consumed_backslash, const MacroAttributeSymbols *symbols,
     const char *const *reserved_words, unsigned reserved_count, MacroTypeState *state);
 
-static bool function_macro_prove_braced_type(TSLexer *lexer, const MacroAttributeSymbols *symbols,
+static bool function_macro_prove_braced_type(TSLexer *lexer, bool consumed_backslash, const MacroAttributeSymbols *symbols,
     const char *const *reserved_words, unsigned reserved_count, MacroProofMemo *memo);
+static unsigned function_macro_type_trivia(TSLexer *lexer, const MacroTypeState *state, const PragmaTrivia *trivia, MacroProofMemo *memo);
 
-static inline bool scan_braced_macro_type_start(TSLexer *lexer, const MacroAttributeSymbols *symbols, const char *const *reserved_words, unsigned reserved_count) {
+static inline bool scan_braced_macro_type_start_from(TSLexer *lexer, bool consumed_backslash, const MacroAttributeSymbols *symbols, const char *const *reserved_words, unsigned reserved_count) {
     MacroProofMemo *memo = symbols->proof_memo;
     if (!macro_proof_begin(memo, reserved_words, reserved_count, &symbols->trivia)) memo = NULL;
-    bool accepted = function_macro_prove_braced_type(lexer, symbols, reserved_words, reserved_count, memo);
+    bool accepted = function_macro_prove_braced_type(lexer, consumed_backslash, symbols, reserved_words, reserved_count, memo);
     macro_proof_finish(memo, accepted);
     return accepted;
 }
 
-static bool function_macro_prove_braced_type(TSLexer *lexer, const MacroAttributeSymbols *symbols,
+static inline bool scan_braced_macro_type_start(TSLexer *lexer, const MacroAttributeSymbols *symbols, const char *const *reserved_words, unsigned reserved_count) {
+    return scan_braced_macro_type_start_from(lexer, false, symbols, reserved_words, reserved_count);
+}
+
+static bool function_macro_prove_braced_type(TSLexer *lexer, bool consumed_backslash, const MacroAttributeSymbols *symbols,
     const char *const *reserved_words, unsigned reserved_count, MacroProofMemo *memo) {
     const PragmaTrivia *trivia = &symbols->trivia;
     MacroTypeState state = {0};
     for (;;) {
-        while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
-        uint8_t key = state.marker | (state.known_type << 1) | (state.tag << 2) | (state.body << 3);
-        unsigned cached = state.started ? macro_proof_step(memo, lexer, key) : 0;
+        unsigned cached = consumed_backslash ? 0 : function_macro_type_trivia(lexer, &state, trivia, memo);
         if (cached) return cached == 2;
-        if (scan_pragma_empty(lexer, trivia)) continue;
-        MacroTypeResult result = lexer->lookahead == '[' || lexer->lookahead == '{'
+        bool escaped = consumed_backslash;
+        consumed_backslash = false;
+        MacroTypeResult result = !escaped && (lexer->lookahead == '[' || lexer->lookahead == '{')
             ? function_macro_type_group(lexer, &state, trivia)
-            : function_macro_type_word(lexer, symbols, reserved_words, reserved_count, &state);
+            : function_macro_type_word(lexer, escaped, symbols, reserved_words, reserved_count, &state);
         if (result != MACRO_TYPE_CONTINUE) return result == MACRO_TYPE_ACCEPT;
+    }
+}
+
+static unsigned function_macro_type_trivia(TSLexer *lexer, const MacroTypeState *state, const PragmaTrivia *trivia, MacroProofMemo *memo) {
+    uint8_t key = state->marker | (state->known_type << 1) | (state->tag << 2) | (state->body << 3);
+    for (;;) {
+        while (pragma_space(lexer->lookahead)) lexer->advance(lexer, !state->started);
+        unsigned cached = state->started ? macro_proof_step(memo, lexer, key) : 0;
+        if (cached || !scan_pragma_empty(lexer, trivia)) return cached;
     }
 }
 
@@ -247,11 +260,11 @@ static MacroTypeResult function_macro_type_group(TSLexer *lexer, MacroTypeState 
     return MACRO_TYPE_CONTINUE;
 }
 
-static MacroTypeResult function_macro_type_word(TSLexer *lexer, const MacroAttributeSymbols *symbols,
+static MacroTypeResult function_macro_type_word(TSLexer *lexer, bool consumed_backslash, const MacroAttributeSymbols *symbols,
     const char *const *reserved_words, unsigned reserved_count, MacroTypeState *state) {
     char word[FUNCTION_MACRO_KEYWORD_MAX_LENGTH + 1] = {0};
-    MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true, .lookahead_only = true, .preserve_end = state->started};
-    if (!scan_macro_name(lexer, &name)) return MACRO_TYPE_REJECT;
+    MacroName name = {.word = word, .capacity = sizeof(word) - 1, .ascii = true, .lookahead_only = true, .preserve_end = state->started || consumed_backslash};
+    if (!scan_macro_name_from(lexer, &name, consumed_backslash)) return MACRO_TYPE_REJECT;
     if (!state->started) {
         bool handled;
         bool accepted = function_macro_first_word(lexer, &name, symbols, &handled);

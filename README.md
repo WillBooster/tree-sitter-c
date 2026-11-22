@@ -105,7 +105,7 @@ Set `braced_start` to the inherited braced token and `allow_braced_start` from i
 Omitting these fields disables braced handoff in the current argument group and in prototype-tail lookahead.
 Preserve the inherited external-token order before adding tokens specific to the derived grammar.
 
-Port `_braced_macro_type_start` and `scan_braced_macro_type_start` before function-annotation lookahead.
+Port `_braced_macro_type_start` and `scan_braced_macro_type_start` (or `scan_braced_macro_type_start_from` when a shared leading-trivia pass has already consumed an opening UCN backslash) before function-annotation lookahead.
 This separate zero-width guard proves marker words followed by a braced macro-type argument; the grammar still
 consumes each marker and validates its type. Keep `MacroName.preserve_end` in `pragma.h` so scanning subsequent words
 does not move the guard's end. Its default is false for ordinary name scans. Derived grammars can supply reserved
