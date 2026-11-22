@@ -40,7 +40,7 @@ static bool scan_macro_name(TSLexer *lexer, MacroName *name);
 static bool scan_macro_name_from(TSLexer *lexer, MacroName *name, bool consumed_backslash);
 static bool scan_macro_name_tail(TSLexer *lexer, MacroName *name, bool has_name);
 static bool scan_macro_name_ascii(TSLexer *lexer, MacroName *name);
-static void scan_macro_name_start(TSLexer *lexer, bool lookahead_only);
+static void scan_macro_name_start(TSLexer *lexer, const MacroName *name);
 static MacroNameCharacter scan_macro_name_character(TSLexer *lexer, bool continuation, MacroName *name);
 static bool scan_macro_name_ucn(TSLexer *lexer);
 static void skip_leading_spaces_and_splices(TSLexer *lexer, bool (*is_space)(int32_t), bool *newline, bool *consumed_backslash);
@@ -577,7 +577,7 @@ static bool scan_macro_name_from(TSLexer *lexer, MacroName *name, bool consumed_
         if (!name->lookahead_only) lexer->mark_end(lexer);
         return scan_macro_name_tail(lexer, name, true);
     }
-    scan_macro_name_start(lexer, name->lookahead_only && !name->preserve_end);
+    scan_macro_name_start(lexer, name);
     if ((uint32_t)lexer->lookahead >= 0x80u || lexer->lookahead == '\\') {
         return scan_macro_name_tail(lexer, name, false);
     }
@@ -588,7 +588,7 @@ static bool scan_macro_name_from(TSLexer *lexer, MacroName *name, bool consumed_
 
 static bool scan_macro_name_tail(TSLexer *lexer, MacroName *name, bool has_name) {
     for (;;) {
-        if (!has_name) scan_macro_name_start(lexer, name->lookahead_only && !name->preserve_end);
+        if (!has_name) scan_macro_name_start(lexer, name);
         MacroNameCharacter character = scan_macro_name_character(lexer, has_name, name);
         if (character == MACRO_NAME_INVALID) return false;
         if (character == MACRO_NAME_END) return has_name;
@@ -616,16 +616,16 @@ static bool scan_macro_name_ascii(TSLexer *lexer, MacroName *name) {
     return true;
 }
 
-static void scan_macro_name_start(TSLexer *lexer, bool mark_boundary) {
-    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, mark_boundary);
-    if (mark_boundary) lexer->mark_end(lexer);
+static void scan_macro_name_start(TSLexer *lexer, const MacroName *name) {
+    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, !name->preserve_end);
+    if (name->lookahead_only && !name->preserve_end) lexer->mark_end(lexer);
 }
 
 static MacroNameCharacter scan_macro_name_character(TSLexer *lexer, bool continuation, MacroName *name) {
     int32_t c = lexer->lookahead;
     if (c == '\\') {
         lexer->advance(lexer, false);
-        if (scan_preproc_newline(lexer, !continuation)) return MACRO_NAME_SPLICE;
+        if (scan_preproc_newline(lexer, !continuation && !name->preserve_end)) return MACRO_NAME_SPLICE;
         name->ascii = false;
         return scan_macro_name_ucn(lexer) ? MACRO_NAME_CHARACTER : MACRO_NAME_INVALID;
     }
