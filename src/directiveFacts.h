@@ -78,8 +78,7 @@ static bool empty_directives_scan_word(TSLexer *lexer, char *word, unsigned capa
     for (;;) {
         int32_t c = lexer->lookahead;
         if (empty_directives_name_character(c, true)) {
-            if (length < capacity - 1) word[length++] = (char)c;
-            else length = capacity;
+            if (length < capacity) word[length++] = (char)c;
             lexer->advance(lexer, false);
             lexer->mark_end(lexer);
             trailing_splice = false;
