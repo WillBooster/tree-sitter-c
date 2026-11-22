@@ -58,7 +58,8 @@ typedef struct {
     bool beginning, pending, operand, pragma_pending, pragma_newline, pragma_name;
     unsigned pragma_depth, header;
     DirectiveKind kind;
-    uint32_t start, required_end;
+    // `comment_start` is the first comment after a pending `#`, or 0.
+    uint32_t start, comment_start, required_end;
 } DirectiveLine;
 
 static bool directive_scan_buffered(DirectiveScan *scan, DirectiveInput *input);
@@ -141,7 +142,7 @@ static DirectiveKind directive_word_kind(const DirectiveWord *word);
 static void directive_word_character(DirectiveWord *word, int32_t c);
 static void directive_word_role(DirectiveLine *line, DirectiveKind kind, bool name, bool pragma, bool had_operand, bool identifier);
 static uint32_t directive_byte(const DirectiveInput *input);
-static void directive_record(EmptyDirectives *state, DirectiveInput *input, uint32_t start, uint32_t end);
+static void directive_record(EmptyDirectives *state, DirectiveInput *input, const DirectiveLine *line, uint32_t end);
 
 static bool empty_directives_initialize(EmptyDirectives *state, TSLexer *lexer) {
     TSLexerCheckpoint start;
@@ -316,7 +317,7 @@ static bool directive_segment(EmptyDirectives *state, DirectiveInput *input) {
         if (directive_line_clean(&line) && directive_segment_ends(input)) return true;
     }
     directive_complete_required(state, input, &line);
-    if (line.pending) directive_record(state, input, line.start, input->buffer->fill_byte);
+    if (line.pending) directive_record(state, input, &line, input->buffer->fill_byte);
     return false;
 }
 
@@ -655,6 +656,7 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
         return;
     }
     if (c == '/' && (directive_peek(input) == '/' || directive_peek(input) == '*')) {
+        if (line->pending && !line->comment_start) line->comment_start = input->previous_byte;
         directive_line_comment(state, input, line);
         return;
     }
@@ -665,6 +667,7 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
         line->kind = DIRECTIVE_ORDINARY;
         line->operand = false;
         line->start = input->previous_byte;
+        line->comment_start = 0;
         directive_set(state, input->buffer, &state->directive_starts, line->start);
         line->beginning = false;
         line->pending = true;
@@ -787,7 +790,7 @@ static void directive_line_comment(EmptyDirectives *state, DirectiveInput *input
 
 static void directive_line_end(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line) {
     directive_complete_required(state, input, line);
-    if (line->pending) directive_record(state, input, line->start, directive_byte(input));
+    if (line->pending) directive_record(state, input, line, directive_byte(input));
     line->beginning = true;
     line->pending = false;
     bool required = line->kind == DIRECTIVE_CONDITION ||
@@ -1131,10 +1134,11 @@ static uint32_t directive_byte(const DirectiveInput *input) {
     return input->byte;
 }
 
-static void directive_record(EmptyDirectives *state, DirectiveInput *input, uint32_t start, uint32_t end) {
+// A null directive ends before its first comment, which the lexer then reads as a comment of its own.
+static void directive_record(EmptyDirectives *state, DirectiveInput *input, const DirectiveLine *line, uint32_t end) {
     input->buffer->carries = true;
-    directive_set(state, input->buffer, &state->starts, start);
-    directive_set(state, input->buffer, &state->ends, end);
+    directive_set(state, input->buffer, &state->starts, line->start);
+    directive_set(state, input->buffer, &state->ends, line->comment_start ? line->comment_start : end);
 }
 
 #endif

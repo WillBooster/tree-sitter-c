@@ -183,7 +183,7 @@ test.each(annotationCases)('retains annotation and type lookahead around a null 
   try {
     expect(ordinary.rootNode.hasError).toBe(false);
     checkSource(template.replace('INSERT', '\n  # /* null */\n'), 1, (tree) => {
-      expect(tree.rootNode.toString().replaceAll(' (preproc_empty)', '')).toBe(ordinary.rootNode.toString());
+      expect(tree.rootNode.toString().replaceAll(' (preproc_empty) (comment)', '')).toBe(ordinary.rootNode.toString());
     });
   } finally {
     ordinary.delete();
