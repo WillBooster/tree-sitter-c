@@ -36,39 +36,21 @@ test('uses a Wasm build built from the current parser', () => {
   ).toBe(false);
 });
 
-test.each(['', 'int before;'])(
-  'keeps directive line-position checks approximately linear after %j',
+test.each([
+  ['', '/**/ '],
+  ['int before;', '/**/ '],
+  ['', '#define VALUE 1\nint value;\n'],
+  ['', '#\n/* a */ int value; // b\n'],
+  ['', '#if A\n#elif B\n#endif\n'],
+])(
+  'keeps directive line-position checks approximately linear after %j repeating %j',
   { timeout: 60_000 },
-  (prefix) => {
-    const source = (count: number): string => `${prefix}${'/**/ '.repeat(count)}#define VALUE 1\nint following;\n`;
+  (prefix, unit) => {
+    const source = (count: number): string => `${prefix}${unit.repeat(count)}#define VALUE 1\nint following;\n`;
     const expectedError = prefix.length > 0;
     const small = source(1000);
     const large = source(10_000);
-    parseAverageCpuTime(large, expectedError);
-    let smallFastest = Infinity;
-    let largeFastest = Infinity;
-    for (let run = 0; run < 5; run++) {
-      smallFastest = Math.min(smallFastest, parseAverageCpuTime(small, expectedError));
-      largeFastest = Math.min(largeFastest, parseAverageCpuTime(large, expectedError));
-    }
-    expect(largeFastest / smallFastest).toBeLessThan(18);
-  }
-);
-
-test.each(['#define VALUE 1\nint value;\n', '#\n/* a */ int value; // b\n', '#if A\n#elif B\n#endif\n'])(
-  'keeps the directive pre-pass approximately linear for %j',
-  { timeout: 60_000 },
-  (lines) => {
-    const small = lines.repeat(1000);
-    const large = lines.repeat(10_000);
-    parseAverageCpuTime(large);
-    let smallFastest = Infinity;
-    let largeFastest = Infinity;
-    for (let run = 0; run < 5; run++) {
-      smallFastest = Math.min(smallFastest, parseAverageCpuTime(small));
-      largeFastest = Math.min(largeFastest, parseAverageCpuTime(large));
-    }
-    expect(largeFastest / smallFastest).toBeLessThan(18);
+    expectAverageCpuTimeLinear(small, large, expectedError);
   }
 );
 
@@ -79,41 +61,20 @@ test.each(['A ', 'A B '])(
     const source = (count: number): string => `void f(void) { ${markers.repeat(count)}x; }`;
     const small = source(1000);
     const large = source(10_000);
-    parseAverageCpuTime(large, true);
-    let smallFastest = Infinity;
-    let largeFastest = Infinity;
-    for (let run = 0; run < 5; run++) {
-      smallFastest = Math.min(smallFastest, parseAverageCpuTime(small, true));
-      largeFastest = Math.min(largeFastest, parseAverageCpuTime(large, true));
-    }
-    expect(largeFastest / smallFastest).toBeLessThan(18);
+    expectAverageCpuTimeLinear(small, large, true);
   }
 );
 
 test('keeps nested ordinary calls approximately linear', { timeout: 60_000 }, () => {
   const small = nestedCallSource(200);
   const large = nestedCallSource(2000);
-  parseAverageCpuTime(large);
-  let smallFastest = Infinity;
-  let largeFastest = Infinity;
-  for (let run = 0; run < 5; run++) {
-    smallFastest = Math.min(smallFastest, parseAverageCpuTime(small));
-    largeFastest = Math.min(largeFastest, parseAverageCpuTime(large));
-  }
-  expect(largeFastest / smallFastest).toBeLessThan(18);
+  expectAverageCpuTimeLinear(small, large);
 });
 
 test('keeps nested opaque parameter types approximately linear', { timeout: 60_000 }, () => {
   const small = nestedTypeSource(100);
   const large = nestedTypeSource(1000);
-  parseAverageCpuTime(large);
-  let smallFastest = Infinity;
-  let largeFastest = Infinity;
-  for (let run = 0; run < 5; run++) {
-    smallFastest = Math.min(smallFastest, parseAverageCpuTime(small));
-    largeFastest = Math.min(largeFastest, parseAverageCpuTime(large));
-  }
-  expect(largeFastest / smallFastest).toBeLessThan(18);
+  expectAverageCpuTimeLinear(small, large);
 });
 
 test.each(['leading', 'post-type', 'trailing', 'object'])(
@@ -129,14 +90,7 @@ test.each(['leading', 'post-type', 'trailing', 'object'])(
     const small = source(100);
     const large = source(1000);
     const expectedError = placement === 'trailing';
-    parseAverageCpuTime(large, expectedError);
-    let smallFastest = Infinity;
-    let largeFastest = Infinity;
-    for (let run = 0; run < 5; run++) {
-      smallFastest = Math.min(smallFastest, parseAverageCpuTime(small, expectedError));
-      largeFastest = Math.min(largeFastest, parseAverageCpuTime(large, expectedError));
-    }
-    expect(largeFastest / smallFastest).toBeLessThan(18);
+    expectAverageCpuTimeLinear(small, large, expectedError);
   }
 );
 
@@ -180,14 +134,7 @@ test.each([
   (_name, prefix, suffix) => {
     const small = `${prefix}${'[[a]] '.repeat(200)}${suffix}`;
     const large = `${prefix}${'[[a]] '.repeat(1000)}${suffix}`;
-    parseAverageCpuTime(large);
-    let smallFastest = Infinity;
-    let largeFastest = Infinity;
-    for (let run = 0; run < 5; run++) {
-      smallFastest = Math.min(smallFastest, parseAverageCpuTime(small));
-      largeFastest = Math.min(largeFastest, parseAverageCpuTime(large));
-    }
-    expect(largeFastest / smallFastest).toBeLessThan(10);
+    expectAverageCpuTimeLinear(small, large, false, 10);
   }
 );
 
@@ -221,6 +168,14 @@ test.each(
   const expectedError = !completeRawType && (!line.startsWith('_Pragma') || suffix === '' || suffix === ')"');
   const small = line.repeat(100) + suffix;
   const large = line.repeat(1000) + suffix;
+  expectAverageCpuTimeLinear(small, large, expectedError);
+});
+
+function attributedSwitchSource(count: number): string {
+  return `void f(int x){switch(x){${Array.from({ length: count }, (_, index) => `case ${index}: [[a]] x++; break;`).join('')}}}`;
+}
+
+function expectAverageCpuTimeLinear(small: string, large: string, expectedError = false, limit = 18): void {
   parseAverageCpuTime(large, expectedError);
   let smallFastest = Infinity;
   let largeFastest = Infinity;
@@ -228,11 +183,7 @@ test.each(
     smallFastest = Math.min(smallFastest, parseAverageCpuTime(small, expectedError));
     largeFastest = Math.min(largeFastest, parseAverageCpuTime(large, expectedError));
   }
-  expect(largeFastest / smallFastest).toBeLessThan(18);
-});
-
-function attributedSwitchSource(count: number): string {
-  return `void f(int x){switch(x){${Array.from({ length: count }, (_, index) => `case ${index}: [[a]] x++; break;`).join('')}}}`;
+  expect(largeFastest / smallFastest).toBeLessThan(limit);
 }
 
 function parseCpuTime(source: string, expectedError = true): number {
