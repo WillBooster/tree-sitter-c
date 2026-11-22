@@ -500,7 +500,7 @@ static bool directive_fill(DirectiveBuffer *buffer, uint32_t index) {
     while (buffer->length < limit && !buffer->failed && !pragma_eof(buffer->lexer)) {
         int32_t c = buffer->lexer->lookahead;
         if (!directive_append(buffer)) buffer->failed = true;
-        else if (c == '\n' && buffer->length > index) break;
+        else if (directive_newline(c) && buffer->length > index) break;
     }
     return index < buffer->length;
 }
