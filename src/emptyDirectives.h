@@ -206,8 +206,9 @@ static bool empty_directives_start_at(const EmptyDirectives *state, uint32_t byt
 }
 
 // Consumes the rest of a null directive whose start was confirmed at a position the lexer has not left except over
-// prefix characters: as a token (`skip_prefix`) up to its first comment, which the lexer reads as a token of its own,
-// and otherwise the whole logical line, since scanner lookahead reads no comments after it.
+// prefix characters: as a token (`skip_prefix`) up to its first recorded end, which `directive_record` places before
+// the comments or after the line, and otherwise the whole logical line, since some scanner lookahead dispatches on
+// the character after the skip without reading comments.
 static void empty_directives_consume_started(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix) {
     TSLexerPosition position;
     while (lexer->lookahead != '#' && !pragma_eof(lexer)) lexer->advance(lexer, skip_prefix);
