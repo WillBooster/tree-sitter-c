@@ -85,7 +85,7 @@ static uint32_t directive_expected_width(const DirectiveInput *input, uint32_t i
 static int32_t directive_peek(const DirectiveInput *input);
 static int32_t directive_plain(const DirectiveInput *input);
 static void directive_skip_plain(DirectiveInput *input);
-typedef enum { DIRECTIVE_RUN_WORD, DIRECTIVE_RUN_CODE, DIRECTIVE_RUN_SPACE, DIRECTIVE_RUN_LINE_COMMENT, DIRECTIVE_RUN_BLOCK_COMMENT } DirectiveRun;
+typedef enum { DIRECTIVE_RUN_WORD, DIRECTIVE_RUN_SPACE, DIRECTIVE_RUN_LINE_COMMENT, DIRECTIVE_RUN_BLOCK_COMMENT } DirectiveRun;
 static inline uint32_t directive_plain_run(DirectiveInput *input, DirectiveRun run);
 static uint32_t directive_run_end(const DirectiveBuffer *buffer, DirectiveRun run, uint32_t index, uint32_t end);
 static bool directive_run_continues(DirectiveRun run, uint16_t c);
@@ -861,9 +861,6 @@ static bool directive_run_continues(DirectiveRun run, uint16_t c) {
     switch (run) {
         case DIRECTIVE_RUN_WORD:
             return identifier;
-        case DIRECTIVE_RUN_CODE:
-            // The rest of a neutral line: characters that start no token.
-            return !identifier && c != '"' && c != '\'' && c != '/';
         case DIRECTIVE_RUN_SPACE:
             return directive_horizontal(c);
         case DIRECTIVE_RUN_LINE_COMMENT:
