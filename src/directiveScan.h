@@ -75,13 +75,15 @@ static void directive_scan_push(DirectiveScan *scan, uint32_t start, uint32_t en
 static inline void directive_scan_extend(DirectiveScan *scan, uint32_t start, bool skipped);
 
 // Feeds the spaces at the lexer's position, and a `/` after them with the character that follows it. Returns true when
-// they open a comment.
+// they open a comment. It reads no further than that one `/`, so that the scans after a postponed build, which start
+// where this one's tokens end, do not read the same characters again and again.
 static bool directive_scan_leading_comment(DirectiveScan *scan, TSLexer *lexer) {
-    for (;;) {
+    for (bool slash = false;;) {
         if (scan->mode == SCAN_LINE_COMMENT || scan->mode == SCAN_BLOCK_COMMENT) return true;
         int32_t c = lexer->lookahead;
-        bool leading = scan->mode == SCAN_SLASH || (scan->mode == SCAN_CODE && !scan->splice && (pragma_space(c) || c == '/'));
-        if (!leading || pragma_eof(lexer)) return false;
+        bool space = !slash && scan->mode == SCAN_CODE && !scan->splice && (pragma_space(c) || c == '/');
+        if ((!space && scan->mode != SCAN_SLASH) || pragma_eof(lexer)) return false;
+        slash = slash || c == '/';
         directive_scan_feed(scan, c);
         directive_scan_lexer_run(scan, lexer, pragma_space(c) || c == '\\');
         lexer->advance(lexer, false);
