@@ -1370,3 +1370,62 @@ int second;
   (declaration
     (primitive_type)
     (identifier)))
+
+================================================================================
+Comments after null directives
+================================================================================
+
+# /* Disabled
+   directive */
+int a;
+
+int f() {
+  # /* Disabled macro
+     until the migration is complete.
+  */
+  return 1;
+}
+
+# /* first */ /* second
+   comment */
+int b;
+
+# // line comment
+int c;
+
+#
+int d;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_empty)
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list))
+    (compound_statement
+      (preproc_empty)
+      (comment)
+      (return_statement
+        (number_literal))))
+  (preproc_empty)
+  (comment)
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_empty)
+  (comment)
+  (declaration
+    (primitive_type)
+    (identifier))
+  (preproc_empty)
+  (declaration
+    (primitive_type)
+    (identifier)))

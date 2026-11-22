@@ -175,6 +175,7 @@ const annotationCases = [
   '#define TYPE(...) __VA_ARGS__\nTYPE(INSERT struct { int member; }) value;\n',
   '#define A\n#define TYPE(...) __VA_ARGS__\nA INSERT TYPE(struct { int member; }) value;\n',
   '[[INSERT deprecated]] int value;\n',
+  '#define MARK\n#define ANNOTATE(...)\nMARK struct S { int a; } INSERT ANNOTATE(struct { int b; }) x;\n',
 ];
 
 test.each(annotationCases)('retains annotation and type lookahead around a null directive: %j', (template) => {
@@ -183,7 +184,7 @@ test.each(annotationCases)('retains annotation and type lookahead around a null 
   try {
     expect(ordinary.rootNode.hasError).toBe(false);
     checkSource(template.replace('INSERT', '\n  # /* null */\n'), 1, (tree) => {
-      expect(tree.rootNode.toString().replaceAll(' (preproc_empty)', '')).toBe(ordinary.rootNode.toString());
+      expect(tree.rootNode.toString().replaceAll(' (preproc_empty) (comment)', '')).toBe(ordinary.rootNode.toString());
     });
   } finally {
     ordinary.delete();
