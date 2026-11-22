@@ -31,6 +31,8 @@ typedef struct {
 typedef struct {
     DirectiveBuffer *buffer;
     uint32_t index, byte, position_index, previous_byte, before_previous_byte;
+    // Whether a line splice with spaces before its newline was read, which the lexer's tokens do not take as a splice.
+    bool spaced_splice;
 } DirectiveInput;
 
 #define DIRECTIVE_FACT_PAGE_SHIFT 15
@@ -660,7 +662,10 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
         return;
     }
     if (c == '/' && (directive_peek(input) == '/' || directive_peek(input) == '*')) {
-        if (line->pending && !line->comment_start) line->comment_start = input->previous_byte;
+        if (line->pending && !line->comment_start) {
+            line->comment_start = input->previous_byte;
+            input->spaced_splice = false;
+        }
         directive_line_comment(state, input, line);
         return;
     }
@@ -843,6 +848,7 @@ static int32_t directive_next(DirectiveInput *input) {
         int32_t c = directive_physical_next(input);
         uint32_t after = c == '\\' ? directive_splice_end(input) : input->index;
         if (after != input->index) {
+            if (directive_horizontal(directive_character(input, input->index))) input->spaced_splice = true;
             while (input->index < after) directive_physical_next(input);
             continue;
         }
@@ -1139,11 +1145,12 @@ static uint32_t directive_byte(const DirectiveInput *input) {
 }
 
 // A null directive with comments has two ends: before its first comment, marked in `comments` too, and after its line.
+// It keeps its comments when a spaced splice follows their start, where the lexer would read them differently.
 static void directive_record(EmptyDirectives *state, DirectiveInput *input, const DirectiveLine *line, uint32_t end) {
     input->buffer->carries = true;
     directive_set(state, input->buffer, &state->starts, line->start);
     directive_set(state, input->buffer, &state->ends, end);
-    if (!line->comment_start) return;
+    if (!line->comment_start || input->spaced_splice) return;
     directive_set(state, input->buffer, &state->ends, line->comment_start);
     directive_set(state, input->buffer, &state->comments, line->comment_start);
 }
