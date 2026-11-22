@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 949 -- One source-fact pass shares on-demand directive-segment storage, directive lexing, physical-position conversion, prefix spans and fact bitsets.
+// code-gauge-allow-file fileNcss -- One source-fact pass shares on-demand directive-segment storage, directive lexing, physical-position conversion, prefix spans and fact bitsets.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
@@ -64,7 +64,7 @@ typedef struct {
 static bool directive_scan_buffered(DirectiveScan *scan, DirectiveInput *input);
 static bool directive_scan_lexer(DirectiveScan *scan, DirectiveBuffer *buffer);
 static void directive_scan_resume(DirectiveScan *scan, DirectiveSpans *run, DirectiveSpans *tail);
-static void directive_scan_handoff(DirectiveScan *scan, uint32_t hash);
+static void directive_scan_handoff(DirectiveScan *scan, uint32_t hash, bool skipped);
 static bool directive_segment(EmptyDirectives *state, DirectiveInput *input);
 static bool directive_segment_ends(const DirectiveInput *input);
 static bool directive_short_line_comment(const DirectiveInput *input, uint32_t index, uint32_t limit);
@@ -259,9 +259,9 @@ static void directive_scan_resume(DirectiveScan *scan, DirectiveSpans *run, Dire
     scan->run_end = last.end;
 }
 
-// Completes the run's spans before the directive's `#` at `hash`.
-static void directive_scan_handoff(DirectiveScan *scan, uint32_t hash) {
-    if (scan->in_run) directive_scan_close_run(scan, hash);
+// Completes the run's spans before the directive's `#` at `hash`, which follows bytes left out when `skipped`.
+static void directive_scan_handoff(DirectiveScan *scan, uint32_t hash, bool skipped) {
+    if (scan->in_run) directive_scan_close_run(scan, hash, skipped);
     scan->run->count = scan->in_run ? scan->run_spans : 0;
 }
 
@@ -273,7 +273,7 @@ static bool directive_scan_buffered(DirectiveScan *scan, DirectiveInput *input) 
         int32_t c = directive_physical_next(input);
         if (directive_scan_feed(scan, c)) {
             *input = before;
-            directive_scan_handoff(scan, before.byte);
+            directive_scan_handoff(scan, before.byte, before.byte != scan->run_end);
             return true;
         }
         directive_scan_run(scan, c, input->previous_byte, input->byte);
@@ -292,7 +292,7 @@ static bool directive_scan_lexer(DirectiveScan *scan, DirectiveBuffer *buffer) {
         if (directive_scan_feed(scan, c)) {
             lexer->get_position(lexer, &position);
             buffer->fill_byte = position.bytes;
-            directive_scan_handoff(scan, position.bytes);
+            directive_scan_handoff(scan, position.bytes, lexer->is_at_included_range_start(lexer));
             return true;
         }
         directive_scan_lexer_run(scan, lexer, pragma_space(c) || c == '\\');
@@ -672,7 +672,7 @@ static void directive_line_character(EmptyDirectives *state, DirectiveInput *inp
     else directive_code(state, input, line, c);
 }
 
-// code-gauge-allow functionCognitiveComplexity 19 -- Header names, quoted tokens and distinct keyword boundaries update one logical directive's lexical state.
+// code-gauge-allow functionCognitiveComplexity -- Header names, quoted tokens and distinct keyword boundaries update one logical directive's lexical state.
 static void directive_code(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line, int32_t c) {
     bool name = line->pending;
     bool header = directive_header_ready(line, c);

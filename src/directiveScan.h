@@ -17,8 +17,8 @@ typedef struct {
     bool failed;
 } DirectiveSpans;
 
-// The most bytes one character takes, which bounds a span's end: the position after a character also includes the bytes
-// an included range leaves out after it.
+// The bytes a stored character contributes to a span at most: a span needs only its characters' starts, and the position
+// after a character also includes the bytes an included range leaves out after it.
 #define DIRECTIVE_CHARACTER_BYTES 4
 
 typedef enum { SCAN_CODE, SCAN_SLASH, SCAN_LINE_COMMENT, SCAN_BLOCK_COMMENT, SCAN_QUOTE, SCAN_WORD, SCAN_RAW_DELIMITER, SCAN_RAW_BODY } DirectiveScanMode;
@@ -26,14 +26,13 @@ typedef enum { SCAN_CODE, SCAN_SLASH, SCAN_LINE_COMMENT, SCAN_BLOCK_COMMENT, SCA
 // The line-state pass of `emptyDirectives.h` in the state it has on ordinary code, before the first directive and after
 // each directive line that ends with no directive state left, fed one physical character at a time so that the code is
 // never stored. It also tracks the run of spaces and backslashes before the next character, which a null directive's
-// prefix covers: the first `run_spans` spans in `run` and the current one, from `run_start` to `run_end` and over
-// `run_pending` more characters whose positions were not read.
+// prefix covers: the first `run_spans` spans in `run` and the current one, from `run_start` to before `run_end`.
 typedef struct {
     DirectiveScanMode mode;
     GnuRawStringPrefix raw;
     DirectiveSpans *run;
     int32_t quote, previous, pair;
-    uint32_t spaces, run_start, run_end, run_pending, run_spans;
+    uint32_t spaces, run_start, run_end, run_spans;
     unsigned delimiter_length, closing_length, closing_end;
     char delimiter[16], closing[18];
     bool beginning, number, escape, star, splice, in_run;
@@ -59,8 +58,9 @@ static void directive_scan_raw_body(DirectiveScan *scan, int32_t c);
 static bool directive_horizontal(int32_t c);
 static bool directive_newline(int32_t c);
 static void directive_spans_push(DirectiveSpans *spans, uint32_t start, uint32_t end);
-static void directive_scan_close_run(DirectiveScan *scan, uint32_t limit);
+static void directive_scan_close_run(DirectiveScan *scan, uint32_t limit, bool skipped);
 static void directive_scan_push(DirectiveScan *scan, uint32_t start, uint32_t end);
+static inline void directive_scan_extend(DirectiveScan *scan, uint32_t start, bool skipped);
 
 // Consumes the lexer's ASCII characters that need no physical-layer work and change no state but the line beginning,
 // the current word, the end of a comment and the run of spaces, which is most of the input, and stops at a character
@@ -129,30 +129,34 @@ static inline bool directive_scan_plain_text(DirectiveScan *scan, TSLexer *lexer
     return true;
 }
 
-// Extends or ends the run of spaces and backslashes with the lookahead, as `directive_scan_run` does, reading the
-// position only where a span starts: at the run's start and where the lexer skipped to the next included range.
+// Extends or ends the run of spaces and backslashes with the lookahead, as `directive_scan_run` does. A span read from
+// the lexer ends just after its last character's start, since the lexer may skip to the next included range after it.
 static inline void directive_scan_lexer_run(DirectiveScan *scan, TSLexer *lexer, bool member) {
     if (!member) {
         scan->in_run = false;
         return;
     }
-    if (!scan->in_run || lexer->is_at_included_range_start(lexer)) {
-        TSLexerPosition position;
-        lexer->get_position(lexer, &position);
-        if (scan->in_run) directive_scan_close_run(scan, position.bytes);
-        else scan->run_spans = 0;
-        scan->run_start = scan->run_end = position.bytes;
-        scan->run_pending = 0;
-        scan->in_run = true;
-    }
-    scan->run_pending++;
+    TSLexerPosition position;
+    lexer->get_position(lexer, &position);
+    directive_scan_extend(scan, position.bytes, scan->in_run && lexer->is_at_included_range_start(lexer));
+    scan->run_end = position.bytes + 1;
 }
 
-// Stores the current span, ending it at `limit` or after its pending characters, whichever comes first, so that a span
-// covers each character it holds but never more than `DIRECTIVE_CHARACTER_BYTES` per character.
-static void directive_scan_close_run(DirectiveScan *scan, uint32_t limit) {
-    uint64_t bound = (uint64_t)scan->run_end + DIRECTIVE_CHARACTER_BYTES * (uint64_t)scan->run_pending;
-    directive_scan_push(scan, scan->run_start, bound < limit ? (uint32_t)bound : limit);
+// Starts the run at a character from `start`, or a new span of it when bytes were left out before the character.
+static inline void directive_scan_extend(DirectiveScan *scan, uint32_t start, bool skipped) {
+    if (!scan->in_run) {
+        scan->run_spans = 0;
+        scan->run_start = start;
+        scan->in_run = true;
+    } else if (skipped) {
+        directive_scan_push(scan, scan->run_start, scan->run_end);
+        scan->run_start = start;
+    }
+}
+
+// Stores the current span, which reaches `limit` unless bytes were left out before it.
+static void directive_scan_close_run(DirectiveScan *scan, uint32_t limit, bool skipped) {
+    directive_scan_push(scan, scan->run_start, skipped ? scan->run_end : limit);
 }
 
 // The list is written only here, so that the run's start leaves memory alone.
@@ -175,21 +179,13 @@ static inline bool directive_scan_ascii_special(int32_t c) {
     return (special[c / 64] >> (c % 64)) & 1;
 }
 
-// Extends or ends the run with the character `c` from `start` to `end`, which precedes the lexer's characters, so the
-// current span has no pending characters.
+// Extends or ends the run with the stored character `c` from `start` to `end`.
 static void directive_scan_run(DirectiveScan *scan, int32_t c, uint32_t start, uint32_t end) {
     if (!pragma_space(c) && c != '\\') {
         scan->in_run = false;
         return;
     }
-    if (!scan->in_run) {
-        scan->run_spans = 0;
-        scan->run_start = start;
-        scan->in_run = true;
-    } else if (start != scan->run_end) {
-        directive_scan_push(scan, scan->run_start, scan->run_end);
-        scan->run_start = start;
-    }
+    directive_scan_extend(scan, start, scan->in_run && start != scan->run_end);
     scan->run_end = end - start > DIRECTIVE_CHARACTER_BYTES ? start + DIRECTIVE_CHARACTER_BYTES : end;
 }
 
