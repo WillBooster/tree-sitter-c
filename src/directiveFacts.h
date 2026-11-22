@@ -43,14 +43,11 @@ typedef struct {
 
 static bool empty_directives_skip_prefix(TSLexer *lexer);
 static bool empty_directives_scan_word_step(TSLexer *lexer, char *word, unsigned capacity, unsigned *length, bool *trailing_splice, TSLexerPosition *position);
-static bool empty_directives_ucn_follows(TSLexer *lexer);
+static bool empty_directives_ucn_follows(TSLexer *lexer, bool continuation);
 static inline bool empty_directives_name_character(int32_t c, bool continuation);
 static bool directive_word_continues(DirectiveInput *input, bool number, int32_t *previous);
 static bool directive_consume_ucn(DirectiveInput *input);
-static bool directive_ucn(DirectiveInput *input);
-static bool directive_braced_ucn(DirectiveInput *input, bool named);
-static bool directive_hex_ucn(DirectiveInput *input, unsigned digits);
-static bool directive_ucn_character(bool named, int32_t c);
+static bool directive_ucn(DirectiveInput *input, bool continuation);
 static TSSymbol empty_directives_keyword_symbol(const char *word, const PreprocDirectiveSymbols *symbols);
 static bool empty_directives_line_end_at(const EmptyDirectives *state, uint32_t byte);
 static bool directive_offset_has(const DirectiveOffsets *offsets, uint32_t byte);
@@ -107,16 +104,26 @@ static bool empty_directives_scan_word_step(TSLexer *lexer, char *word, unsigned
     *trailing_splice = true;
     lexer->advance(lexer, false);
     if (scan_preproc_newline(lexer, false)) return true;
-    if (empty_directives_ucn_follows(lexer)) *length = capacity;
+    if (empty_directives_ucn_follows(lexer, true)) *length = capacity;
     return false;
 }
 
-static bool empty_directives_ucn_follows(TSLexer *lexer) {
+static bool empty_directives_ucn_follows(TSLexer *lexer, bool continuation) {
     if (!scan_preproc_splices(lexer)) return false;
-    int32_t c = lexer->lookahead;
-    if (c != 'u' && c != 'U' && c != 'N') return false;
-    bool in_number = false;
-    return scan_preproc_ucn(lexer, &in_number);
+    int32_t prefix = lexer->lookahead;
+    if (prefix != 'u' && prefix != 'U' && prefix != 'N') return false;
+    lexer->advance(lexer, false);
+    if (!scan_preproc_splices(lexer)) return false;
+    bool braced = prefix != 'U' && lexer->lookahead == '{';
+    DirectiveUcn ucn;
+    if (!directive_ucn_start(&ucn, prefix, braced)) return false;
+    if (braced) lexer->advance(lexer, false);
+    for (bool done = false;;) {
+        if (!scan_preproc_splices(lexer)) return false;
+        if (!directive_ucn_feed(&ucn, lexer->lookahead, continuation, &done)) return false;
+        lexer->advance(lexer, false);
+        if (done) return true;
+    }
 }
 
 static inline bool empty_directives_name_character(int32_t c, bool continuation) {
@@ -400,50 +407,29 @@ static bool directive_consume_ucn(DirectiveInput *input) {
     DirectiveInput copy = *input;
     copy.spaced_splice = false;
     directive_next(&copy);
-    if (copy.spaced_splice || !directive_ucn(&copy)) return false;
+    if (copy.spaced_splice || !directive_ucn(&copy, true)) return false;
     copy.spaced_splice = had_spaced;
     *input = copy;
     return true;
 }
 
-static bool directive_ucn(DirectiveInput *input) {
+static bool directive_ucn(DirectiveInput *input, bool continuation) {
     bool had_spaced = input->spaced_splice;
     DirectiveInput copy = *input;
     copy.spaced_splice = false;
     int32_t prefix = directive_next(&copy);
-    bool valid = false;
-    if (prefix != 'U' && (prefix == 'u' || prefix == 'N') && directive_peek(&copy) == '{') {
-        valid = directive_braced_ucn(&copy, prefix == 'N');
-    } else if (prefix == 'u' || prefix == 'U') {
-        valid = directive_hex_ucn(&copy, prefix == 'U' ? 8u : 4u);
+    bool braced = prefix != 'U' && (prefix == 'u' || prefix == 'N') && directive_peek(&copy) == '{';
+    DirectiveUcn ucn;
+    if (!directive_ucn_start(&ucn, prefix, braced)) return false;
+    if (braced) directive_next(&copy);
+    for (bool done = false;;) {
+        if (!directive_ucn_feed(&ucn, directive_next(&copy), continuation, &done)) return false;
+        if (done) break;
     }
-    if (!valid || copy.spaced_splice) return false;
+    if (copy.spaced_splice) return false;
     copy.spaced_splice = had_spaced;
     *input = copy;
     return true;
-}
-
-static bool directive_braced_ucn(DirectiveInput *input, bool named) {
-    directive_next(input);
-    bool content = false;
-    for (;;) {
-        int32_t c = directive_next(input);
-        if (c == '}') return content;
-        if (!directive_ucn_character(named, c)) return false;
-        content = true;
-    }
-}
-
-static bool directive_hex_ucn(DirectiveInput *input, unsigned digits) {
-    for (unsigned i = 0; i < digits; i++) {
-        if (!directive_ucn_character(false, directive_next(input))) return false;
-    }
-    return true;
-}
-
-static bool directive_ucn_character(bool named, int32_t c) {
-    if (named) return (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == ' ' || c == '-';
-    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
 }
 
 #endif

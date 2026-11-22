@@ -748,7 +748,7 @@ static void directive_code(EmptyDirectives *state, DirectiveInput *input, Direct
         if (ended) directive_line_end(state, input, line);
         return;
     }
-    bool ucn_start = c == '\\' && directive_ucn(input);
+    bool ucn_start = c == '\\' && directive_ucn(input, false);
     if (!ucn_start && !preproc_word(c, false) && !(c >= '0' && c <= '9')) return;
     uint32_t end = name ? directive_keyword_end(input) : 0;
     DirectiveWord word = directive_word(input, ucn_start ? 0x80 : c, line->kind != DIRECTIVE_DIAGNOSTIC, true);

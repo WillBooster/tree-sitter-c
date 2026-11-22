@@ -122,7 +122,14 @@ test('requires operands again after leaving a conditional group', () => {
       expect(tree.rootNode.children.find((node) => node.type === 'ERROR')?.text.trim(), opener).toBe('#undef');
     });
   }
-  for (const malformed of ['#if≤1\nint following;\n', '#if–1\nint following;\n']) {
+  for (const malformed of [
+    '#if≤1\nint following;\n',
+    '#if–1\nint following;\n',
+    String.raw`#if\U00110000` + '\nint following;\n',
+    String.raw`#if\uD800` + '\nint following;\n',
+    String.raw`#if\u0041` + '\nint following;\n',
+    String.raw`#if\u2264` + '\nint following;\n',
+  ]) {
     withTree(malformed, (tree) => expect(tree.rootNode.hasError, malformed).toBe(true));
   }
   withTree('#undef MARKER\\ \n\n#if 0\n#endif\\u00\\ \ne9;\n#undef\nint following;\n', (tree) => {
