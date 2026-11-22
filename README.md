@@ -78,10 +78,13 @@ Append `_preproc_include`, `_preproc_define`, `_preproc_if`, `_preproc_ifdef`, `
 in their inherited slots, and scan `#` directives with `empty_directives_scan_word`, `empty_directives_has_keyword_end`,
 and `empty_directives_select_symbol`, which check the logical-line start and keyword-end facts recorded in `EmptyDirectives`.
 Port the scanner lifecycle functions together with `EmptyDirectives` from `directiveFacts.h` and `emptyDirectives.h`; the source-boundary
-facts belong to one full parse and are freed by `empty_directives_release` in scanner destruction. When the scanner is ready and only extras,
-conditional markers, `_trailing_object_declaration_start`, or external directive tokens are valid, dispatch to `scan_extras` first;
-`only_extras_valid` checks the inherited slots only, so extend it to every external token the derived grammar adds,
-or the fast path drops those tokens. Otherwise check null-directive consumption before directive-body tokens,
+facts belong to one full parse and are freed by `empty_directives_release` in scanner destruction. The entry fast path in
+`tree_sitter_c_external_scanner_scan` (together with `scan_c_token_spaced_fast`), `only_extras_valid`, `any_preproc_body_valid`,
+`can_start_spaced_c_token`, and the `peek_after_ascii_spaces` precheck in `scan_active_tokens` inspect only the inherited external-token slots
+and starter characters before `scan_c_token_slow` or token-specific lookahead runs; extend or bypass every one of those predicates for each
+external token the derived grammar adds (including unspaced tokens, error-recovery slots, and spaced punctuation or identifier starters), or
+those filters will reject the derived tokens before their scanner runs. When the scanner is ready and only extras, conditional markers,
+`_trailing_object_declaration_start`, or external directive tokens are valid, dispatch to `scan_extras` first. Otherwise check null-directive consumption before directive-body tokens,
 then reject external scans at `empty_directives_at_line_end` before the other token dispatch. Pass `empty_directives_skip` and its state through `ConditionalMacroSymbols.skip_empty` and
 `empty_context` so declaration lookahead ignores null directives without moving the opening token's range.
 Keep preprocessor argument/newline handling ahead of annotation lookahead.
