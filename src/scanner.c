@@ -383,7 +383,7 @@ static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bo
 }
 
 static bool is_c_space(int32_t c) {
-    return pragma_space(c);
+    return c == ' ' || (uint32_t)(c - '\t') <= '\r' - '\t';
 }
 
 static bool starts_macro_scan(int32_t c, bool consumed_backslash) {

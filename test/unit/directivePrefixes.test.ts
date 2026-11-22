@@ -108,10 +108,14 @@ test('does not consume following source through a spliced comment terminator', (
 });
 
 test.each(['\u0085', '\u00A0', '\u1680', '\u2000', '\u200A', '\u2028', '\u2029', '\u202F', '\u205F', '\u3000'])(
-  'rejects Unicode directive-prefix spacing %j with and without declaration markers',
+  'rejects Unicode directive-prefix and leading spacing %j',
   (space) => {
-    for (const body of ['MARKER', 'int nested;']) {
-      const source = `#define MARKER __attribute__((unused))\n#${space}ifdef ENABLED\n${body}\n#endif\nint value;\n`;
+    for (const source of [
+      `#define MARKER __attribute__((unused))\n#${space}ifdef ENABLED\nMARKER\n#endif\nint value;\n`,
+      `#define MARKER __attribute__((unused))\n#${space}ifdef ENABLED\nint nested;\n#endif\nint value;\n`,
+      `${space}#define X 1\nint y;\n`,
+      `int x;\n ${space}#include <x.h>\nint y;\n`,
+    ]) {
       withTree(source, (tree) => {
         expect(tree.rootNode.hasError, source).toBe(true);
       });

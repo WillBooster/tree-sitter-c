@@ -193,6 +193,51 @@ mod tests {
         assert_definition(&tree, source, b"/* caf\xe9 */\n".len());
     }
 
+    #[test]
+    fn final_offset_page_null_directives_advance_cleanly() {
+        let snippet = b"  # /* comment */\n#define VALUE 1\nint following = VALUE;\n  #";
+        let end = u32::MAX as usize;
+        let start = end - snippet.len();
+        let mut parser = tree_sitter::Parser::new();
+        parser.set_language(&super::LANGUAGE.into()).unwrap();
+        parser
+            .set_included_ranges(&[tree_sitter::Range {
+                start_byte: start,
+                end_byte: end,
+                start_point: tree_sitter::Point::new(0, 0),
+                end_point: tree_sitter::Point::new(3, 3),
+            }])
+            .unwrap();
+        let tree = parser
+            .parse_with_options(
+                &mut |byte, _| {
+                    if byte >= start && byte < end {
+                        &snippet[byte - start..]
+                    } else {
+                        b""
+                    }
+                },
+                None,
+            )
+            .unwrap();
+        let root = tree.root_node();
+        assert!(!root.has_error(), "{}", root.to_sexp());
+        let mut cursor = root.walk();
+        let empty_count = root
+            .named_children(&mut cursor)
+            .filter(|node| node.kind() == "preproc_empty")
+            .count();
+        assert_eq!(empty_count, 2);
+        let definition = root
+            .named_children(&mut cursor)
+            .find(|node| node.kind() == "preproc_def")
+            .unwrap();
+        assert_eq!(
+            definition.start_byte(),
+            start + b"  # /* comment */\n".len()
+        );
+    }
+
     fn assert_definition<'a>(
         tree: &'a tree_sitter::Tree,
         source: &[u8],

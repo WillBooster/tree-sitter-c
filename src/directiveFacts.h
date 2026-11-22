@@ -53,7 +53,8 @@ static bool empty_directives_start_at(const EmptyDirectives *state, uint32_t byt
 static void empty_directives_consume_started(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix);
 static void directive_mark_spans(EmptyDirectives *state, DirectiveBuffer *buffer, const DirectiveSpans *spans, uint8_t ***facts);
 static void directive_set(EmptyDirectives *state, DirectiveBuffer *buffer, uint8_t ***facts, uint32_t byte);
-static void directive_set_range(EmptyDirectives *state, DirectiveBuffer *buffer, uint8_t ***facts, uint32_t start, uint32_t end);
+static void directive_set_range(EmptyDirectives *state, DirectiveBuffer *buffer, uint8_t ***facts, uint64_t start, uint64_t end);
+static void directive_set_page_bits(uint8_t *bits, uint32_t b0, uint32_t b1);
 static bool directive_bit(const EmptyDirectives *state, uint8_t *const *facts, uint32_t byte);
 static bool directive_grow_directories(EmptyDirectives *state, uint32_t pages);
 
@@ -297,13 +298,13 @@ static void directive_mark_spans(EmptyDirectives *state, DirectiveBuffer *buffer
 }
 
 static void directive_set(EmptyDirectives *state, DirectiveBuffer *buffer, uint8_t ***facts, uint32_t byte) {
-    directive_set_range(state, buffer, facts, byte, byte + 1);
+    directive_set_range(state, buffer, facts, byte, (uint64_t)byte + 1);
 }
 
-// code-gauge-allow functionCognitiveComplexity -- Word-wide bitset updates share directory growth and page boundaries.
-static void directive_set_range(EmptyDirectives *state, DirectiveBuffer *buffer, uint8_t ***facts, uint32_t start, uint32_t end) {
+static void directive_set_range(EmptyDirectives *state, DirectiveBuffer *buffer, uint8_t ***facts, uint64_t start, uint64_t end) {
+    if (end > (uint64_t)UINT32_MAX + 1) end = (uint64_t)UINT32_MAX + 1;
     if (buffer->failed || start >= end) return;
-    uint32_t last_page = (end - 1) >> DIRECTIVE_FACT_PAGE_SHIFT;
+    uint32_t last_page = (uint32_t)((end - 1) >> DIRECTIVE_FACT_PAGE_SHIFT);
     if (last_page >= state->pages &&
         !directive_grow_directories(state, state->pages * 2 > last_page ? state->pages * 2 : last_page + 1)) {
         buffer->failed = true;
@@ -313,26 +314,31 @@ static void directive_set_range(EmptyDirectives *state, DirectiveBuffer *buffer,
         buffer->failed = true;
         return;
     }
-    for (uint32_t byte = start; byte < end;) {
-        uint32_t page = byte >> DIRECTIVE_FACT_PAGE_SHIFT;
+    for (uint64_t byte = start; byte < end;) {
+        uint32_t page = (uint32_t)(byte >> DIRECTIVE_FACT_PAGE_SHIFT);
         uint8_t **bits = &(*facts)[page];
         if (!*bits && !(*bits = calloc(DIRECTIVE_FACT_PAGE_SIZE / 8, 1))) {
             buffer->failed = true;
             return;
         }
-        uint32_t page_end = (page + 1) << DIRECTIVE_FACT_PAGE_SHIFT;
+        uint64_t page_end = ((uint64_t)page + 1) << DIRECTIVE_FACT_PAGE_SHIFT;
         if (page_end > end) page_end = end;
-        uint32_t b0 = byte & (DIRECTIVE_FACT_PAGE_SIZE - 1), b1 = page_end - (page << DIRECTIVE_FACT_PAGE_SHIFT);
-        uint32_t w0 = b0 >> 3, w1 = (b1 - 1) >> 3;
-        if (w0 == w1) {
-            (*bits)[w0] |= (uint8_t)((0xffu << (b0 & 7)) & (0xffu >> (7 - ((b1 - 1) & 7))));
-        } else {
-            (*bits)[w0] |= (uint8_t)(0xffu << (b0 & 7));
-            if (w1 > w0 + 1) memset(*bits + w0 + 1, 0xff, w1 - w0 - 1);
-            (*bits)[w1] |= (uint8_t)(0xffu >> (7 - ((b1 - 1) & 7)));
-        }
+        directive_set_page_bits(*bits, (uint32_t)byte & (DIRECTIVE_FACT_PAGE_SIZE - 1),
+            (uint32_t)(page_end - ((uint64_t)page << DIRECTIVE_FACT_PAGE_SHIFT)));
         byte = page_end;
     }
+}
+
+static void directive_set_page_bits(uint8_t *bits, uint32_t b0, uint32_t b1) {
+    uint32_t w0 = b0 >> 3, w1 = (b1 - 1) >> 3;
+    uint8_t start_mask = (uint8_t)(0xffu << (b0 & 7)), end_mask = (uint8_t)(0xffu >> (7 - ((b1 - 1) & 7)));
+    if (w0 == w1) {
+        bits[w0] |= start_mask & end_mask;
+        return;
+    }
+    bits[w0] |= start_mask;
+    if (w1 > w0 + 1) memset(bits + w0 + 1, 0xff, w1 - w0 - 1);
+    bits[w1] |= end_mask;
 }
 
 static bool directive_bit(const EmptyDirectives *state, uint8_t *const *facts, uint32_t byte) {
