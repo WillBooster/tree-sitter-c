@@ -519,11 +519,13 @@ static bool directive_append(DirectiveBuffer *buffer) {
     lexer->get_position(lexer, &end);
     buffer->fill_byte = end.bytes;
     uint32_t measured = end.bytes - start;
-    if (!buffer->encoding_known && c <= 0x10ffff && width != utf16_width && !lexer->is_at_included_range_start(lexer)) {
+    // A character stored before the encoding is known keeps its measured width, which a later choice cannot change.
+    bool known = buffer->encoding_known;
+    if (!known && c <= 0x10ffff && width != utf16_width && !lexer->is_at_included_range_start(lexer)) {
         buffer->utf16 = measured == utf16_width;
         buffer->encoding_known = true;
     }
-    if (c > 0x10ffff || measured != (buffer->utf16 ? utf16_width : width)) {
+    if (!known || c > 0x10ffff || measured != (buffer->utf16 ? utf16_width : width)) {
         return directive_position(buffer, index, start, measured);
     }
     return true;
