@@ -24,9 +24,10 @@ typedef struct {
 typedef enum { SCAN_CODE, SCAN_SLASH, SCAN_LINE_COMMENT, SCAN_BLOCK_COMMENT, SCAN_QUOTE, SCAN_WORD, SCAN_RAW_DELIMITER, SCAN_RAW_BODY } DirectiveScanMode;
 
 // The line-state pass of `emptyDirectives.h` in the state it has on ordinary code, before the first directive and after
-// each directive line that ends with no directive state left. The code is never stored: the state is fed one physical
-// character at a time (`directive_scan_feed`) or over a stretch of the lexer's code units (`directive_scan_units`), which
-// leaves it as the characters fed one by one would. It also tracks the run of spaces and backslashes before the next
+// each directive line that ends with no directive state left. It is fed one physical character at a time
+// (`directive_scan_feed`), from the lexer or from the characters that a directive segment's lookahead stored past its
+// end, or over a stretch of the lexer's code units (`directive_scan_units`), which leaves it as those characters fed
+// one by one would; no other ordinary code is stored. It also tracks the run of spaces and backslashes before the next
 // character, which a null directive's prefix covers: the first `run_spans` spans in `run` and the current one, from
 // `run_start` to before `run_end`.
 typedef struct {
