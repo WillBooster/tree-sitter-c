@@ -254,11 +254,14 @@ static void empty_directives_consume_started(TSLexer *lexer, EmptyDirectives *st
 // `#` to the end of the logical line where no directive state is left, are stored for the line-state pass and the
 // reverse prefix pass. The facts are stored as `EmptyDirectives` describes.
 //
-// Returns false without building when a comment follows the lexer's position after spaces only. The comment's token
-// ends where this pass's state is the initial one again, so the build is left to the scan after it. A build from the
-// start of an input that begins with a block comment would read to the end of the input in a scan that consumes
-// nothing, which the runtime takes for a scanner stuck in an unterminated comment: it then reads the whole input once
-// more and guards every later scan.
+// Returns false without building when a comment follows the lexer's position after spaces only, which leaves the build
+// to the scan after the comment's token. That scan starts from the initial state where the lexer ends the comment: the
+// state this pass has there too, unless the lexer ends the comment earlier, as at a backslash that spaces separate
+// from its newline, and then what follows is read as the lexer's tokens take it and not as comment text.
+//
+// A build from the start of an input that begins with a block comment would read to the end of the input in a scan
+// that consumes nothing, which the runtime takes for a scanner stuck in an unterminated comment: it then reads the
+// whole input once more and guards every later scan.
 static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer) {
     TSLexerPosition position;
     lexer->get_position(lexer, &position);
