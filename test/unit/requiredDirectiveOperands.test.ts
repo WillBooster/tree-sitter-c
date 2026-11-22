@@ -113,7 +113,13 @@ test('requires operands again after leaving a conditional group', () => {
   }
   for (const opener of [String.raw`if\u00e9`, String.raw`ifdef\u00e9`, String.raw`ifndef\u00e9`, 'ifé']) {
     withTree(`#if 0\n#${opener}\n#endif\n#undef\nint following;\n`, (tree) => {
-      expect(tree.rootNode.hasError, opener).toBe(true);
+      const conditional = tree.rootNode.firstNamedChild!;
+      expect([conditional.type, conditional.hasError], opener).toEqual(['preproc_if', false]);
+      expect(
+        conditional.descendantsOfType('preproc_call').map((node) => node.text.trim()),
+        opener
+      ).toEqual([`#${opener}`]);
+      expect(tree.rootNode.children.find((node) => node.type === 'ERROR')?.text.trim(), opener).toBe('#undef');
     });
   }
   for (const prefix of ['/* #if 0 */\n', 'char *text = "#if 0";\n']) {
