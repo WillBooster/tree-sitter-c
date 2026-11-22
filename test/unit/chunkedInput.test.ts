@@ -22,8 +22,15 @@ _Pragma("once") int é = L'x';
 #endif
 \t#pragma pack(1)
 #error "unterminated
-int last;
+const char *raw = u8R"q(raw " /*
+#not a directive
+)q";
+#
+/* after */ int last;
 `;
+
+// The lines that hold only `#`; those inside the comment and the raw string are text.
+const NullDirectiveCount = 3;
 
 let language: Language;
 
@@ -39,6 +46,7 @@ test.each([1, 2, 3, 5, 16, 61])('parses input delivered in chunks of %d characte
       const whole = parser.parse(text)!;
       const chunked = parser.parse((index) => text.slice(index, index + size))!;
       try {
+        expect(whole.rootNode.descendantsOfType('preproc_empty')).toHaveLength(NullDirectiveCount);
         expect(chunked.rootNode.toString()).toBe(whole.rootNode.toString());
         expect(chunked.rootNode.endPosition).toEqual(whole.rootNode.endPosition);
       } finally {
