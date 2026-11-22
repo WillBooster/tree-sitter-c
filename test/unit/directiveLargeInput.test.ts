@@ -1,14 +1,16 @@
 import { Language, Parser } from '@willbooster/web-tree-sitter';
 import { beforeAll, expect, test } from 'vitest';
 
+// Initially 512 KiB, the runtime's default, and growable to 2 GiB.
+const memory = new WebAssembly.Memory({ initial: 8, maximum: 32_768 });
 let language: Language;
 
 beforeAll(async () => {
-  await Parser.init();
+  await Parser.init({ wasmMemory: memory });
   language = await Language.load('tree-sitter-c.wasm');
 });
 
-test('validates directives in a large full parse', { timeout: 120_000 }, () => {
+test('validates directives in a large full parse without copying the input', { timeout: 120_000 }, () => {
   const prefix = '#define VALUE 1\nint value = VALUE;\n/*';
   const bodyLength = 300_000_000;
   const chunk = '*'.repeat(1 << 20);
@@ -30,6 +32,8 @@ test('validates directives in a large full parse', { timeout: 120_000 }, () => {
       expect(tree.rootNode.descendantsOfType('declaration')[0]?.childForFieldName('declarator')?.text).toBe(
         'value = VALUE'
       );
+      // The tree is a few nodes, so memory in proportion to the input means that the scanner copied it.
+      expect(memory.buffer.byteLength).toBeLessThan(bodyLength / 16);
     } finally {
       tree.delete();
     }

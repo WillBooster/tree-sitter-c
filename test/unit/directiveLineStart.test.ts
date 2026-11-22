@@ -149,10 +149,11 @@ test.each(['λ', '𐐀', 'λ𐐀'])('keeps physical directive positions after Un
   });
 });
 
+// The spaces around the excluded source belong to the prefix of the null directive.
 test.each(['x', 'xx', '<%XXXXXXXX%>', 'λ𐐀'])('keeps directives after excluded source ranges: %j', (gap) => {
-  const prefix = 'int before;\n';
-  const source = `${prefix}${gap}\n#define VALUE 1\nint following = VALUE;\n`;
-  const start = prefix.length + gap.length + 1;
+  const prefix = 'int before;\n  ';
+  const source = `${prefix}${gap}  \n#\n#define VALUE 1\nint following = VALUE;\n`;
+  const start = prefix.length + gap.length;
   const parser = new Parser().setLanguage(language);
   try {
     const tree = parser.parse(source, {
@@ -161,21 +162,22 @@ test.each(['x', 'xx', '<%XXXXXXXX%>', 'λ𐐀'])('keeps directives after exclude
           startIndex: 0,
           endIndex: prefix.length,
           startPosition: { row: 0, column: 0 },
-          endPosition: { row: 1, column: 0 },
+          endPosition: { row: 1, column: 2 },
         },
         {
           startIndex: start,
           endIndex: source.length,
-          startPosition: { row: 2, column: 0 },
-          endPosition: { row: 4, column: 0 },
+          startPosition: { row: 1, column: 2 + gap.length },
+          endPosition: { row: 5, column: 0 },
         },
       ],
     })!;
     try {
       expect(tree.rootNode.hasError).toBe(false);
       expect(tree.rootNode.endIndex).toBe(source.length);
+      expect(tree.rootNode.descendantsOfType('preproc_empty')).toHaveLength(1);
       const definition = tree.rootNode.descendantsOfType('preproc_def')[0];
-      expect(definition?.startIndex).toBe(start);
+      expect(definition?.startIndex).toBe(source.indexOf('#define'));
       expect(definition?.childForFieldName('name')?.text).toBe('VALUE');
       expect(tree.rootNode.namedChildren.at(-1)?.text).toBe('int following = VALUE;');
     } finally {

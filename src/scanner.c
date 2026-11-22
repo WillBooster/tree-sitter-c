@@ -28,11 +28,7 @@ void tree_sitter_c_external_scanner_destroy(void *payload) {
     CScanner *scanner = payload;
     EmptyDirectives *state = scanner_directives(scanner);
     if (!state) return;
-    free(state->starts);
-    free(state->ends);
-    free(state->line_ends);
-    free(state->directive_starts);
-    free(state->directive_ends);
+    empty_directives_release(state);
     macro_proof_destroy(&scanner->proof_memo);
     free(scanner);
 }
@@ -49,7 +45,7 @@ void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffe
     if (state) state->ready = length && buffer[0];
 }
 
-// code-gauge-allow functionCognitiveComplexity 16 -- External-token validity dispatches each lexing mode to its scanner.
+// code-gauge-allow functionCognitiveComplexity -- External-token validity dispatches each lexing mode to its scanner.
 bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     CScanner *scanner = payload;
     EmptyDirectives *state = scanner_directives(scanner);
@@ -189,8 +185,8 @@ static bool scan_declaration_tokens(CScanner *scanner, TSLexer *lexer, const boo
     return scan_preproc_tokens(state, lexer, valid_symbols);
 }
 
-// code-gauge-allow functionCognitiveComplexity 28 -- External-token validity selects one preprocessor lexing mode and preserves its token range.
-// code-gauge-allow functionNcss 34 -- External-token validity selects one preprocessor lexing mode and preserves its token range.
+// code-gauge-allow functionCognitiveComplexity -- External-token validity selects one preprocessor lexing mode and preserves its token range.
+// code-gauge-allow functionNcss -- External-token validity selects one preprocessor lexing mode and preserves its token range.
 static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
     bool directive_text = !valid_symbols[PREPROC_ARG] && valid_symbols[PREPROC_DIRECTIVE_ARG];
     PreprocArgumentMode argument_mode = preproc_argument_mode(

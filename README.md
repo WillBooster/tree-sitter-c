@@ -66,7 +66,7 @@ parser.setLanguage(await Language.load(c));
 The package also ships `grammar.js`, scanner sources under `src/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
 The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, `functionMacro.h`,
-`conditionalMacro.h`, `emptyDirectives.h`, `macroProof.h`, and `gnuRawString.h`.
+`conditionalMacro.h`, `emptyDirectives.h`, `directiveScan.h`, `macroProof.h`, and `gnuRawString.h`.
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
 Append `_directive_context` and `preproc_empty` in their inherited external-token slots and retain them as extras.
@@ -74,7 +74,7 @@ Append `_preproc_directive_start` in its inherited slot as a zero-width guard af
 including keywords in overridden directive rules. It is not an extra. Retain the phase-two splice handling in
 `preprocessorToken` when overriding keyword spelling.
 Port the scanner lifecycle functions together with `EmptyDirectives` from `emptyDirectives.h`; the source-boundary
-facts belong to one full parse and are freed by scanner destruction. When the scanner is ready and no external token
+facts belong to one full parse and are freed by `empty_directives_release` in scanner destruction. When the scanner is ready and no external token
 other than `pragma_operator`, `_directive_context` and `preproc_empty` is valid, dispatch to `scan_extras` first;
 `only_extras_valid` checks the inherited slots only, so extend it to every external token the derived grammar adds,
 or the fast path drops those tokens. Otherwise run `scan_directive_context` first,
