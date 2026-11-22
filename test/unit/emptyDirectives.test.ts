@@ -34,6 +34,16 @@ test.each(leading)('recognizes an empty directive after leading trivia %j', (pre
   });
 });
 
+test.each(['\n/* c */\nint value;\n', '\n// c\nint value;\n', '\n/* c */ // d\n#\nint value;\n'])(
+  'starts the tree at the start of an input that comments lead: %j',
+  (source) => {
+    withTree(source, (tree) => {
+      expect([tree.rootNode.hasError, tree.rootNode.startIndex]).toEqual([false, 0]);
+      expect(tree.rootNode.descendantsOfType('declaration')[0]?.childForFieldName('declarator')?.text).toBe('value');
+    });
+  }
+);
+
 test.each(contexts)('keeps an empty directive inside its %s', (_name, source, count, nodeType) => {
   checkSource(source, count, (tree) => {
     const nodes = tree.rootNode.descendantsOfType(nodeType);
