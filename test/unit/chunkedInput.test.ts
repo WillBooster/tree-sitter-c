@@ -22,6 +22,7 @@ _Pragma("once") int é = L'x';
 #endif
 \t#pragma pack(1)
 #error "unterminated
+int between;
 const char *raw = u8R"q(raw " /*
 #not a directive
 )q";
