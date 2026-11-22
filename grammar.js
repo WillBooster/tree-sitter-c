@@ -95,7 +95,6 @@ const BLOCK_COMMENT = seq(
   COMMENT_SPLICES,
   '/'
 );
-const PREPROC_PREFIX = seq('#', repeat(choice(/[ \t\v\f]/, LINE_SPLICE, BLOCK_COMMENT)));
 const PRAGMA_SPACING = repeat(choice(/\s/, /\\(?:\r\n?|\n\r?)/));
 const PREPROC_ARGUMENT = /\S([^/\n]|\/[^*]|\\\r?\n)*/;
 const VA_ARG_KEYWORDS = choice('va_arg', '__builtin_va_arg');
@@ -541,7 +540,31 @@ module.exports = Object.assign(
         sym('_braced_macro_type_start'),
         sym('_directive_context'),
         sym('preproc_empty'),
-        sym('_preproc_directive_start'),
+        sym('_preproc_include'),
+        sym('_preproc_define'),
+        sym('_preproc_if'),
+        sym('_preproc_ifdef'),
+        sym('_preproc_ifndef'),
+        sym('_preproc_else'),
+        sym('_preproc_elif'),
+        sym('_preproc_elifdef'),
+        sym('_preproc_elifndef'),
+        sym('_preproc_endif'),
+        sym('_preproc_pragma'),
+        sym('preproc_directive'),
+      ],
+
+      mergeableExternals: () => [
+        sym('_preproc_if'),
+        sym('_preproc_ifdef'),
+        sym('_preproc_ifndef'),
+        sym('_preproc_else'),
+        sym('_preproc_elif'),
+        sym('_preproc_elifdef'),
+        sym('_preproc_elifndef'),
+        sym('_preproc_endif'),
+        sym('_preproc_pragma'),
+        sym('preproc_directive'),
       ],
 
       extras: ($) => [
@@ -752,10 +775,10 @@ module.exports = Object.assign(
           choice(
             preprocCall(
               $,
-              alias(preprocessorToken('pragma'), $.preproc_directive),
+              alias(sym('_preproc_pragma'), sym('preproc_directive')),
               choice($._preproc_directive_arg, $.preproc_arg)
             ),
-            preprocCall($, $.preproc_directive, $._preproc_directive_arg)
+            preprocCall($, sym('preproc_directive'), $._preproc_directive_arg)
           ),
 
         ...preprocIf('_in_header', () => sym('_header_preproc_item')),
@@ -768,14 +791,29 @@ module.exports = Object.assign(
           '_in_enumerator_list_no_comma',
           () =>
             choice(
-              seq(repeat(sym('_enumerator_list_item')), sym('enumerator'), optional(sym('_enumerator_directives'))),
+              seq(
+                repeat(sym('_enumerator_list_item')),
+                choice(
+                  sym('enumerator'),
+                  alias(sym('preproc_if_in_enumerator_list_no_comma'), sym('preproc_if')),
+                  alias(sym('preproc_ifdef_in_enumerator_list_no_comma'), sym('preproc_ifdef'))
+                ),
+                optional(sym('_enumerator_directives'))
+              ),
               repeat1(sym('_enumerator_list_item'))
             ),
           0,
           false
         ),
 
-        _enumerator_list_item: ($) => choice(seq($.enumerator, ','), $._enumerator_macro, $._enumerator_directives),
+        _enumerator_list_item: ($) =>
+          choice(
+            seq($.enumerator, ','),
+            $._enumerator_macro,
+            $._enumerator_directives,
+            alias(sym('preproc_if_in_enumerator_list'), sym('preproc_if')),
+            alias(sym('preproc_ifdef_in_enumerator_list'), sym('preproc_ifdef'))
+          ),
 
         _enumerator_directives: ($) => prec.right(repeat1($.preproc_call)),
 
@@ -786,7 +824,6 @@ module.exports = Object.assign(
         preproc_arg: () => token(prec(-1, PREPROC_ARGUMENT)),
 
         _preproc_directive_arg: () => token(prec(-2, PREPROC_ARGUMENT)),
-        preproc_directive: () => token(seq(PREPROC_PREFIX, /[a-zA-Z0-9]/, repeat(seq(repeat(LINE_SPLICE), /\w/)))),
 
         _preproc_expression: ($) =>
           choice(
@@ -2689,7 +2726,6 @@ function declarationSpecifiers($, braced = false) {
 function preprocCall($, directive, argument) {
   return seq(
     field('directive', directive),
-    sym('_preproc_directive_start'),
     repeat(choice($.comment, $.pragma_operator)),
     optional(seq(field('argument', alias(argument, $.preproc_arg)), repeat(choice($.comment, $.pragma_operator)))),
     sym('_preproc_newline')
@@ -3103,18 +3139,10 @@ function preprocIf(suffix, content, precedence = 0, repeatContent = true) {
  *
  * @param {string} command
  *
- * @returns {import('./types/treeSitterDsl').SeqRule}
+ * @returns {import('./types/treeSitterDsl').AliasRule}
  */
 function preprocessor(command) {
-  return seq(alias(preprocessorToken(command), '#' + command), sym('_preproc_directive_start'));
-}
-
-/** @param {string} command */
-function preprocessorToken(command) {
-  const spelling = Array.from(command, (character, index) =>
-    index === 0 ? character : seq(repeat(LINE_SPLICE), character)
-  );
-  return token(seq(PREPROC_PREFIX, ...spelling));
+  return alias(sym('_preproc_' + command), '#' + command);
 }
 
 /**

@@ -66,22 +66,22 @@ parser.setLanguage(await Language.load(c));
 The package also ships `grammar.js`, scanner sources under `src/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
 The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, `functionMacro.h`,
-`conditionalMacro.h`, `emptyDirectives.h`, `directiveBuffer.h`, `directiveScan.h`, `directiveUnits.h`, `macroProof.h`, and
-`gnuRawString.h`.
+`conditionalMacro.h`, `emptyDirectives.h`, `directiveFacts.h`, `directiveBuffer.h`, `directiveScan.h`,
+`directiveUnits.h`, `macroProof.h`, and `gnuRawString.h`.
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
 The headers call `peek_units` and `advance_units` of `TSLexer`, so generate the derived parser with the CLI of
 WillBooster/tree-sitter 23.1.0 or later, whose `src/tree_sitter/parser.h` declares them, and run it on that runtime.
 Append `_directive_context` and `preproc_empty` in their inherited external-token slots and retain them as extras.
-Append `_preproc_directive_start` in its inherited slot as a zero-width guard after every directive keyword token,
-including keywords in overridden directive rules. It is not an extra. Retain the phase-two splice handling in
-`preprocessorToken` when overriding keyword spelling.
-Port the scanner lifecycle functions together with `EmptyDirectives` from `emptyDirectives.h`; the source-boundary
-facts belong to one full parse and are freed by `empty_directives_release` in scanner destruction. When the scanner is ready and no external token
-other than `pragma_operator`, `_directive_context` and `preproc_empty` is valid, dispatch to `scan_extras` first;
+Append `_preproc_include`, `_preproc_define`, `_preproc_if`, `_preproc_ifdef`, `_preproc_ifndef`, `_preproc_else`,
+`_preproc_elif`, `_preproc_elifdef`, `_preproc_elifndef`, `_preproc_endif`, `_preproc_pragma`, and `preproc_directive`
+in their inherited slots, and scan `#` directives with `empty_directives_scan_word`, `empty_directives_after_marked_keyword`,
+and `empty_directives_select_symbol`, which check the logical-line start and keyword-end facts recorded in `EmptyDirectives`.
+Port the scanner lifecycle functions together with `EmptyDirectives` from `directiveFacts.h` and `emptyDirectives.h`; the source-boundary
+facts belong to one full parse and are freed by `empty_directives_release` in scanner destruction. When the scanner is ready and only extras,
+conditional markers, `_trailing_object_declaration_start`, or external directive tokens are valid, dispatch to `scan_extras` first;
 `only_extras_valid` checks the inherited slots only, so extend it to every external token the derived grammar adds,
-or the fast path drops those tokens. Otherwise run `scan_directive_context` first,
-emitting `_preproc_directive_start` only at `empty_directives_after_keyword` before null-directive consumption,
+or the fast path drops those tokens. Otherwise check null-directive consumption before directive-body tokens,
 then reject external scans at `empty_directives_at_line_end` before the other token dispatch. Pass `empty_directives_skip` and its state through `ConditionalMacroSymbols.skip_empty` and
 `empty_context` so declaration lookahead ignores null directives without moving the opening token's range.
 Keep preprocessor argument/newline handling ahead of annotation lookahead.
@@ -89,15 +89,15 @@ Port `preproc_argument_mode` selection together with `scan_preproc_arg` so token
 Append `_gnu_raw_string_body` and `_raw_macro_type_tail` in their inherited enum slots and port their dispatch from `src/scanner.c`.
 A derived grammar overriding `raw_string_literal` can keep its own body scanner, but must retain the inherited enum slots.
 Port `_conditional_marker_ifdef`, `_conditional_marker_ifndef`, `_leading_conditional_marker_ifdef`, and
-`_leading_conditional_marker_ifndef` with `scan_conditional_macro`. Require `empty_directives_at_start` at the opening
+`_leading_conditional_marker_ifndef` with `scan_conditional_macro_after_keyword`. Require `empty_directives_at_start` at the opening
 `#` before this dispatch, including after skipped whitespace. The leading pair checks a following type prefix;
 when both contexts are valid, choose the leading role if its type proof succeeds, otherwise use the valid
 post-type role. Each token consumes only its opening directive keyword; the directive body, closing directive and following prefix are lookahead. Keep this dispatch ahead of
-the function-annotation guards and return immediately after a failed directive scan.
+the function-annotation guards and fall back to the inherited directive token when the marker proof fails.
 The hidden `_function_attribute_start`, `_post_type_function_attribute_start`,
 `_post_type_function_attribute_suffix`, and `_braced_function_attribute_start` guards look ahead before the ordinary
 identifier token. Keep them outside the name field so identifier leaves and ordinary C lexing retain their shape.
-Port `scan_function_attribute_guard`, its `MacroAttributeSymbols` context, and the name-range handling in `pragma.h`.
+Port `scan_function_attribute_guard_from`, its `MacroAttributeSymbols` context, and the name-range handling in `pragma.h`.
 Set `MacroAttributeSymbols.trivia` to `{empty_directives_skip, state}` so annotation, argument-group, and declaration-tail proofs skip the same null directives.
 Pass that `PragmaTrivia` context to the raw macro-type tail and balanced-group helpers, and use `scan_pragma_with` for the pragma-operator fallback.
 A derived scanner that omits this context cannot recognize null directives inside those lookahead paths.
