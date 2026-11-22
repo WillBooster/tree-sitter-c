@@ -100,7 +100,7 @@ static bool empty_directives_scan_word_step(TSLexer *lexer, char *word, unsigned
         return true;
     }
     if (c != '\\') {
-        if (preproc_word(c, true)) *length = capacity;
+        if (preproc_identifier_character(c, true)) *length = capacity;
         return false;
     }
     if (!*trailing_splice) lexer->get_position(lexer, position);
@@ -389,7 +389,7 @@ static bool directive_word_continues(DirectiveInput *input, bool number, int32_t
     int32_t c = directive_peek(input);
     bool exponent_sign = number && (c == '+' || c == '-') &&
         (*previous == 'e' || *previous == 'E' || *previous == 'p' || *previous == 'P');
-    if (!preproc_word(c, true) && !(number && (c == '.' || c == '\'' || exponent_sign))) return false;
+    if (!(c != '\\' && preproc_identifier_character(c, true)) && !(number && (c == '.' || c == '\'' || exponent_sign))) return false;
     *previous = directive_next(input);
     return true;
 }

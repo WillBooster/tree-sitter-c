@@ -122,6 +122,9 @@ test('requires operands again after leaving a conditional group', () => {
       expect(tree.rootNode.children.find((node) => node.type === 'ERROR')?.text.trim(), opener).toBe('#undef');
     });
   }
+  for (const malformed of ['#if≤1\nint following;\n', '#if–1\nint following;\n']) {
+    withTree(malformed, (tree) => expect(tree.rootNode.hasError, malformed).toBe(true));
+  }
   for (const prefix of ['/* #if 0 */\n', 'char *text = "#if 0";\n']) {
     withTree(`${prefix}#line\nint following;\n`, (tree) => expect(tree.rootNode.hasError).toBe(true));
   }
