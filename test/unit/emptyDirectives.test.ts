@@ -175,6 +175,7 @@ const annotationCases = [
   '#define TYPE(...) __VA_ARGS__\nTYPE(INSERT struct { int member; }) value;\n',
   '#define A\n#define TYPE(...) __VA_ARGS__\nA INSERT TYPE(struct { int member; }) value;\n',
   '[[INSERT deprecated]] int value;\n',
+  '#define MARK\n#define ANNOTATE(...)\nMARK struct S { int a; } INSERT ANNOTATE(struct { int b; }) x;\n',
 ];
 
 test.each(annotationCases)('retains annotation and type lookahead around a null directive: %j', (template) => {

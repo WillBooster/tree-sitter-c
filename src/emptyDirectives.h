@@ -41,7 +41,7 @@ typedef struct {
 // holds no fact; source without facts, such as an excluded range, costs one pointer per page of each directory.
 // `empty_directives_release` frees them.
 typedef struct {
-    uint8_t **starts, **ends, **line_ends, **directive_starts, **directive_ends;
+    uint8_t **starts, **ends, **comments, **line_ends, **directive_starts, **directive_ends;
     uint32_t pages;
     bool built, ready;
 } EmptyDirectives;
@@ -203,14 +203,18 @@ static bool empty_directives_start_at(const EmptyDirectives *state, uint32_t byt
 }
 
 // Consumes the rest of a null directive whose start was confirmed at a position the lexer has not left except over
-// prefix characters.
+// prefix characters: as a token (`skip_prefix`) up to its first comment, which the lexer reads as a token of its own,
+// and otherwise the whole logical line, since scanner lookahead reads no comments after it.
 static void empty_directives_consume_started(TSLexer *lexer, EmptyDirectives *state, bool skip_prefix) {
     TSLexerPosition position;
     while (lexer->lookahead != '#' && !pragma_eof(lexer)) lexer->advance(lexer, skip_prefix);
-    do {
-        lexer->advance(lexer, false);
-        lexer->get_position(lexer, &position);
-    } while (!pragma_eof(lexer) && !directive_bit(state, state->ends, position.bytes));
+    for (bool whole = !skip_prefix;; whole = false) {
+        do {
+            lexer->advance(lexer, false);
+            lexer->get_position(lexer, &position);
+        } while (!pragma_eof(lexer) && !directive_bit(state, state->ends, position.bytes));
+        if (!whole || pragma_eof(lexer) || !directive_bit(state, state->comments, position.bytes)) return;
+    }
 }
 
 // Ordinary code goes through `DirectiveScan` without being stored, and only directive segments, each from a directive's
@@ -379,13 +383,13 @@ static bool directive_finish(EmptyDirectives *state, DirectiveBuffer *buffer) {
 }
 
 static void empty_directives_release(EmptyDirectives *state) {
-    uint8_t **directories[] = {state->starts, state->ends, state->line_ends, state->directive_starts, state->directive_ends};
+    uint8_t **directories[] = {state->starts, state->ends, state->comments, state->line_ends, state->directive_starts, state->directive_ends};
     for (unsigned i = 0; i < sizeof directories / sizeof *directories; i++) {
         if (!directories[i]) continue;
         for (uint32_t page = 0; page < state->pages; page++) free(directories[i][page]);
         free(directories[i]);
     }
-    state->starts = state->ends = state->line_ends = state->directive_starts = state->directive_ends = NULL;
+    state->starts = state->ends = state->comments = state->line_ends = state->directive_starts = state->directive_ends = NULL;
     state->pages = 0;
 }
 
@@ -637,7 +641,7 @@ static bool directive_bit(const EmptyDirectives *state, uint8_t *const *facts, u
 }
 
 static bool directive_grow_directories(EmptyDirectives *state, uint32_t pages) {
-    uint8_t ***directories[] = {&state->starts, &state->ends, &state->line_ends, &state->directive_starts, &state->directive_ends};
+    uint8_t ***directories[] = {&state->starts, &state->ends, &state->comments, &state->line_ends, &state->directive_starts, &state->directive_ends};
     if ((size_t)pages > SIZE_MAX / sizeof(uint8_t *)) return false;
     for (unsigned i = 0; i < sizeof directories / sizeof *directories; i++) {
         if (!*directories[i]) continue;
@@ -1134,11 +1138,14 @@ static uint32_t directive_byte(const DirectiveInput *input) {
     return input->byte;
 }
 
-// A null directive ends before its first comment, which the lexer then reads as a comment of its own.
+// A null directive with comments has two ends: before its first comment, marked in `comments` too, and after its line.
 static void directive_record(EmptyDirectives *state, DirectiveInput *input, const DirectiveLine *line, uint32_t end) {
     input->buffer->carries = true;
     directive_set(state, input->buffer, &state->starts, line->start);
-    directive_set(state, input->buffer, &state->ends, line->comment_start ? line->comment_start : end);
+    directive_set(state, input->buffer, &state->ends, end);
+    if (!line->comment_start) return;
+    directive_set(state, input->buffer, &state->ends, line->comment_start);
+    directive_set(state, input->buffer, &state->comments, line->comment_start);
 }
 
 #endif
