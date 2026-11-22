@@ -24,7 +24,7 @@ the trees that error recovery produces may change; such changes are released as 
 ## Usage
 
 The npm package ships `tree-sitter-c.wasm` for
-[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 23.0.0 or later within 23.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000d`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
+[@willbooster/web-tree-sitter](https://www.npmjs.com/package/@willbooster/web-tree-sitter) version 23.1.0 or later within 23.x, which runs in Node.js, Bun, browsers, and Cloudflare Workers. The parser carries the ABI number of the WillBooster/tree-sitter generator (`0x5742000e`), so it loads only with that runtime; upstream tree-sitter runtimes reject it. In Node.js and Bun, load the grammar from its path:
 
 ```js
 import { fileURLToPath } from 'node:url';
@@ -66,7 +66,8 @@ parser.setLanguage(await Language.load(c));
 The package also ships `grammar.js`, scanner sources under `src/`,
 and the node types in `src/node-types.json` for grammars extending C (such as C++).
 The scanner sources include `scanner.c`, `pragma.h`, `identifier.h`, `keywords.h`, `functionMacro.h`,
-`conditionalMacro.h`, `emptyDirectives.h`, `directiveScan.h`, `macroProof.h`, and `gnuRawString.h`.
+`conditionalMacro.h`, `emptyDirectives.h`, `directiveBuffer.h`, `directiveScan.h`, `directiveUnits.h`, `macroProof.h`, and
+`gnuRawString.h`.
 
 Derived grammars must port the inherited external-token dispatch from `src/scanner.c`.
 Append `_directive_context` and `preproc_empty` in their inherited external-token slots and retain them as extras.
@@ -211,10 +212,10 @@ arrays, parenthesized/function declarators, initializers and multiple declarator
 
 In Rust, depend on the [crate](https://crates.io/crates/willbooster-tree-sitter-c) and on
 [willbooster-tree-sitter](https://crates.io/crates/willbooster-tree-sitter), the runtime this package is tested and
-fuzzed with, at 23.x (`Cargo.lock` records the exact version):
+fuzzed with, at 23.1 or later within 23.x (`Cargo.lock` records the exact version):
 
 ```sh
-cargo add willbooster-tree-sitter@23 --rename tree-sitter
+cargo add willbooster-tree-sitter@23.1 --rename tree-sitter
 cargo add willbooster-tree-sitter-c --rename tree-sitter-c
 ```
 

@@ -28,6 +28,8 @@ test('uses a Wasm build built from the current parser', () => {
     'src/conditionalMacro.h',
     'src/emptyDirectives.h',
     'src/directiveScan.h',
+    'src/directiveUnits.h',
+    'src/directiveBuffer.h',
     'src/gnuRawString.h',
   ].map((name) => fs.statSync(path.join(Root, name)).mtimeMs);
   expect(
