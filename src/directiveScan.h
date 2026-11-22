@@ -31,11 +31,11 @@ typedef struct {
     DirectiveScanMode mode;
     GnuRawStringPrefix raw;
     DirectiveSpans *run;
-    // Set when the characters read outside comments hold `pragma_word`.
+    // Set when the characters read hold `pragma_word`, also in a comment or a literal: a scan starts inside a literal
+    // after an escape sequence, and the lexer ends some comments earlier than this pass does.
     bool *pragma;
-    // The characters read last, the latest in the low byte and zero for one that is not ASCII. Code outside words and
-    // comments are left out: a word's first character restarts them, and the character that opens a literal follows
-    // a word or separates it from the literal's.
+    // The characters read last, the latest in the low byte and zero for one that is not ASCII. Code outside words is
+    // left out, so a word's first character restarts them.
     uint64_t recent;
     int32_t quote, previous, pair;
     uint32_t spaces, run_start, run_end, run_spans;
@@ -53,7 +53,7 @@ static inline bool directive_pragma_word(uint64_t recent);
 static inline uint64_t directive_scan_note(DirectiveScan *scan, uint64_t recent, int32_t c);
 static inline bool directive_scan_plain_code(DirectiveScan *scan, TSLexer *lexer);
 static inline bool directive_scan_plain_block_comment(DirectiveScan *scan, TSLexer *lexer);
-static inline void directive_scan_plain_text(DirectiveScan *scan, TSLexer *lexer, int32_t end, bool literal, bool raw);
+static inline void directive_scan_plain_text(DirectiveScan *scan, TSLexer *lexer, int32_t end, bool raw);
 static inline void directive_scan_lexer_run(DirectiveScan *scan, TSLexer *lexer, bool member);
 static inline bool directive_scan_ascii_word(int32_t c);
 static inline bool directive_scan_ascii_plain(int32_t c);
@@ -110,13 +110,13 @@ static inline bool directive_scan_plain_mode(DirectiveScan *scan, TSLexer *lexer
         case SCAN_BLOCK_COMMENT:
             return directive_scan_plain_block_comment(scan, lexer);
         case SCAN_LINE_COMMENT:
-            directive_scan_plain_text(scan, lexer, 0, false, false);
+            directive_scan_plain_text(scan, lexer, 0, false);
             return false;
         case SCAN_QUOTE:
-            if (!scan->escape) directive_scan_plain_text(scan, lexer, scan->quote, true, false);
+            if (!scan->escape) directive_scan_plain_text(scan, lexer, scan->quote, false);
             return false;
         case SCAN_RAW_BODY:
-            directive_scan_plain_text(scan, lexer, '"', true, true);
+            directive_scan_plain_text(scan, lexer, '"', true);
             return false;
         default:
             return false;
@@ -174,29 +174,32 @@ static inline bool directive_scan_plain_code(DirectiveScan *scan, TSLexer *lexer
 // Consumes the comment's body. Returns true when the comment ends.
 static inline bool directive_scan_plain_block_comment(DirectiveScan *scan, TSLexer *lexer) {
     bool star = scan->star, closed = false;
+    uint64_t recent = scan->recent;
     while (!closed) {
         int32_t c = lexer->lookahead;
         if (c <= 0 || c >= 0x80 || c == '\n' || c == '\r' || c == '\\') break;
         directive_scan_lexer_run(scan, lexer, directive_horizontal(c));
+        recent = directive_scan_note(scan, recent, c);
         lexer->advance(lexer, false);
         closed = star && c == '/';
         star = c == '*';
     }
+    scan->recent = recent;
     scan->star = star;
     if (closed) scan->mode = SCAN_CODE;
     return closed;
 }
 
-// Consumes the body of a line comment, or that of a `literal` up to `end`, the closing search of a `raw` string seeing
-// each character. The scanner runs inside a literal, after an escape sequence, but not inside a comment.
-static inline void directive_scan_plain_text(DirectiveScan *scan, TSLexer *lexer, int32_t end, bool literal, bool raw) {
+// Consumes the body of a line comment or a literal up to `end`, the closing search of a `raw` string seeing each
+// character.
+static inline void directive_scan_plain_text(DirectiveScan *scan, TSLexer *lexer, int32_t end, bool raw) {
     uint64_t recent = scan->recent;
     for (;;) {
         int32_t c = lexer->lookahead;
-        if (c <= 0 || c >= 0x80 || c == '\n' || c == '\r' || c == '\\' || (literal && c == end)) break;
+        if (c <= 0 || c >= 0x80 || c == '\n' || c == '\r' || c == '\\' || c == end) break;
         directive_scan_lexer_run(scan, lexer, directive_horizontal(c));
         if (raw) directive_scan_raw_body(scan, c);
-        if (literal) recent = directive_scan_note(scan, recent, c);
+        recent = directive_scan_note(scan, recent, c);
         lexer->advance(lexer, false);
     }
     scan->recent = recent;

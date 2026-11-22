@@ -50,7 +50,7 @@ typedef struct {
     uint32_t pages;
     // `anchored` and `ready` belong to the scanner state: whether the token at the start of the input is out, and
     // whether the facts, which `built` says exist, are in use. `pragmas` is the fact that the input read for them holds
-    // `pragma_word` outside the comments of ordinary code, without which no scan has to look for a `_Pragma` operator.
+    // `pragma_word`, without which no scan has to look for a `_Pragma` operator.
     bool built, anchored, ready, pragmas;
 } EmptyDirectives;
 
