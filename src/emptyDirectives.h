@@ -1035,8 +1035,10 @@ static DirectiveWord directive_word(DirectiveInput *input, int32_t first, bool r
     bool number = first >= '0' && first <= '9';
     int32_t previous = first;
     if (!number) directive_word_run(input, &word, classify);
-    while (directive_word_continues(input, number, strict_identifier, &previous)) {
-        directive_word_character(&word, previous);
+    bool in_identifier = classify;
+    while (directive_word_continues(input, number, strict_identifier, &in_identifier, &previous)) {
+        if (in_identifier) directive_word_character(&word, previous);
+        else gnu_raw_string_prefix_character(&word.raw, previous);
     }
     if (raw && gnu_raw_string_prefix(&word.raw) && directive_peek(input) == '"') directive_raw(input);
     return word;

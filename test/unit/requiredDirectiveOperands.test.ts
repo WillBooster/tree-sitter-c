@@ -138,10 +138,12 @@ test('requires operands again after leaving a conditional group', () => {
     );
   });
   for (const symbol of ['≤', '©']) {
-    withTree(`#if 0\n#define X A${symbol}R"(x"\n#endif\nint following;\n`, (tree) => {
-      expect(tree.rootNode.hasError, symbol).toBe(false);
-      expect(tree.rootNode.namedChildren.at(-1)?.text, symbol).toBe('int following;');
-    });
+    for (const line of [`#define X A${symbol}R"(x"`, `#vendor${symbol}R"(x"`]) {
+      withTree(`#if 0\n${line}\n#endif\nint following;\n`, (tree) => {
+        expect(tree.rootNode.hasError, line).toBe(false);
+        expect(tree.rootNode.namedChildren.at(-1)?.text, line).toBe('int following;');
+      });
+    }
   }
   for (const prefix of ['/* #if 0 */\n', 'char *text = "#if 0";\n']) {
     withTree(`${prefix}#line\nint following;\n`, (tree) => expect(tree.rootNode.hasError).toBe(true));

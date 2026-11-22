@@ -45,7 +45,7 @@ static bool empty_directives_skip_prefix(TSLexer *lexer);
 static bool empty_directives_scan_word_step(TSLexer *lexer, char *word, unsigned capacity, unsigned *length, bool *trailing_splice, TSLexerPosition *position);
 static bool empty_directives_ucn_follows(TSLexer *lexer, bool continuation);
 static inline bool empty_directives_name_character(int32_t c, bool continuation);
-static bool directive_word_continues(DirectiveInput *input, bool number, bool strict_identifier, int32_t *previous);
+static bool directive_word_continues(DirectiveInput *input, bool number, bool strict_identifier, bool *in_identifier, int32_t *previous);
 static bool directive_consume_ucn(DirectiveInput *input);
 static bool directive_ucn(DirectiveInput *input, bool continuation);
 static TSSymbol empty_directives_keyword_symbol(const char *word, const PreprocDirectiveSymbols *symbols);
@@ -388,16 +388,16 @@ static bool directive_grow_directories(EmptyDirectives *state, uint32_t pages) {
     return true;
 }
 
-static bool directive_word_continues(DirectiveInput *input, bool number, bool strict_identifier, int32_t *previous) {
-    if (strict_identifier && directive_consume_ucn(input)) {
+static bool directive_word_continues(DirectiveInput *input, bool number, bool strict_identifier, bool *in_identifier, int32_t *previous) {
+    if (strict_identifier && *in_identifier && directive_consume_ucn(input)) {
         *previous = 0x80;
         return true;
     }
     int32_t c = directive_peek(input);
     bool exponent_sign = number && (c == '+' || c == '-') &&
         (*previous == 'e' || *previous == 'E' || *previous == 'p' || *previous == 'P');
-    bool word = strict_identifier ? (c != '\\' && preproc_identifier_character(c, true)) : preproc_word(c, true);
-    if (!word && !(number && (c == '.' || c == '\'' || exponent_sign))) return false;
+    if (!preproc_word(c, true) && !(number && (c == '.' || c == '\'' || exponent_sign))) return false;
+    if (strict_identifier && !(c != '\\' && preproc_identifier_character(c, true))) *in_identifier = false;
     *previous = directive_next(input);
     return true;
 }
