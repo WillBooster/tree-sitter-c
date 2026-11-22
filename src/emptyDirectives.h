@@ -319,13 +319,13 @@ static bool directive_segment(EmptyDirectives *state, DirectiveInput *input) {
     return false;
 }
 
-// A segment goes on over a following line that starts another directive, a comment or a blank line, because handing
-// each short directive line over costs more than the line-state pass on such lines, until it holds
-// `DIRECTIVE_SEGMENT_UNITS` characters.
+// A segment goes on over a following line that starts another directive or is blank, because handing each short
+// directive line over costs more than the line-state pass on such lines, until it holds `DIRECTIVE_SEGMENT_UNITS`
+// characters. A line of ordinary code or a comment, which may run on for any length, goes back to `DirectiveScan`.
 static bool directive_segment_ends(const DirectiveInput *input) {
     if (input->index >= DIRECTIVE_SEGMENT_UNITS || !directive_has(input, input->index)) return true;
     uint16_t c = directive_character(input, input->index);
-    return c != '#' && c != '/' && !directive_newline(c);
+    return c != '#' && !directive_newline(c);
 }
 
 static bool directive_line_clean(const DirectiveLine *line) {
