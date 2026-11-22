@@ -274,9 +274,10 @@ static bool scan_non_declaration_tokens(EmptyDirectives *state, TSLexer *lexer, 
 
 static bool scan_hash_directive(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols, bool error_recovery) {
     char word[10] = {0};
+    uint32_t keyword_end = 0;
     bool at_start = empty_directives_at_start(state, lexer);
-    if ((!at_start && !error_recovery) || !empty_directives_scan_word(lexer, word, sizeof word)) return false;
-    if (!at_start || !empty_directives_after_marked_keyword(state, lexer)) {
+    if ((!at_start && !error_recovery) || !empty_directives_scan_word(lexer, word, sizeof word, &keyword_end)) return false;
+    if (!at_start || !empty_directives_has_keyword_end(state, keyword_end)) {
         if (!error_recovery) return false;
         lexer->result_symbol = GNU_RAW_STRING_BODY;
         return true;

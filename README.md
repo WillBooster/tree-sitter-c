@@ -75,7 +75,7 @@ WillBooster/tree-sitter 23.1.0 or later, whose `src/tree_sitter/parser.h` declar
 Append `_directive_context` and `preproc_empty` in their inherited external-token slots and retain them as extras.
 Append `_preproc_include`, `_preproc_define`, `_preproc_if`, `_preproc_ifdef`, `_preproc_ifndef`, `_preproc_else`,
 `_preproc_elif`, `_preproc_elifdef`, `_preproc_elifndef`, `_preproc_endif`, `_preproc_pragma`, and `preproc_directive`
-in their inherited slots, and scan `#` directives with `empty_directives_scan_word`, `empty_directives_after_marked_keyword`,
+in their inherited slots, and scan `#` directives with `empty_directives_scan_word`, `empty_directives_has_keyword_end`,
 and `empty_directives_select_symbol`, which check the logical-line start and keyword-end facts recorded in `EmptyDirectives`.
 Port the scanner lifecycle functions together with `EmptyDirectives` from `directiveFacts.h` and `emptyDirectives.h`; the source-boundary
 facts belong to one full parse and are freed by `empty_directives_release` in scanner destruction. When the scanner is ready and only extras,

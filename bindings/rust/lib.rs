@@ -139,6 +139,28 @@ mod tests {
                 .unwrap();
             let tree = parser.parse(&source).unwrap();
             assert_definition(&tree, source.as_bytes(), second_start);
+
+            let after_kw = format!("#define{gap} VALUE 1\nint following = VALUE;\n");
+            let kw_end = "#define".len();
+            let rest_start = kw_end + gap.len();
+            parser
+                .set_included_ranges(&[
+                    tree_sitter::Range {
+                        start_byte: 0,
+                        end_byte: kw_end,
+                        start_point: tree_sitter::Point::new(0, 0),
+                        end_point: tree_sitter::Point::new(0, kw_end),
+                    },
+                    tree_sitter::Range {
+                        start_byte: rest_start,
+                        end_byte: after_kw.len(),
+                        start_point: tree_sitter::Point::new(1, 0),
+                        end_point: tree_sitter::Point::new(3, 0),
+                    },
+                ])
+                .unwrap();
+            let tree = parser.parse(&after_kw).unwrap();
+            assert_definition(&tree, after_kw.as_bytes(), 0);
         }
     }
 

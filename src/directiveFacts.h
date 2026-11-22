@@ -61,20 +61,20 @@ static inline bool empty_directives_has_directives(const EmptyDirectives *state)
     return !state || state->failed || state->directive_starts.count > 0;
 }
 
-static bool empty_directives_after_marked_keyword(const EmptyDirectives *state, const TSLexer *lexer) {
+static bool empty_directives_has_keyword_end(const EmptyDirectives *state, uint32_t keyword_end) {
     if (!state) return false;
-    if (state->failed) return true;
-    TSLexerPosition end;
-    lexer->get_mark_end(lexer, &end);
-    return directive_offset_has(&state->directive_ends, end.bytes);
+    return state->failed || directive_offset_has(&state->directive_ends, keyword_end);
 }
 
 // Scans `#`, any directive prefix spacing or block comments, and the ASCII directive name into `word`, marking the
-// token end at the name's last character.
-static bool empty_directives_scan_word(TSLexer *lexer, char *word, unsigned capacity) {
+// token end at the name's last character and storing the post-keyword cursor byte in `*keyword_end`.
+// code-gauge-allow functionCognitiveComplexity -- Tracks trailing line splices while marking the keyword's physical token end.
+static bool empty_directives_scan_word(TSLexer *lexer, char *word, unsigned capacity, uint32_t *keyword_end) {
     lexer->advance(lexer, false);
     if (!empty_directives_skip_prefix(lexer) || !empty_directives_name_character(lexer->lookahead, false)) return false;
     unsigned length = 0;
+    bool trailing_splice = false;
+    TSLexerPosition position = {0};
     for (;;) {
         int32_t c = lexer->lookahead;
         if (empty_directives_name_character(c, true)) {
@@ -82,14 +82,19 @@ static bool empty_directives_scan_word(TSLexer *lexer, char *word, unsigned capa
             else length = capacity;
             lexer->advance(lexer, false);
             lexer->mark_end(lexer);
+            trailing_splice = false;
         } else if (c == '\\') {
+            if (!trailing_splice) lexer->get_position(lexer, &position);
+            trailing_splice = true;
             lexer->advance(lexer, false);
             if (!scan_preproc_newline(lexer, false)) break;
         } else {
             break;
         }
     }
+    if (!trailing_splice) lexer->get_position(lexer, &position);
     word[length < capacity ? length : 0] = '\0';
+    *keyword_end = position.bytes;
     return true;
 }
 
