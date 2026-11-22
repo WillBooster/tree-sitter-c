@@ -1,4 +1,4 @@
-// code-gauge-allow-file fileNcss 934 -- One source-fact pass shares on-demand directive-segment storage, directive lexing, physical-position conversion, prefix spans and fact bitsets.
+// code-gauge-allow-file fileNcss 949 -- One source-fact pass shares on-demand directive-segment storage, directive lexing, physical-position conversion, prefix spans and fact bitsets.
 #ifndef TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 #define TREE_SITTER_C_EMPTY_DIRECTIVES_H_
 
@@ -67,6 +67,7 @@ static void directive_scan_resume(DirectiveScan *scan, DirectiveSpans *run, Dire
 static void directive_scan_handoff(DirectiveScan *scan, uint32_t hash);
 static bool directive_segment(EmptyDirectives *state, DirectiveInput *input);
 static bool directive_segment_ends(const DirectiveInput *input);
+static bool directive_short_line_comment(const DirectiveInput *input, uint32_t index, uint32_t limit);
 static bool directive_line_clean(const DirectiveLine *line);
 static void directive_shift(DirectiveBuffer *buffer, uint32_t start);
 static bool directive_finish(EmptyDirectives *state, DirectiveBuffer *buffer);
@@ -319,13 +320,29 @@ static bool directive_segment(EmptyDirectives *state, DirectiveInput *input) {
     return false;
 }
 
-// A segment goes on over a following line that starts another directive or is blank, because handing each short
-// directive line over costs more than the line-state pass on such lines, until it holds `DIRECTIVE_SEGMENT_UNITS`
-// characters. A line of ordinary code or a comment, which may run on for any length, goes back to `DirectiveScan`.
+// A segment goes on over a following line that, after its indentation, starts another directive, is blank, or is a
+// line comment that ends within `DIRECTIVE_FILL_UNITS` characters, because handing each short line over costs more than
+// the line-state pass on it, until the segment holds `DIRECTIVE_SEGMENT_UNITS` characters. Code or another comment,
+// which may run on for any length, goes back to `DirectiveScan`.
 static bool directive_segment_ends(const DirectiveInput *input) {
-    if (input->index >= DIRECTIVE_SEGMENT_UNITS || !directive_has(input, input->index)) return true;
-    uint16_t c = directive_character(input, input->index);
-    return c != '#' && !directive_newline(c);
+    if (input->index >= DIRECTIVE_SEGMENT_UNITS) return true;
+    uint32_t index = input->index, limit = input->index + DIRECTIVE_FILL_UNITS;
+    while (index < limit && directive_has(input, index) && directive_horizontal(directive_character(input, index))) index++;
+    if (index >= limit || !directive_has(input, index)) return true;
+    uint16_t c = directive_character(input, index);
+    return c != '#' && !directive_newline(c) && !directive_short_line_comment(input, index, limit);
+}
+
+// A line splice would continue the comment, so the line holds no `\`.
+static bool directive_short_line_comment(const DirectiveInput *input, uint32_t index, uint32_t limit) {
+    if (directive_character(input, index) != '/' || !directive_has(input, index + 1) ||
+        directive_character(input, index + 1) != '/') return false;
+    for (index += 2; index < limit && directive_has(input, index); index++) {
+        uint16_t c = directive_character(input, index);
+        if (c == '\\') return false;
+        if (directive_newline(c)) return true;
+    }
+    return false;
 }
 
 static bool directive_line_clean(const DirectiveLine *line) {
