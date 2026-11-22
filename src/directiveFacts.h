@@ -48,8 +48,8 @@ static inline bool empty_directives_name_character(int32_t c, bool continuation)
 static bool directive_word_continues(DirectiveInput *input, bool number, int32_t *previous);
 static bool directive_consume_ucn(DirectiveInput *input);
 static bool directive_ucn(DirectiveInput *input);
-static bool directive_braced_ucn(DirectiveInput *input, bool named, bool allow_spaced);
-static bool directive_hex_ucn(DirectiveInput *input, unsigned digits, bool allow_spaced);
+static bool directive_braced_ucn(DirectiveInput *input, bool named);
+static bool directive_hex_ucn(DirectiveInput *input, unsigned digits);
 static bool directive_ucn_character(bool named, int32_t c);
 static TSSymbol empty_directives_keyword_symbol(const char *word, const PreprocDirectiveSymbols *symbols);
 static bool empty_directives_line_end_at(const EmptyDirectives *state, uint32_t byte);
@@ -396,45 +396,47 @@ static bool directive_word_continues(DirectiveInput *input, bool number, int32_t
 
 static bool directive_consume_ucn(DirectiveInput *input) {
     if (directive_peek(input) != '\\') return false;
+    bool had_spaced = input->spaced_splice;
     DirectiveInput copy = *input;
+    copy.spaced_splice = false;
     directive_next(&copy);
-    if ((!input->spaced_splice && copy.spaced_splice) || !directive_ucn(&copy)) return false;
+    if (copy.spaced_splice || !directive_ucn(&copy)) return false;
+    copy.spaced_splice = had_spaced;
     *input = copy;
     return true;
 }
 
 static bool directive_ucn(DirectiveInput *input) {
-    bool allow_spaced = input->spaced_splice;
+    bool had_spaced = input->spaced_splice;
     DirectiveInput copy = *input;
+    copy.spaced_splice = false;
     int32_t prefix = directive_next(&copy);
-    if (!allow_spaced && copy.spaced_splice) return false;
+    bool valid = false;
     if (prefix != 'U' && (prefix == 'u' || prefix == 'N') && directive_peek(&copy) == '{') {
-        if (!directive_braced_ucn(&copy, prefix == 'N', allow_spaced)) return false;
-        *input = copy;
-        return true;
+        valid = directive_braced_ucn(&copy, prefix == 'N');
+    } else if (prefix == 'u' || prefix == 'U') {
+        valid = directive_hex_ucn(&copy, prefix == 'U' ? 8u : 4u);
     }
-    if ((prefix != 'u' && prefix != 'U') || !directive_hex_ucn(&copy, prefix == 'U' ? 8u : 4u, allow_spaced)) return false;
+    if (!valid || copy.spaced_splice) return false;
+    copy.spaced_splice = had_spaced;
     *input = copy;
     return true;
 }
 
-static bool directive_braced_ucn(DirectiveInput *input, bool named, bool allow_spaced) {
+static bool directive_braced_ucn(DirectiveInput *input, bool named) {
     directive_next(input);
-    if (!allow_spaced && input->spaced_splice) return false;
     bool content = false;
     for (;;) {
         int32_t c = directive_next(input);
-        if (!allow_spaced && input->spaced_splice) return false;
         if (c == '}') return content;
         if (!directive_ucn_character(named, c)) return false;
         content = true;
     }
 }
 
-static bool directive_hex_ucn(DirectiveInput *input, unsigned digits, bool allow_spaced) {
+static bool directive_hex_ucn(DirectiveInput *input, unsigned digits) {
     for (unsigned i = 0; i < digits; i++) {
-        int32_t c = directive_next(input);
-        if ((!allow_spaced && input->spaced_splice) || !directive_ucn_character(false, c)) return false;
+        if (!directive_ucn_character(false, directive_next(input))) return false;
     }
     return true;
 }
