@@ -106,6 +106,16 @@ test('requires operands again after leaving a conditional group', () => {
   withTree('#if 0\n#undef\n#line\n#endif\n#undef\nint following;\n', (tree) => {
     expect(tree.rootNode.hasError).toBe(true);
   });
+  for (const closer of [String.raw`endif\u00e9`, String.raw`endif\u{E9}`, String.raw`endif\U000000e9`, 'endifé']) {
+    withTree(`#if 0\n#${closer}\n#undef\n#endif\nint following;\n`, (tree) => {
+      expect(tree.rootNode.hasError, closer).toBe(false);
+    });
+  }
+  for (const opener of [String.raw`if\u00e9`, String.raw`ifdef\u00e9`, String.raw`ifndef\u00e9`, 'ifé']) {
+    withTree(`#if 0\n#${opener}\n#endif\n#undef\nint following;\n`, (tree) => {
+      expect(tree.rootNode.hasError, opener).toBe(true);
+    });
+  }
   for (const prefix of ['/* #if 0 */\n', 'char *text = "#if 0";\n']) {
     withTree(`${prefix}#line\nint following;\n`, (tree) => expect(tree.rootNode.hasError).toBe(true));
   }

@@ -42,7 +42,15 @@ typedef struct {
 } PreprocDirectiveSymbols;
 
 static bool empty_directives_skip_prefix(TSLexer *lexer);
+static bool empty_directives_scan_word_step(TSLexer *lexer, char *word, unsigned capacity, unsigned *length, bool *trailing_splice, TSLexerPosition *position);
+static bool empty_directives_ucn_follows(TSLexer *lexer);
 static inline bool empty_directives_name_character(int32_t c, bool continuation);
+static bool directive_word_continues(DirectiveInput *input, bool number, int32_t *previous);
+static bool directive_consume_ucn(DirectiveInput *input);
+static bool directive_ucn(DirectiveInput *input);
+static bool directive_braced_ucn(DirectiveInput *input, bool named, bool allow_spaced);
+static bool directive_hex_ucn(DirectiveInput *input, unsigned digits, bool allow_spaced);
+static bool directive_ucn_character(bool named, int32_t c);
 static TSSymbol empty_directives_keyword_symbol(const char *word, const PreprocDirectiveSymbols *symbols);
 static bool empty_directives_line_end_at(const EmptyDirectives *state, uint32_t byte);
 static bool directive_offset_has(const DirectiveOffsets *offsets, uint32_t byte);
@@ -69,33 +77,46 @@ static bool empty_directives_has_keyword_end(const EmptyDirectives *state, uint3
 
 // Scans `#`, any directive prefix spacing or block comments, and the ASCII directive name into `word`, marking the
 // token end at the name's last character and storing the post-keyword cursor byte in `*keyword_end`.
-// code-gauge-allow functionCognitiveComplexity -- Tracks trailing line splices while marking the keyword's physical token end.
 static bool empty_directives_scan_word(TSLexer *lexer, char *word, unsigned capacity, uint32_t *keyword_end) {
     lexer->advance(lexer, false);
     if (!empty_directives_skip_prefix(lexer) || !empty_directives_name_character(lexer->lookahead, false)) return false;
     unsigned length = 0;
     bool trailing_splice = false;
     TSLexerPosition position = {0};
-    for (;;) {
-        int32_t c = lexer->lookahead;
-        if (empty_directives_name_character(c, true)) {
-            if (length < capacity) word[length++] = (char)c;
-            lexer->advance(lexer, false);
-            lexer->mark_end(lexer);
-            trailing_splice = false;
-        } else if (c == '\\') {
-            if (!trailing_splice) lexer->get_position(lexer, &position);
-            trailing_splice = true;
-            lexer->advance(lexer, false);
-            if (!scan_preproc_newline(lexer, false)) break;
-        } else {
-            break;
-        }
-    }
+    while (empty_directives_scan_word_step(lexer, word, capacity, &length, &trailing_splice, &position)) {}
     if (!trailing_splice) lexer->get_position(lexer, &position);
     word[length < capacity ? length : 0] = '\0';
     *keyword_end = position.bytes;
     return true;
+}
+
+static bool empty_directives_scan_word_step(TSLexer *lexer, char *word, unsigned capacity, unsigned *length, bool *trailing_splice, TSLexerPosition *position) {
+    int32_t c = lexer->lookahead;
+    if (empty_directives_name_character(c, true)) {
+        if (*length < capacity) word[(*length)++] = (char)c;
+        lexer->advance(lexer, false);
+        lexer->mark_end(lexer);
+        *trailing_splice = false;
+        return true;
+    }
+    if (c != '\\') {
+        if (preproc_word(c, true)) *length = capacity;
+        return false;
+    }
+    if (!*trailing_splice) lexer->get_position(lexer, position);
+    *trailing_splice = true;
+    lexer->advance(lexer, false);
+    if (scan_preproc_newline(lexer, false)) return true;
+    if (empty_directives_ucn_follows(lexer)) *length = capacity;
+    return false;
+}
+
+static bool empty_directives_ucn_follows(TSLexer *lexer) {
+    if (!scan_preproc_splices(lexer)) return false;
+    int32_t c = lexer->lookahead;
+    if (c != 'u' && c != 'U' && c != 'N') return false;
+    bool in_number = false;
+    return scan_preproc_ucn(lexer, &in_number);
 }
 
 static inline bool empty_directives_name_character(int32_t c, bool continuation) {
@@ -358,6 +379,69 @@ static bool directive_grow_directories(EmptyDirectives *state, uint32_t pages) {
     }
     state->pages = pages;
     return true;
+}
+
+static bool directive_word_continues(DirectiveInput *input, bool number, int32_t *previous) {
+    if (directive_consume_ucn(input)) {
+        *previous = 0x80;
+        return true;
+    }
+    int32_t c = directive_peek(input);
+    bool exponent_sign = number && (c == '+' || c == '-') &&
+        (*previous == 'e' || *previous == 'E' || *previous == 'p' || *previous == 'P');
+    if (!preproc_word(c, true) && !(number && (c == '.' || c == '\'' || exponent_sign))) return false;
+    *previous = directive_next(input);
+    return true;
+}
+
+static bool directive_consume_ucn(DirectiveInput *input) {
+    if (directive_peek(input) != '\\') return false;
+    DirectiveInput copy = *input;
+    directive_next(&copy);
+    if ((!input->spaced_splice && copy.spaced_splice) || !directive_ucn(&copy)) return false;
+    *input = copy;
+    return true;
+}
+
+static bool directive_ucn(DirectiveInput *input) {
+    bool allow_spaced = input->spaced_splice;
+    DirectiveInput copy = *input;
+    int32_t prefix = directive_next(&copy);
+    if (!allow_spaced && copy.spaced_splice) return false;
+    if (prefix != 'U' && (prefix == 'u' || prefix == 'N') && directive_peek(&copy) == '{') {
+        if (!directive_braced_ucn(&copy, prefix == 'N', allow_spaced)) return false;
+        *input = copy;
+        return true;
+    }
+    if ((prefix != 'u' && prefix != 'U') || !directive_hex_ucn(&copy, prefix == 'U' ? 8u : 4u, allow_spaced)) return false;
+    *input = copy;
+    return true;
+}
+
+static bool directive_braced_ucn(DirectiveInput *input, bool named, bool allow_spaced) {
+    directive_next(input);
+    if (!allow_spaced && input->spaced_splice) return false;
+    bool content = false;
+    for (;;) {
+        int32_t c = directive_next(input);
+        if (!allow_spaced && input->spaced_splice) return false;
+        if (c == '}') return content;
+        if (!directive_ucn_character(named, c)) return false;
+        content = true;
+    }
+}
+
+static bool directive_hex_ucn(DirectiveInput *input, unsigned digits, bool allow_spaced) {
+    for (unsigned i = 0; i < digits; i++) {
+        int32_t c = directive_next(input);
+        if ((!allow_spaced && input->spaced_splice) || !directive_ucn_character(false, c)) return false;
+    }
+    return true;
+}
+
+static bool directive_ucn_character(bool named, int32_t c) {
+    if (named) return (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == ' ' || c == '-';
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
 }
 
 #endif

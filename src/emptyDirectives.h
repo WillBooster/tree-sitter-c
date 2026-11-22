@@ -743,20 +743,18 @@ static void directive_code(EmptyDirectives *state, DirectiveInput *input, Direct
     bool operand = line->operand;
     if (!name && !pragma) line->operand = true;
     line->beginning = line->pending = false;
-    if (header) {
-        if (directive_header(input, c == '<' ? '>' : '"')) directive_line_end(state, input, line);
+    if (header || c == '"' || c == '\'') {
+        bool ended = header ? directive_header(input, c == '<' ? '>' : '"') : directive_quoted(input, c);
+        if (ended) directive_line_end(state, input, line);
         return;
     }
-    if (c == '"' || c == '\'') {
-        if (directive_quoted(input, c)) directive_line_end(state, input, line);
-        return;
-    }
-    if (!preproc_word(c, false) && !(c >= '0' && c <= '9')) return;
+    bool ucn_start = c == '\\' && directive_ucn(input);
+    if (!ucn_start && !preproc_word(c, false) && !(c >= '0' && c <= '9')) return;
     uint32_t end = name ? directive_keyword_end(input) : 0;
-    DirectiveWord word = directive_word(input, c, line->kind != DIRECTIVE_DIAGNOSTIC, true);
+    DirectiveWord word = directive_word(input, ucn_start ? 0x80 : c, line->kind != DIRECTIVE_DIAGNOSTIC, true);
     DirectiveKind kind = name ? directive_keyword(state, input, line, &word, end) : directive_word_kind(&word);
     if (!name && !pragma && kind == DIRECTIVE_PRAGMA) directive_pragma_name(line, input);
-    directive_word_role(line, kind, name, pragma, operand, preproc_word(c, false));
+    directive_word_role(line, kind, name, pragma, operand, ucn_start || preproc_word(c, false));
 }
 
 // Outside a directive name, a line with no `_Pragma` or header operand in progress keeps its state through every token
@@ -1037,12 +1035,7 @@ static DirectiveWord directive_word(DirectiveInput *input, int32_t first, bool r
     bool number = first >= '0' && first <= '9';
     int32_t previous = first;
     if (!number) directive_word_run(input, &word, classify);
-    for (;;) {
-        int32_t c = directive_peek(input);
-        bool exponent_sign = number && (c == '+' || c == '-') &&
-            (previous == 'e' || previous == 'E' || previous == 'p' || previous == 'P');
-        if (!preproc_word(c, true) && !(number && (c == '.' || c == '\'' || exponent_sign))) break;
-        previous = directive_next(input);
+    while (directive_word_continues(input, number, &previous)) {
         directive_word_character(&word, previous);
     }
     if (raw && gnu_raw_string_prefix(&word.raw) && directive_peek(input) == '"') directive_raw(input);
