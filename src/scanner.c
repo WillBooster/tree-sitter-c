@@ -7,14 +7,12 @@ typedef struct {
     MacroProofMemo proof_memo;
 } CScanner;
 
-enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF, GNU_RAW_STRING_BODY, RAW_MACRO_TYPE_TAIL, BRACED_FUNCTION_ATTRIBUTE_START, BRACED_MACRO_TYPE_START, DIRECTIVE_CONTEXT, PREPROC_EMPTY, PREPROC_DIRECTIVE_START };
+enum TokenType { PRAGMA_OPERATOR, PREPROC_ARG, PREPROC_NEWLINE, PREPROC_LPAREN, PREPROC_DIRECTIVE_ARG, PREPROC_FUNCTION_NAME, FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_START, POST_TYPE_FUNCTION_ATTRIBUTE_SUFFIX, TRAILING_MACRO_ATTRIBUTE_NAME, TRAILING_OBJECT_DECLARATION_START, CONDITIONAL_MARKER_IFDEF, CONDITIONAL_MARKER_IFNDEF, LEADING_CONDITIONAL_MARKER_IFDEF, LEADING_CONDITIONAL_MARKER_IFNDEF, GNU_RAW_STRING_BODY, RAW_MACRO_TYPE_TAIL, BRACED_FUNCTION_ATTRIBUTE_START, BRACED_MACRO_TYPE_START, DIRECTIVE_CONTEXT, PREPROC_EMPTY, PREPROC_DIRECTIVE_START, TOKEN_COUNT };
 
 static EmptyDirectives *scanner_directives(CScanner *scanner);
 
 static bool only_extras_valid(const EmptyDirectives *state, const bool *valid_symbols);
 static bool scan_extras(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
-static bool scan_extras_pragma(EmptyDirectives *state, TSLexer *lexer, const TSLexerCheckpoint *start, bool skipped);
-static uint32_t extras_start_byte(TSLexer *lexer, const TSLexerCheckpoint *start, bool skipped);
 static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_declaration_tokens(CScanner *scanner, TSLexer *lexer, const bool *valid_symbols);
 static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols);
@@ -33,16 +31,20 @@ void tree_sitter_c_external_scanner_destroy(void *payload) {
     free(scanner);
 }
 
+enum { SERIALIZED_READY = 1, SERIALIZED_ANCHORED = 2 };
+
 unsigned tree_sitter_c_external_scanner_serialize(void *payload, char *buffer) {
     const EmptyDirectives *state = scanner_directives(payload);
-    buffer[0] = state && state->ready;
+    buffer[0] = state ? (state->ready ? SERIALIZED_READY : 0) | (state->anchored ? SERIALIZED_ANCHORED : 0) : 0;
     return 1;
 }
 
 void tree_sitter_c_external_scanner_deserialize(void *payload, const char *buffer, unsigned length) {
     CScanner *scanner = payload;
     EmptyDirectives *state = scanner_directives(scanner);
-    if (state) state->ready = length && buffer[0];
+    if (!state) return;
+    state->ready = length && (buffer[0] & SERIALIZED_READY);
+    state->anchored = length && (buffer[0] & SERIALIZED_ANCHORED);
 }
 
 // code-gauge-allow functionCognitiveComplexity -- External-token validity dispatches each lexing mode to its scanner.
@@ -50,6 +52,7 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
     CScanner *scanner = payload;
     EmptyDirectives *state = scanner_directives(scanner);
     if (only_extras_valid(state, valid_symbols)) return scan_extras(state, lexer, valid_symbols);
+    if (state && !state->ready && valid_symbols[DIRECTIVE_CONTEXT]) return empty_directives_initialize(state, lexer, DIRECTIVE_CONTEXT);
     if (scan_directive_context(state, lexer, valid_symbols)) return true;
     if (empty_directives_at_line_end(state, lexer)) return false;
     if (valid_symbols[GNU_RAW_STRING_BODY] && !valid_symbols[PREPROC_LPAREN]) {
@@ -68,8 +71,8 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
         valid_symbols[PREPROC_ARG] || valid_symbols[PREPROC_DIRECTIVE_ARG]) {
         return scan_preproc_tokens(state, lexer, valid_symbols);
     }
-    bool leading = valid_symbols[LEADING_CONDITIONAL_MARKER_IFDEF] || valid_symbols[LEADING_CONDITIONAL_MARKER_IFNDEF];
-    bool conditional = leading || valid_symbols[CONDITIONAL_MARKER_IFDEF] || valid_symbols[CONDITIONAL_MARKER_IFNDEF];
+    bool conditional = valid_symbols[LEADING_CONDITIONAL_MARKER_IFDEF] || valid_symbols[LEADING_CONDITIONAL_MARKER_IFNDEF] ||
+        valid_symbols[CONDITIONAL_MARKER_IFDEF] || valid_symbols[CONDITIONAL_MARKER_IFNDEF];
     if (!conditional) return scan_declaration_tokens(scanner, lexer, valid_symbols);
     while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
     if (lexer->lookahead == '#') return scan_conditional_directive(state, lexer, valid_symbols);
@@ -77,49 +80,23 @@ bool tree_sitter_c_external_scanner_scan(void *payload, TSLexer *lexer, const bo
 }
 
 static bool only_extras_valid(const EmptyDirectives *state, const bool *valid_symbols) {
-    return state && state->ready && !valid_symbols[PREPROC_DIRECTIVE_START] &&
-        !memchr(valid_symbols + PREPROC_ARG, true, (DIRECTIVE_CONTEXT - PREPROC_ARG) * sizeof(*valid_symbols));
+    static const uint8_t extras[TOKEN_COUNT] = {[PRAGMA_OPERATOR] = 0xff, [DIRECTIVE_CONTEXT] = 0xff, [PREPROC_EMPTY] = 0xff};
+    return state && state->ready && empty_directives_only_valid(valid_symbols, extras, TOKEN_COUNT);
 }
 
-// `starts` marks only `#`, `\`, and spaces/splices before a null directive's `#`, and `line_ends` marks only spaces and
-// newlines, so `extras_start_byte` restores the pre-space checkpoint via `mark_end_at` only after `#`/`\` (when `starts`
-// exists) or `_Pragma` (when skipped spaces may start at `line_ends`), avoiding checkpoint/column work on other tokens.
+// Fails without consuming a character unless a null directive starts here or the input holds `pragma_word`, since
+// the lexer rereads from the start what a failed scan consumed.
 static bool scan_extras(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
-    bool allow_empty = valid_symbols[PREPROC_EMPTY] && state->starts;
-    bool allow_pragma = valid_symbols[PRAGMA_OPERATOR];
-    if (!allow_empty && !allow_pragma) return false;
-    bool skipped = pragma_space(lexer->lookahead);
-    TSLexerCheckpoint start = {0};
-    if (skipped && (allow_empty || state->line_ends)) lexer->get_checkpoint(lexer, &start);
-    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
-    int32_t c = lexer->lookahead;
-    if (c == '_') return allow_pragma && scan_extras_pragma(state, lexer, &start, skipped);
-    if (!allow_empty || (c != '#' && c != '\\')) return false;
-    if (!empty_directives_start_at(state, extras_start_byte(lexer, &start, skipped))) return false;
-    empty_directives_consume_started(lexer, state, true);
-    lexer->mark_end(lexer);
-    lexer->result_symbol = PREPROC_EMPTY;
-    return true;
-}
-
-static bool scan_extras_pragma(EmptyDirectives *state, TSLexer *lexer, const TSLexerCheckpoint *start, bool skipped) {
-    if (!scan_pragma_word(lexer)) return false;
-    if (skipped && state->line_ends && empty_directives_line_end_at(state, extras_start_byte(lexer, start, true))) {
-        return false;
+    if (valid_symbols[PREPROC_EMPTY] && empty_directives_consume(lexer, state, true)) {
+        lexer->mark_end(lexer);
+        lexer->result_symbol = PREPROC_EMPTY;
+        return true;
     }
+    if (!valid_symbols[PRAGMA_OPERATOR] || !state->pragmas || empty_directives_at_line_end(state, lexer)) return false;
+    while (pragma_space(lexer->lookahead)) lexer->advance(lexer, true);
+    if (!scan_pragma_word(lexer)) return false;
     lexer->result_symbol = PRAGMA_OPERATOR;
     return scan_pragma_suffix_end_with(lexer, true, &(PragmaTrivia){empty_directives_skip, state});
-}
-
-static uint32_t extras_start_byte(TSLexer *lexer, const TSLexerCheckpoint *start, bool skipped) {
-    TSLexerPosition position;
-    if (skipped) {
-        lexer->mark_end_at(lexer, start);
-        lexer->get_mark_end(lexer, &position);
-    } else {
-        lexer->get_position(lexer, &position);
-    }
-    return position.bytes;
 }
 
 static bool scan_conditional_directive(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
@@ -133,10 +110,6 @@ static bool scan_conditional_directive(EmptyDirectives *state, TSLexer *lexer, c
 }
 
 static bool scan_directive_context(EmptyDirectives *state, TSLexer *lexer, const bool *valid_symbols) {
-    if (state && !state->ready && valid_symbols[DIRECTIVE_CONTEXT]) {
-        lexer->result_symbol = DIRECTIVE_CONTEXT;
-        return empty_directives_initialize(state, lexer);
-    }
     if (valid_symbols[PREPROC_DIRECTIVE_START] && empty_directives_after_keyword(state, lexer)) {
         lexer->result_symbol = PREPROC_DIRECTIVE_START;
         lexer->mark_end(lexer);
@@ -227,7 +200,8 @@ static bool scan_preproc_tokens(EmptyDirectives *state, TSLexer *lexer, const bo
         return scan_preproc_arg(lexer, false, argument_mode);
     }
     lexer->result_symbol = PRAGMA_OPERATOR;
-    return valid_symbols[PRAGMA_OPERATOR] && scan_pragma_with(lexer, &(PragmaTrivia){empty_directives_skip, state});
+    return valid_symbols[PRAGMA_OPERATOR] && empty_directives_pragma_possible(state) &&
+        scan_pragma_with(lexer, &(PragmaTrivia){empty_directives_skip, state});
 }
 
 static EmptyDirectives *scanner_directives(CScanner *scanner) {

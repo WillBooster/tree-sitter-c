@@ -54,6 +54,12 @@ test.each([
   }
 );
 
+test('keeps the search for a leading comment approximately linear over slashes', { timeout: 60_000 }, () => {
+  const small = `${'/ '.repeat(1000)}/**/\nint following;\n`;
+  const large = `${'/ '.repeat(10_000)}/**/\nint following;\n`;
+  expectAverageCpuTimeLinear(small, large, true);
+});
+
 test.each(['A ', 'A B '])(
   'keeps block marker-prefix recovery approximately linear for %j',
   { timeout: 60_000 },
