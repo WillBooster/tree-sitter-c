@@ -559,7 +559,8 @@ static int32_t peek_after_ascii_spaces(const TSLexer *lexer) {
     if (!count) return -1;
     uint32_t i = (look == ' ' || (uint32_t)(look - '\t') < 5) ? 1 : 0;
     for (; i < count; i++) {
-        uint16_t c = size == 2 ? ((const uint16_t *)units)[i] : ((const uint8_t *)units)[i];
+        uint16_t c = (uint8_t)units[i * size];
+        if (size == 2) memcpy(&c, units + 2 * (size_t)i, sizeof c);
         if (c != ' ' && (uint32_t)(c - '\t') >= 5) return c < 0x80 && c != '\\' ? (int32_t)c : -1;
     }
     return -1;
