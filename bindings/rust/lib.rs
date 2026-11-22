@@ -121,7 +121,8 @@ mod tests {
             let second_start = first_end + gap.len() + 1;
             let kw_gap = format!("#define{gap} VALUE 1\nint following = VALUE;\n");
             let kw_end = "#define".len();
-            for (source, r0_end, r0_pt, r1_start, r1_pt, end_row, def_start) in [
+            let kw_rest = kw_end + gap.len();
+            for (source, r0_end, r0_pt, r1_start, r1_pt, end_row, def_start, def_pt) in [
                 (
                     &line_gap,
                     first_end,
@@ -130,15 +131,17 @@ mod tests {
                     (2, 0),
                     4,
                     second_start,
+                    (2, 0),
                 ),
                 (
                     &kw_gap,
                     kw_end,
                     (0, kw_end),
-                    kw_end + gap.len(),
-                    (1, 0),
-                    3,
+                    kw_rest,
+                    (0, kw_rest),
+                    2,
                     0,
+                    (0, 0),
                 ),
             ] {
                 let mut parser = tree_sitter::Parser::new();
@@ -160,7 +163,15 @@ mod tests {
                     ])
                     .unwrap();
                 let tree = parser.parse(source).unwrap();
-                assert_definition(&tree, source.as_bytes(), def_start);
+                let definition = assert_definition(&tree, source.as_bytes(), def_start);
+                assert_eq!(
+                    definition.start_position(),
+                    tree_sitter::Point::new(def_pt.0, def_pt.1)
+                );
+                assert_eq!(
+                    definition.end_position(),
+                    tree_sitter::Point::new(def_pt.0 + 1, 0)
+                );
             }
         }
     }
