@@ -166,6 +166,11 @@ export interface Grammar<
     previous: SymbolRule<string>[],
   ) => SymbolRule<string>[];
 
+  mergeableExternals?: (
+    $: GrammarSymbols<RuleName | BaseGrammarRuleName>,
+    previous: SymbolRule<string>[],
+  ) => SymbolRule<string>[];
+
   /**
    * The name of a token that will match keywords for the purpose of the
    * keyword extraction optimization.
@@ -212,6 +217,7 @@ export type GrammarSchema<RuleName extends string> = {
     extras: Rule[];
     inline: string[];
     supertypes: string[];
+    mergeable_externals?: string[];
     word: string | undefined;
     reserved: Record<string, Rule[]>;
   };

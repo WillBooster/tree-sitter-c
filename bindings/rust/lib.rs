@@ -116,29 +116,63 @@ mod tests {
     #[test]
     fn included_range_gaps_preserve_directive_positions() {
         for gap in ["x", "xx", "<%XXXXXXXX%>", "λ𐐀"] {
-            let source = format!("int before;\n{gap}\n#define VALUE 1\nint following = VALUE;\n");
+            let line_gap = format!("int before;\n{gap}\n#define VALUE 1\nint following = VALUE;\n");
             let first_end = "int before;\n".len();
             let second_start = first_end + gap.len() + 1;
-            let mut parser = tree_sitter::Parser::new();
-            parser.set_language(&super::LANGUAGE.into()).unwrap();
-            parser
-                .set_included_ranges(&[
-                    tree_sitter::Range {
-                        start_byte: 0,
-                        end_byte: first_end,
-                        start_point: tree_sitter::Point::new(0, 0),
-                        end_point: tree_sitter::Point::new(1, 0),
-                    },
-                    tree_sitter::Range {
-                        start_byte: second_start,
-                        end_byte: source.len(),
-                        start_point: tree_sitter::Point::new(2, 0),
-                        end_point: tree_sitter::Point::new(4, 0),
-                    },
-                ])
-                .unwrap();
-            let tree = parser.parse(&source).unwrap();
-            assert_definition(&tree, source.as_bytes(), second_start);
+            let kw_gap = format!("#define{gap} VALUE 1\nint following = VALUE;\n");
+            let kw_end = "#define".len();
+            let kw_rest = kw_end + gap.len();
+            for (source, r0_end, r0_pt, r1_start, r1_pt, end_row, def_start, def_pt) in [
+                (
+                    &line_gap,
+                    first_end,
+                    (1, 0),
+                    second_start,
+                    (2, 0),
+                    4,
+                    second_start,
+                    (2, 0),
+                ),
+                (
+                    &kw_gap,
+                    kw_end,
+                    (0, kw_end),
+                    kw_rest,
+                    (0, kw_rest),
+                    2,
+                    0,
+                    (0, 0),
+                ),
+            ] {
+                let mut parser = tree_sitter::Parser::new();
+                parser.set_language(&super::LANGUAGE.into()).unwrap();
+                parser
+                    .set_included_ranges(&[
+                        tree_sitter::Range {
+                            start_byte: 0,
+                            end_byte: r0_end,
+                            start_point: tree_sitter::Point::new(0, 0),
+                            end_point: tree_sitter::Point::new(r0_pt.0, r0_pt.1),
+                        },
+                        tree_sitter::Range {
+                            start_byte: r1_start,
+                            end_byte: source.len(),
+                            start_point: tree_sitter::Point::new(r1_pt.0, r1_pt.1),
+                            end_point: tree_sitter::Point::new(end_row, 0),
+                        },
+                    ])
+                    .unwrap();
+                let tree = parser.parse(source).unwrap();
+                let definition = assert_definition(&tree, source.as_bytes(), def_start);
+                assert_eq!(
+                    definition.start_position(),
+                    tree_sitter::Point::new(def_pt.0, def_pt.1)
+                );
+                assert_eq!(
+                    definition.end_position(),
+                    tree_sitter::Point::new(def_pt.0 + 1, 0)
+                );
+            }
         }
     }
 
@@ -159,10 +193,59 @@ mod tests {
         assert_definition(&tree, source, b"/* caf\xe9 */\n".len());
     }
 
-    fn assert_definition(tree: &tree_sitter::Tree, source: &[u8], start: usize) {
+    #[test]
+    fn final_offset_page_null_directives_advance_cleanly() {
+        let snippet = b"  # /* comment */\n#define VALUE 1\nint following = VALUE;\n  #";
+        let end = u32::MAX as usize;
+        let start = end - snippet.len();
+        let mut parser = tree_sitter::Parser::new();
+        parser.set_language(&super::LANGUAGE.into()).unwrap();
+        parser
+            .set_included_ranges(&[tree_sitter::Range {
+                start_byte: start,
+                end_byte: end,
+                start_point: tree_sitter::Point::new(0, 0),
+                end_point: tree_sitter::Point::new(3, 3),
+            }])
+            .unwrap();
+        let tree = parser
+            .parse_with_options(
+                &mut |byte, _| {
+                    if byte >= start && byte < end {
+                        &snippet[byte - start..]
+                    } else {
+                        b""
+                    }
+                },
+                None,
+            )
+            .unwrap();
         let root = tree.root_node();
         assert!(!root.has_error(), "{}", root.to_sexp());
-        assert_definition_at(root, source, start);
+        let mut cursor = root.walk();
+        let empty_count = root
+            .named_children(&mut cursor)
+            .filter(|node| node.kind() == "preproc_empty")
+            .count();
+        assert_eq!(empty_count, 2);
+        let definition = root
+            .named_children(&mut cursor)
+            .find(|node| node.kind() == "preproc_def")
+            .unwrap();
+        assert_eq!(
+            definition.start_byte(),
+            start + b"  # /* comment */\n".len()
+        );
+    }
+
+    fn assert_definition<'a>(
+        tree: &'a tree_sitter::Tree,
+        source: &[u8],
+        start: usize,
+    ) -> tree_sitter::Node<'a> {
+        let root = tree.root_node();
+        assert!(!root.has_error(), "{}", root.to_sexp());
+        assert_definition_at(root, source, start)
     }
 
     fn assert_definition_at<'a>(

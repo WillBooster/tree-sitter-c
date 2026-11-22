@@ -20,17 +20,11 @@ test('uses a Wasm build built from the current parser', () => {
     'src/parser.c',
     'src/scanner.c',
     'src/tree_sitter/parser.h',
-    'src/pragma.h',
-    'src/identifier.h',
-    'src/keywords.h',
-    'src/functionMacro.h',
-    'src/macroProof.h',
-    'src/conditionalMacro.h',
-    'src/emptyDirectives.h',
-    'src/directiveScan.h',
-    'src/directiveUnits.h',
-    'src/directiveBuffer.h',
-    'src/gnuRawString.h',
+    ...(
+      JSON.parse(fs.readFileSync(path.join(Root, 'tree-sitter.json'), 'utf8')) as {
+        grammars: [{ 'external-files': string[] }];
+      }
+    ).grammars[0]['external-files'],
   ].map((name) => fs.statSync(path.join(Root, name)).mtimeMs);
   expect(
     Math.max(generationInputMtime(Root), ...sources) > fs.statSync(WasmPath).mtimeMs,
