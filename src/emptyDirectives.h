@@ -107,6 +107,7 @@ static void directive_neutral_code(EmptyDirectives *state, DirectiveInput *input
 static bool directive_header_ready(DirectiveLine *line, int32_t c);
 static bool directive_header(DirectiveInput *input, int32_t close);
 static void directive_line_comment(EmptyDirectives *state, DirectiveInput *input, DirectiveLine *line);
+static bool directive_skip_splice(DirectiveInput *input);
 static uint32_t directive_splice_end(const DirectiveInput *input);
 
 static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer);
@@ -846,12 +847,7 @@ static int32_t directive_next(DirectiveInput *input) {
     }
     while (directive_has(input, input->index)) {
         int32_t c = directive_physical_next(input);
-        uint32_t after = c == '\\' ? directive_splice_end(input) : input->index;
-        if (after != input->index) {
-            if (directive_horizontal(directive_character(input, input->index))) input->spaced_splice = true;
-            while (input->index < after) directive_physical_next(input);
-            continue;
-        }
+        if (c == '\\' && directive_skip_splice(input)) continue;
         if (directive_newline(c)) {
             if (directive_has(input, input->index) && directive_newline(directive_character(input, input->index)) &&
                 directive_character(input, input->index) != c) directive_physical_next(input);
@@ -890,6 +886,15 @@ static uint32_t directive_expected_width(const DirectiveInput *input, uint32_t i
     }
     *c = (int32_t)unit;
     return input->buffer->utf16 ? 2 : directive_utf8_width(unit);
+}
+
+// Consumes the rest of a line splice after its `\\`; false when none follows.
+static bool directive_skip_splice(DirectiveInput *input) {
+    uint32_t after = directive_splice_end(input);
+    if (after == input->index) return false;
+    if (directive_horizontal(directive_character(input, input->index))) input->spaced_splice = true;
+    while (input->index < after) directive_physical_next(input);
+    return true;
 }
 
 static uint32_t directive_splice_end(const DirectiveInput *input) {
