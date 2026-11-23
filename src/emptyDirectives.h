@@ -139,7 +139,7 @@ static bool empty_directives_initialize(EmptyDirectives *state, TSLexer *lexer, 
 static bool empty_directives_build(EmptyDirectives *state, TSLexer *lexer) {
     TSLexerPosition position;
     lexer->get_position(lexer, &position);
-    DirectiveBuffer buffer = {.lexer = lexer, .fill_byte = position.bytes};
+    DirectiveBuffer buffer = {.lexer = lexer, .fill_byte = position.bytes, .spaced_splices = state->spaced_splices};
     DirectiveInput input = {.buffer = &buffer, .byte = position.bytes};
     // `run` holds the run before a segment's `#`, and `tail` the segment's trailing run.
     DirectiveSpans run = {0}, tail = {0};

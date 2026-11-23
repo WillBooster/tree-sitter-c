@@ -27,7 +27,7 @@ typedef struct {
     uint64_t recent;
     // Whether the current segment recorded a null directive or a line-end barrier, which the reverse pass carries, and
     // whether the characters stored or scanned hold `pragma_word`.
-    bool utf16, encoding_known, failed, carries, pragma;
+    bool utf16, encoding_known, failed, carries, pragma, spaced_splices;
     uint8_t classes[UNIT_CLASS_COUNT];
 } DirectiveBuffer;
 

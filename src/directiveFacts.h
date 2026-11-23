@@ -33,8 +33,9 @@ typedef struct {
     DirectiveSpans line_ends;
     // `anchored` and `ready` belong to the scanner state: whether the token at the start of the input is out, and
     // whether the facts, which `built` says exist, are in use. `pragmas` is the fact that the input read for them holds
-    // `pragma_word`, without which no scan has to look for a `_Pragma` operator.
-    bool built, anchored, ready, pragmas, failed;
+    // `pragma_word`, without which no scan has to look for a `_Pragma` operator. `spaced_splices` enables C++23
+    // `[lex.phases]/2` horizontal-whitespace line splices inside directive universal character names.
+    bool built, anchored, ready, pragmas, failed, spaced_splices;
 } EmptyDirectives;
 
 typedef struct {
@@ -44,6 +45,9 @@ typedef struct {
 static bool empty_directives_skip_prefix(TSLexer *lexer);
 static bool empty_directives_scan_word_step(TSLexer *lexer, char *word, unsigned capacity, unsigned *length, bool *trailing_splice, TSLexerPosition *position);
 static bool empty_directives_ucn_follows(TSLexer *lexer, bool continuation);
+static bool empty_directives_ucn_follows_splices(TSLexer *lexer, bool continuation, bool spaced_splices);
+static bool empty_directives_skip_splices(TSLexer *lexer, bool spaced_splices);
+static bool empty_directives_skip_line_splice(TSLexer *lexer, bool spaced_splices);
 static inline bool empty_directives_name_character(int32_t c, bool continuation);
 static bool directive_word_continues(DirectiveInput *input, bool number, bool strict_identifier, bool *in_identifier, int32_t *previous);
 static bool directive_consume_ucn(DirectiveInput *input);
@@ -109,21 +113,40 @@ static bool empty_directives_scan_word_step(TSLexer *lexer, char *word, unsigned
 }
 
 static bool empty_directives_ucn_follows(TSLexer *lexer, bool continuation) {
-    if (!scan_preproc_splices(lexer)) return false;
+    return empty_directives_ucn_follows_splices(lexer, continuation, false);
+}
+
+static bool empty_directives_ucn_follows_splices(TSLexer *lexer, bool continuation, bool spaced_splices) {
+    if (!empty_directives_skip_splices(lexer, spaced_splices)) return false;
     int32_t prefix = lexer->lookahead;
     if (prefix != 'u' && prefix != 'U' && prefix != 'N') return false;
     lexer->advance(lexer, false);
-    if (!scan_preproc_splices(lexer)) return false;
+    if (!empty_directives_skip_splices(lexer, spaced_splices)) return false;
     bool braced = prefix != 'U' && lexer->lookahead == '{';
     DirectiveUcn ucn;
     if (!directive_ucn_start(&ucn, prefix, braced)) return false;
     if (braced) lexer->advance(lexer, false);
     for (bool done = false;;) {
-        if (!scan_preproc_splices(lexer)) return false;
+        if (!empty_directives_skip_splices(lexer, spaced_splices)) return false;
         if (!directive_ucn_feed(&ucn, lexer->lookahead, continuation, &done)) return false;
         lexer->advance(lexer, false);
         if (done) return true;
     }
+}
+
+static bool empty_directives_skip_splices(TSLexer *lexer, bool spaced_splices) {
+    while (lexer->lookahead == '\\') {
+        lexer->advance(lexer, false);
+        if (!empty_directives_skip_line_splice(lexer, spaced_splices)) return false;
+    }
+    return true;
+}
+
+static bool empty_directives_skip_line_splice(TSLexer *lexer, bool spaced_splices) {
+    if (spaced_splices) {
+        while (directive_horizontal(lexer->lookahead)) lexer->advance(lexer, false);
+    }
+    return scan_preproc_newline(lexer, false);
 }
 
 static inline bool empty_directives_name_character(int32_t c, bool continuation) {
@@ -408,8 +431,8 @@ static bool directive_consume_ucn(DirectiveInput *input) {
     DirectiveInput copy = *input;
     copy.spaced_splice = false;
     directive_next(&copy);
-    if (copy.spaced_splice || !directive_ucn(&copy, true)) return false;
-    copy.spaced_splice = had_spaced;
+    if ((!copy.buffer->spaced_splices && copy.spaced_splice) || !directive_ucn(&copy, true)) return false;
+    copy.spaced_splice = had_spaced || copy.spaced_splice;
     *input = copy;
     return true;
 }
@@ -427,8 +450,8 @@ static bool directive_ucn(DirectiveInput *input, bool continuation) {
         if (!directive_ucn_feed(&ucn, directive_next(&copy), continuation, &done)) return false;
         if (done) break;
     }
-    if (copy.spaced_splice) return false;
-    copy.spaced_splice = had_spaced;
+    if (!copy.buffer->spaced_splices && copy.spaced_splice) return false;
+    copy.spaced_splice = had_spaced || copy.spaced_splice;
     *input = copy;
     return true;
 }
