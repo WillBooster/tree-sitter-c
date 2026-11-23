@@ -132,11 +132,17 @@ test('requires operands again after leaving a conditional group', () => {
   ]) {
     withTree(malformed, (tree) => expect(tree.rootNode.hasError, malformed).toBe(true));
   }
-  withTree('#undef MARKER\\ \n\n#if 0\n#endif\\u00\\ \ne9;\n#undef\nint following;\n', (tree) => {
-    expect(tree.rootNode.children.filter((node) => node.type === 'ERROR').map((node) => node.text.trim())).toContain(
-      '#undef'
-    );
-  });
+  for (const spaced of [
+    '#undef MARKER\\ \n\n#if 0\n#endif\\u00\\ \ne9;\n#undef\nint following;\n',
+    '#if 0\n#endif\\\\ \nu00e9;\n#undef\nint following;\n',
+  ]) {
+    withTree(spaced, (tree) => {
+      expect(
+        tree.rootNode.children.filter((node) => node.type === 'ERROR').map((node) => node.text.trim()),
+        spaced
+      ).toContain('#undef');
+    });
+  }
   for (const symbol of ['≤', '©']) {
     for (const line of [`#define X A${symbol}R"(x"`, `#vendor${symbol}R"(x"`]) {
       withTree(`#if 0\n${line}\n#endif\nint following;\n`, (tree) => {
