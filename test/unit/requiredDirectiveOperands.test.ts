@@ -135,6 +135,8 @@ test('requires operands again after leaving a conditional group', () => {
   for (const spaced of [
     '#undef MARKER\\ \n\n#if 0\n#endif\\u00\\ \ne9;\n#undef\nint following;\n',
     '#if 0\n#endif\\\\ \nu00e9;\n#undef\nint following;\n',
+    '#if 0\n#endif\\ \n\\u00e9;\n#undef\nint following;\n',
+    '#if 0\n#endif\\\t\r\n\\U000000E9;\n#undef\nint following;\n',
   ]) {
     withTree(spaced, (tree) => {
       expect(
